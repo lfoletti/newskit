@@ -45,7 +45,7 @@ jobs:
       - name: roue
         run: pip install build && python -m build --wheel --outdir dist
       - name: installation hors du dépôt
-        run: python -m venv /tmp/v && /tmp/v/bin/pip install "$(ls dist/*.whl)[temoin]"
+        run: python -m venv /tmp/v && /tmp/v/bin/pip install "$(ls dist/*.whl)"
       - name: une nuit du témoin, dans un dossier vide
         run: |
           git config --global user.name ci && git config --global user.email ci@example.invalid

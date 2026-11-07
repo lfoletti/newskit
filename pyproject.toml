@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "newskit"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Un moteur de veille sans thème : il fait naître un graphe de connaissances sur un sujet et le tient à jour chaque nuit, piloté depuis Claude Code."
 readme = "README.md"
 license = "MIT"
@@ -32,6 +32,7 @@ dependencies = [
     "trafilatura>=1.12",
     "lxml>=5.0",
     "graphifyy>=0.9",
+    "pytest>=8.0",              # le témoin : une nuit ne part pas sans lui (newskit temoin nuit)
 ]
 
 [project.optional-dependencies]
@@ -44,8 +45,6 @@ encodeur = [
     "tokenizers>=0.19",
     "fastembed>=0.3",
 ]
-# Le témoin absurde (newskit temoin nuit) lance ses tests livrés avec le paquet.
-temoin = ["pytest>=8.0"]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6"]
 
 [project.scripts]
@@ -54,6 +53,9 @@ newskit = "newskit.cli:main"
 [project.urls]
 Source = "https://github.com/lfoletti/newskit"
 Issues = "https://github.com/lfoletti/newskit/issues"
+
+[tool.hatch.version]
+path = "src/newskit/__init__.py"     # une seule source de la version
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/newskit"]

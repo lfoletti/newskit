@@ -13,7 +13,7 @@ Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle pas
 Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
 
 ```sh
-pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.0"
+pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.1"
 mkdir mon-media && cd mon-media
 newskit temoin nuit
 ```

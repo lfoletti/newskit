@@ -20,7 +20,7 @@ def _json(rel: str) -> dict:
 
 def test_une_version_partout():
     projet = tomllib.loads((ICI / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert projet.get("version", newskit.__version__) == newskit.__version__
+    assert "version" not in projet and "version" in projet["dynamic"]          # lue dans __init__.py par hatch
     assert _json(".claude-plugin/plugin.json")["version"] == newskit.__version__
     assert f"## [{newskit.__version__}]" in (ICI / "CHANGELOG.md").read_text(encoding="utf-8")
 
@@ -58,3 +58,12 @@ def test_le_moteur_ne_nomme_personne_dans_le_plugin():
     motif = re.compile(r"Lauro|Foletti|/Users/|/mnt/dat[a]")
     for p in [SKILL, ICI / "hooks" / "garde_limite.py", ICI / "hooks" / "hooks.json", ICI / "README.md"]:
         assert not motif.search(p.read_text(encoding="utf-8")), p.name
+
+
+def test_le_temoin_part_d_une_installation_simple():
+    """Une nuit ne part pas sans témoin vert : ce qu'il lui faut (pytest) s'installe avec le paquet, sans extra. Le
+    démarrage rapide du README (pip install, puis newskit temoin nuit) tombait sur « No module named pytest »."""
+    projet = tomllib.loads((ICI / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert any(re.match(r"pytest\b", d) for d in projet["dependencies"])
+    assert "temoin" not in projet.get("optional-dependencies", {})
+    assert "[temoin]" not in (ICI / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

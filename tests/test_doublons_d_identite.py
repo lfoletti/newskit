@@ -120,3 +120,68 @@ def test_aval_aucun_graphe_reel_n_a_deux_fiches_d_un_meme_document():
     groupes = dd.etat()
     assert not groupes, f"{len(groupes)} groupe(s) de doublons, dont : " + "; ".join(
         f"{g.garde or 'à trancher'} = {', '.join(g.retirees or g.fiches)}" for g in groupes[:3])
+
+
+def test_deux_versions_de_langue_gardent_la_francaise_sinon_l_anglaise(racine):
+    # Mainteneur, 07.11.2026 : deux versions de langues différentes du même article ne s'extraient pas en parallèle ni ne
+    # font deux clusters. La langue l'emporte sur l'extraction faite et sur l'ancienneté.
+    r, extraites = racine
+    _poser(r, "sources/a/ko.md", url="https://blog.x/blog/ramp/ko/", date="2024-01-01")
+    _poser(r, "sources/a/en.md", url="https://blog.x/blog/ramp/en/", date="2024-05-01")
+    extraites.add("sources/a/ko.md")
+    (g,) = dd.etat()
+    assert (g.garde, g.retirees) == ("sources/a/en.md", ["sources/a/ko.md"])
+    _poser(r, "sources/a/fr.md", url="https://blog.x/blog/ramp/fr/", date="2024-06-01")
+    fiche.oublier_index()
+    (g,) = dd.etat()
+    assert g.garde == "sources/a/fr.md"
+
+
+def test_la_version_par_defaut_passe_avant_une_autre_langue(racine):
+    r, extraites = racine
+    _poser(r, "sources/a/zh.md", url="https://metr.org/zh-Hans/blog/x", date="2024-01-01")
+    _poser(r, "sources/a/defaut.md", url="https://metr.org/blog/x", date="2024-05-01")
+    extraites.add("sources/a/zh.md")
+    (g,) = dd.etat()
+    assert (g.garde, g.retirees) == ("sources/a/defaut.md", ["sources/a/zh.md"])
+
+
+def test_un_texte_de_reference_dans_deux_langues_n_est_pas_un_doublon(racine):
+    r, _ = racine
+    _poser(r, "sources/a/textes/loi-en/art_1.md", url="https://lex.x/eli/1/en#art_1")
+    _poser(r, "sources/a/textes/loi-fr/art_1.md", url="https://lex.x/eli/1/fr#art_1")
+    assert dd.etat() == []
+
+
+def test_le_manifeste_d_un_flux_perd_les_entrees_dont_la_fiche_porte_un_autre_article(racine):
+    # 07.11.2026 : trois articles anglais du même jour s'écrivaient dans 2026-11-07_en.md, chacun écrasant le précédent.
+    import json
+    r, _ = racine
+    d = r / "sources" / "a" / "rss" / "blog"
+    _poser(r, "sources/a/rss/blog/2026-11-07_en.md", url="https://blog.x/blog/ramp/en/")
+    man = {"https://blog.x/blog/frontier/en/": {"file": "2026-11-07_en.md"},
+           "https://blog.x/blog/ramp/en/": {"file": "2026-11-07_en.md"},
+           "https://blog.x/blog/parti/en/": {"file": "2026-11-06_en.md"},
+           "https://blog.x/blog/parti-aussi/en/": {"file": "2026-11-06_en.md"},     # fiche partie, partagée : restent
+           "https://blog.x/vieux-nom": {"file": "2026-11-05_renomme.md"},         # seule sur sa fiche : une redirection
+           "http://blog.x//blog/double/": {"file": "2026-11-04_double.md"},         # la même adresse, autrement écrite
+           "https://blog.x/blog/double-bis": {"file": "2026-11-04_double.md"},
+           "https://noyb.x/en/plan-ue": {"file": "2026-09-21_plan-ue.md"},              # /index.php/en/… : la même page
+           "https://ancien.x/posts/rwa": {"file": "2026-09-21_plan-ue.md"},             # domaine changé : un autre article ici
+           "https://noyb.x/de/plan-ue": {"file": "2026-09-21_plan-ue.md"}}              # une autre langue : version
+    _poser(r, "sources/a/rss/blog/2026-11-05_renomme.md", url="https://blog.x/nouveau-nom")
+    _poser(r, "sources/a/rss/blog/2026-11-04_double.md", url="https://blog.x/blog/double")
+    _poser(r, "sources/a/rss/blog/2026-09-21_plan-ue.md", url="https://noyb.x/index.php/en/plan-ue")
+    (d / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+    _poser(r, "sources/a/bibliotheque/module.md", url="https://cours.x/module")     # hors flux : un fichier, plusieurs adresses
+    (r / "sources/a/bibliotheque/_manifest.json").write_text(json.dumps({"https://cours.x/module/p2": {"file": "module.md"},
+                                                                         "https://cours.x/module/p3": {"file": "module.md"}}),
+                                                             encoding="utf-8")
+    assert dd.reparer_manifestes(r / "sources", plan=True) == 4
+    assert len(json.loads((d / "_manifest.json").read_text(encoding="utf-8"))) == 10           # le plan ne change rien
+    assert dd.reparer_manifestes(r / "sources") == 4
+    assert sorted(json.loads((d / "_manifest.json").read_text(encoding="utf-8"))) == [
+        "http://blog.x//blog/double/", "https://blog.x/blog/parti-aussi/en/", "https://blog.x/blog/parti/en/", "https://blog.x/blog/ramp/en/",
+        "https://blog.x/vieux-nom", "https://noyb.x/en/plan-ue"]                  # une fiche partie n'est pas recollectée
+    assert list(json.loads((r / "sources/a/bibliotheque/_manifest.json").read_text(encoding="utf-8"))) == [
+        "https://cours.x/module/p2", "https://cours.x/module/p3"]

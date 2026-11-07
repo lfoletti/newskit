@@ -861,11 +861,40 @@ def entrees_page_de_liste(src, limite: int) -> list[dict]:
     return out[:limite] if limite else out
 
 
+# Segments de fin qui ne nomment pas l'article (07.11.2026 : chez blog.pebblous.ai le dernier segment est la langue,
+# et trois articles anglais du même jour s'écrivaient dans 2026-11-07_en.md).
+SEGMENTS_MUETS = frozenset({"index.html", "index.htm", "index.php", "index", "amp"})
+
+
 def slug(url: str, titre: str) -> str:
-    bout = urllib.parse.unquote(urllib.parse.urlsplit(url).path.strip("/").split("/")[-1]) if url else ""   # une adresse encodée (06.11.2026)
+    segs = [urllib.parse.unquote(x) for x in urllib.parse.urlsplit(url).path.split("/") if x] if url else []  # adresse encodée (06.11.2026)
+    langue = fiche.langue_de_l_adresse(url) if url else ""
+    segs = [x for x in segs if not fiche._langue_du_segment(x) and x.lower() not in SEGMENTS_MUETS]
+    bout = (segs[-1] if segs else "") + (f"-{langue}" if langue and segs else "")
     # Une adresse à requête (view.do?…nttSeqNo=1316, MSIT, 06.11.2026) : son dernier segment est le même pour tous.
     base = titre if titre and urllib.parse.urlsplit(url).query else (bout or titre)
     return re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-")[:80] or "article"
+
+
+def ordonner_versions(items: list[dict]) -> list[dict]:
+    """Les versions d'un même article (fiche.cle_d_article) se suivent, la française d'abord, puis l'anglaise, à la
+    place de la première venue ; l'ordre des articles ne change pas. La première écrite l'emporte (fiche.ecrire refuse
+    les autres)."""
+    rang = {"fr": 0, "en": 1, "": 1.5}          # sans segment : la version par défaut du site
+    groupes: dict[str, list[dict]] = {}
+    for i, it in enumerate(items):
+        lien = it.get("lien") or ""
+        groupes.setdefault(fiche.cle_d_article(lien) if lien.startswith("http") else f"#{i}", []).append(it)
+    return [it for g in groupes.values()
+            for it in sorted(g, key=lambda x: rang.get(fiche.langue_de_l_adresse(x.get("lien") or ""), 2))]
+
+
+def nom_libre(dossier: Path, nom: str, lien: str) -> str:
+    """Le nom de la fiche, suivi d'une empreinte de l'adresse s'il est déjà pris par un autre article."""
+    if not (dossier / nom).exists():
+        return nom
+    import hashlib  # noqa: PLC0415
+    return f"{nom[:-3]}-{hashlib.sha1(lien.encode()).hexdigest()[:6]}.md"
 
 
 def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = "") -> dict:
@@ -930,7 +959,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
     for autre in (getattr(src, "doublons_de", []) or []):
         deja_vus |= titres_de(autre)
 
-    for it in items:
+    for it in ordonner_versions(items):
         if it["lien"] in manifeste:
             continue
         if not it["titre"] and not archive_depuis and mode == "flux":
@@ -1002,7 +1031,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             date = "" if mode == "plan" else aujourdhui
         if mode == "plan" and not date:
             it["origine_date"] = "inconnue"
-        nom = f"{date or aujourdhui}_{slug(it['lien'], it['titre'])}.md"
+        nom = nom_libre(src.chemin, f"{date or aujourdhui}_{slug(it['lien'], it['titre'])}.md", it["lien"])
         champs = {
             "title": it["titre"], "subtitle": "", "author": it["auteur"],
             "date": date, "url": it["lien"], "plateforme": getattr(src, "plateforme", "Flux RSS"),

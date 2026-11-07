@@ -66,6 +66,15 @@ def verrou_du_fil_isole(tmp_path_factory, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def pages_des_sources_non_lues(monkeypatch):
+    """Un passage du fil ne lit pas la page des sources dans un test (versions d'un article, fil.poser_versions) :
+    elle se lirait sur le réseau. tests/test_fil_versions.py lui donne une page."""
+    fil = sys.modules.get("newskit.fil")
+    if fil is not None and hasattr(fil, "_lire_page"):
+        monkeypatch.setattr(fil, "_lire_page", lambda url: ("", "page non lue (test)"))
+
+
+@pytest.fixture(autouse=True)
 def liaison_du_fil_neutre(monkeypatch):
     """Un passage du fil ne lie pas les nouvelles dans un test qui ne l'éprouve pas : la liaison appelle le modèle.
     tests/test_fil_liaison.py reprend la vraie fonction."""

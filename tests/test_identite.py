@@ -37,23 +37,30 @@ def test_papier_arxiv_n_est_pas_une_identite():
 # --- Les clés, en table -----------------------------------------------------
 
 TABLE = [
-    ({"url": "HTTPS://Example.ORG/a/?utm_source=x&b=1"}, {"url:https://example.org/a?b=1"}),
-    ({"url": "https://example.org/a/"}, {"url:https://example.org/a"}),
-    ({"url": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70"}, {"url:https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70"}),
+    ({"url": "HTTPS://Example.ORG/a/?utm_source=x&b=1"}, {"url:https://example.org/a?b=1", "article:https://example.org/a?b=1"}),
+    ({"url": "https://example.org/a/"}, {"url:https://example.org/a", "article:https://example.org/a"}),
+    ({"url": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70"}, {"url:https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70",
+                                                                       "article:https://www.fedlex.admin.ch/eli/cc/2022/491#art_70"}),
     ({"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679"},
-     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679"}),
+     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
+      "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679"}),
     ({"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32016R0679"},
-     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679"}),
-    ({"url": "https://www.youtube.com/watch?v=abc"}, {"url:https://www.youtube.com/watch?v=abc"}),
-    ({"url": "https://arxiv.org/abs/2401.01234v2"}, {"url:https://arxiv.org/abs/2401.01234v2", "arxiv:2401.01234"}),
-    ({"url": "https://arxiv.org/pdf/2401.01234"}, {"url:https://arxiv.org/pdf/2401.01234", "arxiv:2401.01234"}),
+     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
+      "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679"}),
+    ({"url": "https://www.youtube.com/watch?v=abc"}, {"url:https://www.youtube.com/watch?v=abc", "article:https://www.youtube.com/watch?v=abc"}),
+    ({"url": "https://arxiv.org/abs/2401.01234v2"}, {"url:https://arxiv.org/abs/2401.01234v2", "article:https://arxiv.org/abs/2401.01234v2",
+                                               "arxiv:2401.01234"}),
+    ({"url": "https://arxiv.org/pdf/2401.01234"}, {"url:https://arxiv.org/pdf/2401.01234", "article:https://arxiv.org/pdf/2401.01234",
+                                             "arxiv:2401.01234"}),
     ({"url": "", "arxiv_id": "2401.01234v3"}, {"arxiv:2401.01234"}),
     ({"url": "", "arxiv_id": "hep-th/9901001"}, {"arxiv:hep-th/9901001"}),
     ({"url": "", "doi": "10.48550/arXiv.2401.01234"}, {"doi:10.48550/arxiv.2401.01234", "arxiv:2401.01234"}),
     ({"url": "", "doi": "10.5334/TISMIR.286"}, {"doi:10.5334/tismir.286"}),
     ({"url": "", "doi": "https://doi.org/10.5334/tismir.286"}, {"doi:10.5334/tismir.286"}),
-    ({"url": "https://doi.org/10.5334/tismir.286"}, {"url:https://doi.org/10.5334/tismir.286", "doi:10.5334/tismir.286"}),
-    ({"url": "https://rm.coe.int/1680afae3c", "partie": "art-009"}, {"url:https://rm.coe.int/1680afae3c|partie:art-009"}),
+    ({"url": "https://doi.org/10.5334/tismir.286"}, {"url:https://doi.org/10.5334/tismir.286", "article:https://doi.org/10.5334/tismir.286",
+                                                  "doi:10.5334/tismir.286"}),
+    ({"url": "https://rm.coe.int/1680afae3c", "partie": "art-009"}, {"url:https://rm.coe.int/1680afae3c|partie:art-009",
+                                                                  "article:https://rm.coe.int/1680afae3c|partie:art-009"}),
     ({"url": ""}, set()),
     ({"url": "file:///tmp/a.md"}, set()),
     ({}, set()),
@@ -196,3 +203,24 @@ def test_amont_la_reecriture_d_un_doublon_deja_sur_le_disque_reste_libre(racine)
     for n in ("a1.md", "a2.md"):
         fiche.ecrire(racine / "sources" / "a" / n, _champs(url="https://example.org/d", title="Réécrite"), CORPS)
     assert all("Réécrite" in (racine / "sources" / "a" / n).read_text(encoding="utf-8") for n in ("a1.md", "a2.md"))
+
+
+def test_amont_deux_versions_de_langue_d_un_article_donnent_une_seule_fiche(racine):
+    # Mainteneur, 07.11.2026 : deux versions de langues différentes du même article ne s'extraient pas en parallèle.
+    fiche.ecrire(racine / "sources" / "a" / "ramp-ko.md", _champs(url="https://blog.x/blog/ramp/ko/"), CORPS)
+    with pytest.raises(fiche.IdentiteDejaVue, match="article:"):
+        fiche.ecrire(racine / "sources" / "a" / "ramp-en.md", _champs(url="https://blog.x/blog/ramp/en/"), CORPS)
+
+
+def test_amont_un_texte_de_reference_garde_ses_langues(racine):
+    # Les textes de référence (dossiers `textes`) : leur langue est un choix du mainteneur (nLPD en français et en anglais).
+    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-en" / "art_1.md", _champs(url="https://lex.x/eli/1/en#art_1"), CORPS)
+    fiche.oublier_index()                                         # l'index relu des fichiers porte la clé `article:`
+    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-fr" / "art_1.md", _champs(url="https://lex.x/eli/1/fr#art_1"), CORPS)
+    assert (racine / "sources" / "a" / "textes" / "loi-fr" / "art_1.md").exists()
+
+
+def test_amont_une_page_collectee_n_empeche_pas_le_texte_de_reference(racine):
+    fiche.ecrire(racine / "sources" / "a" / "rss" / "loi-en.md", _champs(url="https://lex.x/eli/2/en"), CORPS)
+    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-fr" / "loi.md", _champs(url="https://lex.x/eli/2/fr"), CORPS)
+    assert (racine / "sources" / "a" / "textes" / "loi-fr" / "loi.md").exists()

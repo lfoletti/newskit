@@ -44,8 +44,16 @@ def _typo(p: dict) -> dict:
     return {**p, **fr, **{k: lt.typographie(p[k], "en") for k in ("titre_en", "descriptif_en")}}
 
 
+def liens(b: dict) -> dict:
+    """La source mise en lien sur chaque page du site : la version dans sa langue, sinon l'anglaise, sinon l'originale
+    (fil.lien)."""
+    from newskit import fil  # noqa: PLC0415 — fil importe ce module au passage
+    fr, en = fil.lien(b, "fr"), fil.lien(b, "en")
+    return {"lien_fr": fr[0], "langue_fr": fr[1], "lien_en": en[0], "langue_en": en[1]}
+
+
 def _public(F: dict) -> list[dict]:
-    return [{**{k: b.get(k, "") for k in CHAMPS}, "descriptif": nv.texte(b), "editeur": (b.get("source") or {}).get("editeur", ""),
+    return [{**{k: b.get(k, "") for k in CHAMPS}, **liens(b), "descriptif": nv.texte(b), "editeur": (b.get("source") or {}).get("editeur", ""),
                          "date": b.get("date", ""), "ajoute": b.get("ajoute", ""), "langue": b.get("langue", ""),
                          "fiche": (b.get("fiche") or {}).get("texte", "") if (b.get("fiche") or {}).get("tenu") is True else "",
                          **anglais(b)} for b in (F.get("billets") or [])[:MAX]]

@@ -181,7 +181,7 @@ def rss(F: dict, site: str, langue: str = "fr", graphe: str | None = None) -> st
         ident = b.get("url") or f"{racine}#{b['ajoute'].replace(' ', 'T')}-{hashlib.sha1(b['titre'].encode()).hexdigest()[:10]}"
         items.append("<item>"
                      f"<title>{escape(b['titre'])}</title>"
-                     + (f"<link>{escape(b['url'])}</link>" if b.get("url") else "")
+                     + (f"<link>{escape(lien(b, langue)[0])}</link>" if b.get("url") else "")
                      + f"<description>{escape(nv.texte(b))}</description>"
                      + (f"<category>{escape(b['rubrique'])}</category>" if b.get("rubrique") else "")
                      + f"<pubDate>{format_datetime(quand)}</pubDate>"
@@ -260,23 +260,132 @@ def rubrique_finale(f: dict, rep: dict, rubs: list[dict]) -> str | None:
     return r if r in {x["nom"] for x in rubs} else None
 
 
+# Toutes les langues, pas seulement les latines (mainteneur, 07.11.2026 : un billet sans sigle menait à une page en coréen ;
+# « toutes les langues sont possibles, pas seulement les latines »). Une écriture propre à une langue la donne ; une
+# écriture partagée se départage à ses lettres propres (arabe, persan, ourdou ; langues cyrilliques) ; l'alphabet
+# latin, aux mots outils. `DETECTION` monte quand la reconnaissance change : un billet resté sans langue est relu une fois.
+_ECRITURES = {
+    "ko": "\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f", "ja": "\u3040-\u30ff", "zh": "\u4e00-\u9fff",
+    "el": "\u0370-\u03ff", "he": "\u0590-\u05ff", "ar": "\u0600-\u06ff\u0750-\u077f", "cyr": "\u0400-\u04ff",
+    "hi": "\u0900-\u097f", "bn": "\u0980-\u09ff", "pa": "\u0a00-\u0a7f", "gu": "\u0a80-\u0aff", "ta": "\u0b80-\u0bff",
+    "te": "\u0c00-\u0c7f", "kn": "\u0c80-\u0cff", "ml": "\u0d00-\u0d7f", "si": "\u0d80-\u0dff", "th": "\u0e00-\u0e7f",
+    "lo": "\u0e80-\u0eff", "my": "\u1000-\u109f", "ka": "\u10a0-\u10ff", "am": "\u1200-\u139f", "km": "\u1780-\u17ff",
+    "hy": "\u0530-\u058f"}
+# Lettres propres, de la plus à la moins sûre : la première trouvée donne la langue.
+_LETTRES_ARABE = (("ur", "ٹڈڑںےۓھ"), ("fa", "پچژگکی"))
+_LETTRES_CYRILLIQUE = (("be", "ў"), ("kk", "әғқңөұүһ"), ("uk", "іїєґ"), ("mk", "ѓќѕ"), ("sr", "ђјљњћџ"),
+                       ("ru", "ыэ"), ("bg", "ъ"))
+# L'espagnol de reporter n'a ni « la » ni « de » (ses citations se départagent du français) : le fil prend le sien.
+_MOTS_LATINS = {
+    "es": "el la los las del de que y en por para con una es son se al lo como más su según entre",
+    "pt": "o os as do da dos das que não para com uma um é são em no na se ao pelo pela mais e após",
+    "pl": "i w z na nie się że do to jest od przez dla jak są oraz po ale który które",
+    "sv": "och att det som en är av för med till på inte har den de ett om",
+    "da": "og at det som en er af for med til på ikke har den de et om",
+    "no": "og at det som en er av for med til på ikke har den de et om ikkje",
+    "fi": "ja on ei se että oli ovat kun mutta myös tai joka sen hän",
+    "cs": "a v se na je že s z do to jsou pro jako by které který ale",
+    "sk": "a v sa na je že s z do to sú pre ako by ktoré ktorý ale",
+    "ro": "și în de la cu pe un o este că nu se din pentru sunt care mai",
+    "tr": "ve bir bu için ile da de olarak daha çok gibi ama kural",
+    "hu": "az és hogy nem egy van meg már csak ez mint vagy volt lesz pedig",
+    "id": "dan yang di ke dari ini itu untuk dengan tidak adalah pada akan",
+    "ca": "els les per amb és són als aquest aquesta això també dels pel però",
+    "hr": "i u je na se da za od su to ne kao iz ali koji",
+    "vi": "và của các có là được những cho này trong một không với đã"}
+# Un mot de l'anglais courant ne compte pas pour une autre langue : « a », « to », « for » faisaient passer une page
+# anglaise au portugais ou au tchèque.
+_ANGLAIS_COURANT = set("a i an to do no on at for by in is it be as or so we he me my am us up go".split())
+DETECTION = 4
+SIGLES = sorted({*(k for k in _ECRITURES if k != "cyr"), *(l for l, _ in _LETTRES_ARABE + _LETTRES_CYRILLIQUE),
+                 *_MOTS_LATINS, "fr", "en", "de", "it", "es", "nl"})
+
+
+def _ecriture(t: str) -> str:
+    """La langue d'un texte d'écriture non latine, vide s'il est surtout latin."""
+    n = {l: len(re.findall(f"[{c}]", t)) for l, c in _ECRITURES.items()}
+    if sum(n.values()) <= len(re.findall(r"[A-Za-zÀ-ɏ]", t)):
+        return ""
+    if n["ja"]:                          # le japonais mêle kana et idéogrammes ; le chinois n'a pas de kana
+        return "ja"
+    l = max(n, key=n.get)
+    propres = {"ar": _LETTRES_ARABE, "cyr": _LETTRES_CYRILLIQUE}.get(l)
+    if propres:
+        return next((x for x, lettres in propres if any(c in t for c in lettres)), "ar" if l == "ar" else "ru")
+    return l
+
+
 def langue_source(f: dict) -> str:
-    """Le sigle de la langue d'origine de la source (fr, en, de, it, es, nl), reconnue aux mots outils de son titre et de
-    son texte ; vide quand elle ne se reconnaît pas (mainteneur, 05.11.2026 : « le sigle de la langue d'origine »)."""
+    """Le sigle de la langue d'origine de la source, l'une de `SIGLES` : à l'écriture de son titre et de son texte,
+    ou aux mots outils pour l'alphabet latin ; vide quand elle ne se reconnaît pas (mainteneur, 05.11.2026 : « le
+    sigle de la langue d'origine »)."""
     from newskit import reporter as rp  # noqa: PLC0415 — la table des mots outils par langue
-    mots = re.findall(r"[a-zàâäçéèêëîïôöùûüßñ]+", f"{f.get('titre') or ''} {(f.get('texte') or '')[:4000]}".lower())
-    score = {l: sum(m in ens for m in mots) for l, ens in rp._MOTS_LANGUE.items()}
+    tete = f"{f.get('titre') or ''} {(f.get('texte') or '')[:4000]}"
+    if e := _ecriture(tete):
+        return e
+    mots = set(re.findall(r"[^\W\d_]+", tete.lower()))   # mots distincts : un « e » répété 150 fois ne fait pas une langue
+    tables = {**rp._MOTS_LANGUE, **{l: set(m.split()) - _ANGLAIS_COURANT for l, m in _MOTS_LATINS.items()}}
+    score = {l: sum(m in ens for m in mots) for l, ens in tables.items()}
     premier, second = sorted(score, key=score.get, reverse=True)[:2]
     return premier if score[premier] >= 3 and score[premier] > score[second] else ""
 
 
+# Un article publié en plusieurs langues (mainteneur, 07.11.2026 : « quand un blog publie un ticket en plusieurs langues,
+# choisis la langue appropriée à mettre en lien ») : la page de la source déclare ses versions (`hreflang`), relevées
+# une fois par billet ; chaque page du site met en lien la version dans sa langue, sinon l'anglaise, sinon l'originale.
+VERSIONS_PAR_PASSAGE = 20      # pages lues par passage : les 186 billets d'avant se relèvent en une heure environ
+RE_LINK = re.compile(r"<link\b[^>]*>", re.I)
+RE_ATTR = re.compile(r"""([a-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", re.I)
+
+
+def versions_de(html: str, base: str) -> dict[str, str]:
+    """{langue: adresse} des versions déclarées par la page (`<link rel="alternate" hreflang>`) ; vide sinon."""
+    from urllib.parse import urljoin  # noqa: PLC0415
+    out: dict[str, str] = {}
+    for balise in RE_LINK.findall(html or ""):
+        a = {m[0].lower(): m[1] or m[2] or m[3] for m in RE_ATTR.findall(balise)}
+        l = (a.get("hreflang") or "").split("-")[0].lower()
+        if "alternate" not in (a.get("rel") or "").lower() or not re.fullmatch(r"[a-z]{2,3}", l) or not a.get("href"):
+            continue
+        url = urljoin(base, a["href"].strip())
+        if url.startswith(("http://", "https://")):
+            out.setdefault(l, url)
+    return out
+
+
+def lien(b: dict, page: str) -> tuple[str, str]:
+    """(adresse, langue) de la source mise en lien sur la page de langue `page`."""
+    v = b.get("versions") or {}
+    for l in (page, "en"):
+        if v.get(l):
+            return v[l], l
+    return b.get("url") or "", b.get("langue") or ""
+
+
+def _lire_page(url: str) -> tuple[str, str]:
+    from newskit import lecture_web as lw  # noqa: PLC0415
+    return lw.telecharger(url)
+
+
+def poser_versions(billets: list[dict], lire=None, plafond: int = VERSIONS_PAR_PASSAGE) -> int:
+    """Les billets sans versions relevées reçoivent celles de leur page, `plafond` au plus par passage ; rend leur
+    nombre. Une page refusée ou injoignable donne des versions vides : elle n'est pas relue."""
+    lire = lire or _lire_page
+    sans = [b for b in billets if "versions" not in b and b.get("url")][:plafond]
+    for b in sans:
+        html, _ = lire(b["url"])
+        b["versions"] = versions_de(html, b["url"]) if html else {}
+    return len(sans)
+
+
 def poser_langues(billets: list[dict], charger=None) -> int:
-    """Les billets écrits avant le 05.11.2026 reçoivent leur langue ; rend leur nombre. Un billet dont la fiche est
-    partie reçoit une langue vide, pour ne pas la rechercher à chaque passage."""
-    sans = [b for b in billets if "langue" not in b]
+    """Les billets écrits avant la reconnaissance en vigueur (`DETECTION`) reçoivent leur langue ; rend leur nombre.
+    Un billet dont la fiche est partie garde la langue qu'il avait, vide s'il n'en avait pas, et n'est plus relu."""
+    sans = [b for b in billets if b.get("detection") != DETECTION]
     fiches = (charger or lt.charger_fiches)([b["chemin"] for b in sans if b.get("chemin")]) if sans else {}
     for b in sans:
-        b["langue"] = langue_source(fiches.get(b.get("chemin")) or {})
+        f = fiches.get(b.get("chemin"))
+        b["langue"], b["detection"] = langue_source(f) if f else b.get("langue", ""), DETECTION
     return len(sans)
 
 
@@ -1044,6 +1153,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     change = False
     if not sans_modele:                     # les billets d'avant : leur langue, et le fil rangé par date de l'article
         poses, ranges = poser_langues(F["billets"] + F["pile"]), classer(F["billets"])
+        poses += poser_versions(F["billets"] + F["pile"])
         change = bool(poses or ranges != F["billets"])
         F["billets"] = ranges
         parus = paraitre(graphe, F)                       # la pile avance à chaque passage, fiche neuve ou non
@@ -1100,7 +1210,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
             continue
         neufs.append({"titre": r["titre"], "descriptif": r["texte"], "rubrique": rubrique,
                       "chemin": f["chemin"], "url": f["url"], "source": lt._source(f), "date": f.get("date"),
-                      "langue": langue_source(f),
+                      "langue": langue_source(f), "detection": DETECTION,
                       "ajoute": maintenant(), "lecture": "", "rapproche": True, **suite})
     anciens = anciens[:max(0, RELUS_PAR_PASSAGE - len(neufs))]
     cout += relire(neufs + anciens, graphe)              # avant le complément : il part du billet relu

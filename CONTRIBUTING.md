@@ -19,7 +19,7 @@ La suite tourne sans réseau et sans appel au modèle : les tests posent un mé
 - **Le témoin reste vert.** `newskit test` doit finir par « témoin vert ». Une consigne au modèle changée change ses réponses enregistrées : dites-le dans la PR, elles se réenregistrent à part.
 - **Le moteur n'a pas de thème.** Aucun nom de graphe, d'auteur, de domaine ni de personne dans `src/newskit/` : ce qui est propre à un média va dans son `config.yaml`.
 - **Une PR, un sujet.** Elle s'ouvre en brouillon et passe en relecture quand la CI est verte.
-- `ruff check .` ne relève rien.
+- `ruff check .` ne relève rien et `ruff format --check .` ne demande aucun changement.
 
 ## Signaler
 

@@ -1,0 +1,16 @@
+name: Idea
+description: Something the engine should be able to do. English or French.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: The need
+      description: What you want to do, and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposition
+    attributes:
+      label: The proposal
+      description: What you have in mind, if anything.

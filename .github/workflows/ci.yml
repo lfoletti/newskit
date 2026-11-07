@@ -25,7 +25,14 @@ jobs:
       - name: ruff
         run: ruff check .
       - name: pytest
-        run: python -m pytest -q
+        run: python -m pytest -q --basetemp=/tmp/essais
+      - name: consignes du témoin sans réponse enregistrée
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consignes-manquantes-${{ matrix.python }}
+          path: /tmp/essais/**/manquantes/*.json
+          if-no-files-found: ignore
 
   temoin:
     # Le paquet construit, installé hors du dépôt : le témoin passe une nuit depuis la roue, comme chez un utilisateur.

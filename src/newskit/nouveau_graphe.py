@@ -11,9 +11,10 @@ manquent), pour qu'un nouveau graphe ne dépende plus de la mémoire de qui l'a 
   3. le registre du skill /kg (`~/.claude/skills/kg/graphes.json`) : libellé, chemins, outil, sujets déclarés — c'est
      lui que lisent l'éclaireur, le poseur, la mesure d'avance et les thèmes émergents ;
   4. au moins une source déclarée pour lui dans `sources.yaml` (`graphe: <nom>`) ;
-  5. son daemon launchd : `scripts/launchd_<nom_>.plist.exemple` (écrit), à ajouter à `TACHES` de
-     `deploiement/installer_daemons_mac.sh` puis `sudo zsh deploiement/installer_daemons_mac.sh` ;
-  6. le serveur du VPS : son nom dans `--graphes` (deploiement/installer_vps.sh), `accueil: true` pour la page ;
+  5. sa tâche planifiée (launchd), qui lance `-m newskit.routine_hebdo` sur le média : sous `taches/`, prête à poser
+     dans /Library/LaunchDaemons ; pour un média qui a son installateur des daemons, sous
+     `scripts/launchd_<nom_>.plist.exemple`, à ajouter à `TACHES` de `deploiement/installer_daemons_mac.sh` ;
+  6. pour un média qui a un installateur de serveur : son nom dans `GRAPHES` (deploiement/installer_vps.sh) ;
   7. ses premiers passages : routine `--sans-commit`, pyramide `synthese.py construire`, banc `banc.py --preparer`.
 
 Arrêter ou remettre une étape de la routine pour un graphe : `graphes.<nom>.etapes: {poseur: false, …}` au registre
@@ -25,6 +26,7 @@ Arrêter ou remettre une étape de la routine pour un graphe : `graphes.<nom>.et
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import re
 import sys
@@ -64,14 +66,20 @@ def pieces(nom: str) -> list[tuple[bool, str, str]]:
     out.append((n_sources > 0, f"sources déclarées pour {nom} au registre : {n_sources}",
                 "déclarer des sources (`graphe: " + nom + "`) ; prospecter d'abord : newskit.prospecter_source"))
     out += pieces_sources(nom)
-    plist = RACINE / "scripts" / f"launchd_{nom_dossier(nom)}.plist.exemple"
-    installe = INSTALLATEUR.exists() and f"{etiquette_launchd(nom)}|" in INSTALLATEUR.read_text(encoding="utf-8")
+    plist = chemin_plist(nom)
     out.append((plist.exists(), f"daemon : {plist.relative_to(RACINE)}", "relancer sans --controle (il est écrit)"))
-    out.append((installe, f"daemon : ligne de {INSTALLATEUR.name} (TACHES), puis sudo zsh {INSTALLATEUR.relative_to(RACINE)}",
-                f'ajouter "{etiquette_launchd(nom)}|$DEPOT/scripts/{plist.name}" à TACHES'))
-    vps = INSTALLATEUR_VPS.exists() and re.search(r"^GRAPHES=.*\b" + re.escape(nom) + r"\b", INSTALLATEUR_VPS.read_text(encoding="utf-8"), flags=re.M)
-    out.append((bool(vps), f"serveur : {nom} dans la liste GRAPHES de {INSTALLATEUR_VPS.name} (défaut de --graphes)",
-                "ajouter le nom à GRAPHES= et redéployer (deploiement/installer_vps.sh)"))
+    if INSTALLATEUR.exists():                       # les pièces des installateurs, pour le média qui les porte
+        installe = f"{etiquette_launchd(nom)}|" in INSTALLATEUR.read_text(encoding="utf-8")
+        out.append((installe, f"daemon : ligne de {INSTALLATEUR.name} (TACHES), puis sudo zsh {INSTALLATEUR.relative_to(RACINE)}",
+                    f'ajouter "{etiquette_launchd(nom)}|$DEPOT/scripts/{plist.name}" à TACHES'))
+    else:
+        pose = Path("/Library/LaunchDaemons") / f"{etiquette_launchd(nom)}.plist"
+        out.append((pose.exists(), f"tâche planifiée posée : {pose}",
+                    f"sudo cp {plist} {pose} ; sudo launchctl bootstrap system {pose} (Linux : une ligne de cron)"))
+    if INSTALLATEUR_VPS.exists():
+        vps = re.search(r"^GRAPHES=.*\b" + re.escape(nom) + r"\b", INSTALLATEUR_VPS.read_text(encoding="utf-8"), flags=re.M)
+        out.append((bool(vps), f"serveur : {nom} dans la liste GRAPHES de {INSTALLATEUR_VPS.name} (défaut de --graphes)",
+                    "ajouter le nom à GRAPHES= et redéployer (deploiement/installer_vps.sh)"))
     out.append(((base / "graphe.json.gz").exists() or (base / "graphe.json").exists(), "premier graphe composé",
                 f"python3 -m newskit.routine_hebdo --graphe {nom} --sans-commit"))
     out.append(((base / "synthese" / "notions.json").exists(), "pyramide de synthèses",
@@ -108,14 +116,28 @@ def bloc_registre(nom: str, libelle: str, domaine: str, plafond: int) -> str:
             f"    # etapes: {{poseur: false, banc: false}}   # arrêter une étape sans toucher au code\n")
 
 
+def chemin_plist(nom: str) -> Path:
+    """La tâche planifiée du graphe : sous scripts/, à champs, pour un média qui a son installateur des daemons ;
+    sinon sous taches/, prête à poser dans /Library/LaunchDaemons."""
+    if INSTALLATEUR.exists():
+        return RACINE / "scripts" / f"launchd_{nom_dossier(nom)}.plist.exemple"
+    return RACINE / "taches" / f"{etiquette_launchd(nom)}.plist"
+
+
 def ecrire_plist(nom: str, libelle: str, heure: int, minute: int) -> Path:
     """Le daemon launchd du graphe, d'après le modèle à champs ; l'étiquette prend le préfixe et le nom de l'édition
-    (bloc `edition:` du registre). __DEPOT__, __MAISON__ et __UTILISATEUR__ restent pour installer_daemons_mac.sh."""
-    cible = RACINE / "scripts" / f"launchd_{nom_dossier(nom)}.plist.exemple"
+    (bloc `edition:` du registre). Il lance le moteur installé (`-m newskit.routine_hebdo`) avec l'interpréteur qui le
+    porte, sur le dossier du média (NEWSKIT_DONNEES). Avec un installateur des daemons, __DEPOT__, __MAISON__ et
+    __UTILISATEUR__ restent pour lui ; sans, ils sont remplis ici."""
+    cible = chemin_plist(nom)
+    cible.parent.mkdir(parents=True, exist_ok=True)
     e = cfg.edition()
     champs = {"__ETIQUETTE__": f"{e['launchd']}.{e['nom']}-{nom}", "__GRAPHE__": nom, "__LIBELLE__": libelle,
               "__DATE__": time.strftime("%d.%m.%Y"), "__HEURE__": str(heure), "__MINUTE2__": f"{minute:02d}",
-              "__MINUTE__": str(minute), "__DOSSIER__": nom_dossier(nom)}
+              "__MINUTE__": str(minute), "__DOSSIER__": nom_dossier(nom), "__PYTHON__": sys.executable}
+    if not INSTALLATEUR.exists():
+        (RACINE / "cache").mkdir(parents=True, exist_ok=True)       # le journal de la tâche y est écrit
+        champs.update({"__DEPOT__": str(RACINE), "__MAISON__": str(Path.home()), "__UTILISATEUR__": getpass.getuser()})
     t = MODELE_PLIST.read_text(encoding="utf-8")
     for k, v in champs.items():
         t = t.replace(k, v)

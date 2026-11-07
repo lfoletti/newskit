@@ -4,6 +4,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.3] - 2026-11-07
+
+### Modifié
+
+- `newskit nouveau-graphe` écrit une tâche planifiée qui lance le moteur installé (`-m newskit.routine_hebdo`) sur le dossier du média, avec l'interpréteur qui porte le paquet ; sans installateur des daemons, elle est prête à poser sous `taches/`. Les pièces des installateurs ne sont demandées qu'au média qui les porte.
+- La consigne de traduction des libellés nomme le graphe traduit (son libellé), plus un thème fixe.
+- La métadonnée d'identifiant des entités versées dans CortexDB s'appelle `newskit_id` ; l'empreinte d'un versement la lit sous son ancien nom, si bien qu'aucun cerveau n'est reversé en entier. Le relevé des lacunes se présente au gateway comme `newskit-releve`.
+
+### Ajouté
+
+- L'icône du plugin.
+
 ## [0.1.2] - 2026-11-07
 
 ### Corrigé
@@ -28,7 +40,8 @@ Première version, sortie du dépôt de l'édition où le moteur est né.
 - Le témoin : une nuit entière sur un graphe sans rapport, rejouée de réponses enregistrées, sans appel payant (`newskit temoin nuit`) ; une nuit ne part pas sans un témoin vert du jour.
 - Le plugin de Claude Code : le skill `newskit` (formulaire du média, sources et thèmes de départ, naissance, nuit, interrogation) et un crochet qui refuse les appels au modèle quand la fenêtre d'usage est fermée.
 
-[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.2...HEAD
+[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/lfoletti/newskit/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/lfoletti/newskit/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/lfoletti/newskit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/lfoletti/newskit/releases/tag/v0.1.0

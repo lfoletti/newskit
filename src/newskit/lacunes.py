@@ -155,7 +155,7 @@ class Thalamus:
     def __init__(self, gateway: str, cle: str):
         self.url, self.cle, self.session, self.n = gateway.rstrip("/") + "/mcp", cle, None, 0
         self._poster({"jsonrpc": "2.0", "id": self._id(), "method": "initialize",
-                      "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "contaixt-releve", "version": "1"}}})
+                      "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "newskit-releve", "version": "1"}}})
         self._poster({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     def _id(self) -> int:

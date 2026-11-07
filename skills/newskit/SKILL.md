@@ -7,7 +7,7 @@ description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec 
 
 Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
-Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.2"`) et le redire à l'utilisateur.
+Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.3"`) et le redire à l'utilisateur.
 
 ## 1. Trouver le média
 
@@ -42,7 +42,7 @@ Déclarer chaque source dans le fichier des sources, avec `graphe: <nom>`. Une s
 
     newskit nouveau-graphe <nom> --libelle "…" --domaine "…" --sujets "thème 1 ; thème 2"
 
-La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--controle` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. En 0.1.0, les pièces de l'installateur des daemons et du serveur ne valent que pour un média qui porte ces scripts : ailleurs, les laisser manquantes et installer la tâche planifiée à la main.
+La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--controle` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. La tâche planifiée du graphe est écrite sous `taches/`, prête à poser : la commande dit les deux lignes `sudo` à lancer (macOS) ; sous Linux, une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine --graphe <nom>`.
 
 ## 5. Le témoin du jour
 

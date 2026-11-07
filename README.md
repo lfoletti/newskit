@@ -13,7 +13,7 @@ Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle pas
 Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
 
 ```sh
-pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.2"
+pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.3"
 mkdir mon-media && cd mon-media
 newskit temoin nuit
 ```
@@ -70,11 +70,11 @@ graphes:
 - **Les plafonds.** Chaque étape a son plafond de fiches et de dépense ; chaque appel au modèle entre au registre des coûts, sous un poste et un graphe.
 - **La limite d'usage.** Après trois limites d'affilée, le moteur pose une marque qui vaut trois heures. Le crochet du plugin refuse alors tout appel au modèle lancé depuis Claude Code.
 
-## Limites de la version 0.1.0
+## Limites de la version 0.1
 
 - Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
 - macOS et Linux. Les nuits planifiées passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine`.
-- `newskit nouveau-graphe` connaît encore des pièces propres à la première édition (installateur des daemons, serveur) : ailleurs, elles restent signalées comme manquantes.
+- `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons` ; les sujets déclarés d'un graphe vivent encore dans le registre du skill `/kg` (`~/.claude/skills/kg/graphes.json`).
 
 ## Contribuer
 

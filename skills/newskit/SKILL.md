@@ -5,7 +5,7 @@ description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec 
 
 # Newskit : un graphe de veille, tenu chaque nuit
 
-Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), et tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
+Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
 Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.1"`) et le redire à l'utilisateur.
 
@@ -27,7 +27,7 @@ Les champs :
 - `media.frequence` : l'heure de la nuit d'un graphe neuf, `{heure: 5, minute: 30}` par défaut.
 - `modeles` : un modèle par rôle ; un rôle absent garde le modèle par défaut (`newskit media` les montre). Les rôles : `extraction` (lire une fiche et en tirer la couche 2), `analyse` (juger un graphe entier), `redaction` (synthèses et lettre), `lecture` (trancher : même notion ?), `traduction`, `questions` (questions d'entraînement de l'encodeur).
 - `sources` : le fichier des sources, relatif au dossier (`sources.yaml`).
-- `diffusion` : le module qui sert les abonnés du média (`envoyer`, `lire`, `relever`). Facultatif : sans lui, aucune lettre ne part, et le moteur le dit.
+- `diffusion` : le module qui sert les abonnés du média (`envoyer`, `lire`, `relever`). Facultatif : sans lui, aucune lettre ne part ; le moteur le dit.
 - `graphes` : un bloc par graphe (libellé, domaine en anglais pour l'extraction).
 
 Écrire `config.yaml` avec `version: 1`, puis relancer `newskit media` : un champ refusé est nommé par le message, le corriger et relancer.
@@ -42,7 +42,7 @@ Déclarer chaque source dans le fichier des sources, avec `graphe: <nom>`. Une s
 
     newskit nouveau-graphe <nom> --libelle "…" --domaine "…" --sujets "thème 1 ; thème 2"
 
-La commande pose les dossiers et le modèle de tâche planifiée, et imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--controle` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. En 0.1.0, les pièces de l'installateur des daemons et du serveur ne valent que pour un média qui porte ces scripts : ailleurs, les laisser manquantes et installer la tâche planifiée à la main.
+La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--controle` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. En 0.1.0, les pièces de l'installateur des daemons et du serveur ne valent que pour un média qui porte ces scripts : ailleurs, les laisser manquantes et installer la tâche planifiée à la main.
 
 ## 5. Le témoin du jour
 

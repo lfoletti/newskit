@@ -4,6 +4,9 @@
     "name": "Lauro Foletti",
     "url": "https://github.com/lfoletti/newskit"
   },
+  "metadata": {
+    "description": "Newskit : un moteur de veille sans thème pour Claude Code."
+  },
   "plugins": [
     {
       "name": "newskit",

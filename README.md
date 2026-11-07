@@ -4,7 +4,7 @@
 [![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](CHANGELOG.md)
 
-Un moteur de veille sans thème, pour Claude Code. Il fait naître un graphe de connaissances sur n'importe quel sujet et le tient à jour chaque nuit : il collecte les sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations, et compose le graphe, sous plafond de dépense. Chaque réponse tirée du graphe cite sa fiche et sa ligne.
+Un moteur de veille sans thème, pour Claude Code. Il fait naître un graphe de connaissances sur n'importe quel sujet et le tient à jour chaque nuit : il collecte les sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations, puis compose le graphe, sous plafond de dépense. Chaque réponse tirée du graphe cite sa fiche et sa ligne.
 
 Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
 
@@ -50,7 +50,7 @@ graphes:
     domaine: "urban gardening: allotments, soil, seed exchange"
 ```
 
-`newskit media` dit ce qui est lu, et refuse un champ inconnu en le nommant. Les rôles : `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
+`newskit media` dit ce qui est lu ; un champ inconnu est refusé et nommé. Les rôles : `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
 
 ## Les commandes
 

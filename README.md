@@ -8,6 +8,10 @@ English | [Français](README.fr.md)
 
 A topic monitoring engine for Claude Code. You name a subject; Newskit builds a knowledge graph on it and keeps it up to date at regular intervals. At each pass it collects the sources, turns them into notes, extracts from each note the concepts and how they relate, then rebuilds the graph, within a spending cap. Every answer drawn from the graph cites its note and its line.
 
+[![governance.news, an AI governance media built on Newskit](docs/governance-news-en.png)](https://governance.news/en/)
+
+*[governance.news](https://governance.news/en/): a newsletter and a knowledge graph on AI governance in business, built on Newskit.*
+
 For developers who already use Claude Code: every model call goes through `claude -p`, under your own subscription.
 
 ## How the graph grows

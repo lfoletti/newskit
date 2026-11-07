@@ -8,6 +8,10 @@
 
 Un moteur de veille thématique pour Claude Code. Vous nommez un sujet ; Newskit en fait un graphe de connaissances et le tient à jour à intervalles réguliers. À chaque passage, il collecte les sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations, puis recompose le graphe, sous plafond de dépense. Chaque réponse tirée du graphe cite sa fiche et sa ligne.
 
+[![governance.news, un média sur la gouvernance de l'IA bâti sur Newskit](docs/governance-news-fr.png)](https://governance.news/)
+
+*[governance.news](https://governance.news/) : un bulletin et un graphe de connaissances sur la gouvernance de l'IA en entreprise, bâtis sur Newskit.*
+
 Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
 
 ## Comment le graphe grandit

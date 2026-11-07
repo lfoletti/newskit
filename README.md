@@ -46,7 +46,7 @@ Ask Claude to follow a subject (â€œstart a monitoring graph on urban gardeningâ€
 
 ## The media folder
 
-A media is a folder that holds a `config.yaml`. The engine attaches to it: the `NEWSKIT_DONNEES` variable first, otherwise the current folder. The code stays in the installed package; the data (notes, graph, cost ledger) live in the media folder.
+The media is a folder that holds a `config.yaml`. The engine attaches to it: the `NEWSKIT_DONNEES` variable first, otherwise the current folder. The code stays in the installed package; the data (notes, graph, cost ledger) live in the media folder.
 
 ```yaml
 version: 1

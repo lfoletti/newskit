@@ -46,7 +46,7 @@ Demandez ensuite à Claude de suivre un sujet (« fais naître un graphe de vei
 
 ## Le dossier du média
 
-Un média est un dossier qui porte un `config.yaml`. Le moteur s'y accroche : la variable `NEWSKIT_DONNEES` d'abord, sinon le dossier courant. Le code reste dans le paquet installé ; les données (fiches, graphe, registre des coûts) vivent dans le dossier du média.
+Le média est un dossier qui porte un `config.yaml`. Le moteur s'y accroche : la variable `NEWSKIT_DONNEES` d'abord, sinon le dossier courant. Le code reste dans le paquet installé ; les données (fiches, graphe, registre des coûts) vivent dans le dossier du média.
 
 ```yaml
 version: 1

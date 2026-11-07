@@ -8,7 +8,7 @@ English | [Français](README.fr.md)
 
 Automated topic monitoring for Claude Code. You name a subject and give a few sources; at regular intervals Newskit collects them, writes one note per item, extracts the concepts and how they relate, and keeps a knowledge graph up to date, within a spending cap. Two things set it apart from a feed reader: every answer drawn from the graph cites its note and its line, and the graph extends itself to new themes and new sources.
 
-For developers who already use Claude Code: every model call goes through `claude -p`, under your own subscription.
+For developers who already use Claude Code: every model call goes through `claude -p`, under your own Claude subscription. Notes, feed and newsletter are written in French; an English translation can be added (`traductions: [en]`).
 
 [![governance.news, an AI governance media built on Newskit](docs/governance-news-en.png)](https://governance.news/en/)
 
@@ -31,7 +31,9 @@ $ newskit query --graph ai-governance sources "general-purpose AI model"
 
 ## Quick start
 
-You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
+You need Python 3.12 or later, git, macOS or Linux, and a logged-in Claude Code (`claude`).
+
+The words used below: the **media** is your project folder; it holds one or more **graphs**; each graph follows **subjects**; a **pass** collects the graph's sources and writes one **note** per item.
 
 1. Install the engine and test it in an empty folder:
 
@@ -97,7 +99,7 @@ The media is a folder that holds a `config.yaml`. The engine attaches to it: the
 ```yaml
 version: 1
 media:
-  nom: potagers
+  nom: potagers               # name: lowercase, digits and hyphens
   langue: fr                  # language of the prompts and of the publication
   traductions: [en]           # translated feed and newsletter; none by default
   passages: {tous_les: 1, heures: ["05:30"]}   # every N days, at these times
@@ -108,11 +110,15 @@ sources: sources.yaml         # the source list, kept apart
 # registre_des_graphes: graphes.json   # labels and declared subjects, kept by the engine (default)
 graphes:
   potagers-urbains:
-    libelle: Potagers urbains
-    domaine: "urban gardening: allotments, soil, seed exchange"
+    libelle: Potagers urbains   # label
+    domaine: "urban gardening: allotments, soil, seed exchange"   # the domain, in English, for extraction
 ```
 
-`newskit media` shows what was read; an unknown field is refused and named. The roles: `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
+`newskit media` shows what was read; an unknown field is refused and named. The roles: `extraction` (reading a note and drawing its concepts), `analyse` (judging a whole graph), `redaction` (summaries and newsletter), `lecture` (deciding whether two labels are the same concept), `traduction` (translation), `questions` (training questions for the local encoder).
+
+## Cost
+
+Every model call goes through your subscription and counts against its usage limits; the cost ledger records each one at its API-equivalent price, so you can see where the usage goes (`newskit costs --by graph`). Concept extraction is the main item: measured on governance.news, about $0.25 per note with the default model (Opus), so about $10 per pass at the default cap of 40 notes. The cap is set per graph (`--cap` of `newskit new-graph`).
 
 ## Commands
 
@@ -128,7 +134,7 @@ graphes:
 
 ## Safeguards
 
-- **The rehearsal.** Before the real pass, the engine rehearses it on the sample graph with recorded answers. The real pass starts only if a rehearsal passed the same day with the same engine version. An engine update therefore cannot break a pass unnoticed: it stops before spending anything.
+- **The test.** Before the real pass, the engine runs `newskit test` on the sample graph with recorded answers. The real pass starts only if a test passed the same day with the same engine version. An engine update therefore cannot break a pass unnoticed: it stops before spending anything.
 - **The caps.** Each step has its own cap on notes and on spending; every model call is written to the cost ledger, under a step and a graph.
 - **The usage limit.** After three usage limits in a row, the engine sets a marker that lasts three hours. The plugin's hook then refuses any model call started from Claude Code.
 
@@ -136,8 +142,9 @@ graphes:
 
 Newskit relies on:
 
-- **[graphify](https://github.com/Graphify-Labs/graphify)**. Reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities.
-- **[trafilatura](https://trafilatura.readthedocs.io)**. Main text extraction from web pages.
+- **[graphify](https://github.com/Graphify-Labs/graphify)**, installed with the package. Reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities.
+- **[trafilatura](https://trafilatura.readthedocs.io)**, installed with the package. Main text extraction from web pages.
+- **[pytest](https://pytest.org)**, installed with the package: `newskit test` runs on it.
 
 The following tools extend its features when they are installed:
 

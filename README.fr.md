@@ -8,7 +8,7 @@
 
 Une veille automatique pour Claude Code. Vous nommez un sujet et donnez quelques sources ; à intervalles réguliers, Newskit les collecte, écrit une fiche par article, en extrait les notions et leurs relations et tient à jour un graphe de connaissances, sous plafond de dépense. Deux choses le distinguent d'un lecteur de flux : chaque réponse tirée du graphe cite sa fiche et sa ligne ; le graphe s'étend de lui-même à des thèmes et à des sources nouveaux.
 
-Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
+Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement Claude. Les fiches, le fil et la lettre s'écrivent en français ; une traduction anglaise peut s'y ajouter (`traductions: [en]`).
 
 [![governance.news, un média sur la gouvernance de l'IA bâti sur Newskit](docs/governance-news-fr.png)](https://governance.news/)
 
@@ -31,7 +31,9 @@ $ newskit query --graph ai-governance sources "general-purpose AI model"
 
 ## Démarrage rapide
 
-Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
+Il faut Python 3.12 ou plus récent, git, macOS ou Linux et Claude Code (`claude`) connecté.
+
+Les mots employés plus bas : le **média** est le dossier du projet ; il porte un ou plusieurs **graphes** ; chaque graphe suit des **sujets** ; un **passage** collecte les sources du graphe et écrit une **fiche** par article.
 
 1. Installer le moteur et l'essayer dans un dossier vide :
 
@@ -97,7 +99,7 @@ Le média est un dossier qui porte un `config.yaml`. Le moteur s'y accroche : l
 ```yaml
 version: 1
 media:
-  nom: potagers
+  nom: potagers               # le nom : minuscules, chiffres et tirets
   langue: fr                  # la langue des consignes et de la publication
   traductions: [en]           # fil et lettre traduits ; aucune par défaut
   passages: {tous_les: 1, heures: ["05:30"]}   # tous les N jours, à ces heures
@@ -108,11 +110,15 @@ sources: sources.yaml         # le fichier des sources, à part
 # registre_des_graphes: graphes.json   # libellés et sujets déclarés, tenus par le moteur (défaut)
 graphes:
   potagers-urbains:
-    libelle: Potagers urbains
-    domaine: "urban gardening: allotments, soil, seed exchange"
+    libelle: Potagers urbains   # le libellé
+    domaine: "urban gardening: allotments, soil, seed exchange"   # le domaine, en anglais, pour l'extraction
 ```
 
-`newskit media` dit ce qui est lu ; un champ inconnu est refusé et nommé. Les rôles : `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
+`newskit media` dit ce qui est lu ; un champ inconnu est refusé et nommé. Les rôles : `extraction` (lire une fiche et en tirer les notions), `analyse` (juger un graphe entier), `redaction` (synthèses et lettre), `lecture` (trancher si deux libellés sont la même notion), `traduction`, `questions` (questions d'entraînement de l'encodeur local).
+
+## Le coût
+
+Chaque appel au modèle passe par votre abonnement et compte dans ses limites d'usage ; le registre des coûts inscrit chacun à son prix d'API, pour voir où va l'usage (`newskit costs --by graph`). L'extraction des notions est le poste principal : mesurée sur governance.news, environ 0,25 $ par fiche avec le modèle par défaut (Opus), soit environ 10 $ par passage au plafond par défaut de 40 fiches. Le plafond se règle par graphe (`--cap` de `newskit new-graph`).
 
 ## Les commandes
 
@@ -128,7 +134,7 @@ graphes:
 
 ## Les gardes
 
-- **La répétition.** Avant le vrai passage, le moteur le répète sur le graphe d'exemple, avec des réponses enregistrées. Le vrai passage ne part que si une répétition a réussi le même jour avec la même version du moteur. Une mise à jour du moteur ne peut donc pas casser un passage sans qu'on le voie : il s'arrête avant de rien dépenser.
+- **L'essai.** Avant le vrai passage, le moteur lance `newskit test` sur le graphe d'exemple, avec des réponses enregistrées. Le vrai passage ne part que si un essai a réussi le même jour avec la même version du moteur. Une mise à jour du moteur ne peut donc pas casser un passage sans qu'on le voie : il s'arrête avant de rien dépenser.
 - **Les plafonds.** Chaque étape a son plafond de fiches et de dépense ; chaque appel au modèle entre au registre des coûts, sous une étape et un graphe.
 - **La limite d'usage.** Après trois limites d'affilée, le moteur pose une marque qui vaut trois heures. Le crochet du plugin refuse alors tout appel au modèle lancé depuis Claude Code.
 
@@ -136,8 +142,9 @@ graphes:
 
 Newskit s'appuie sur :
 
-- **[graphify](https://github.com/Graphify-Labs/graphify)**. Lit la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés.
-- **[trafilatura](https://trafilatura.readthedocs.io)**. Extraction du texte principal des pages web.
+- **[graphify](https://github.com/Graphify-Labs/graphify)**, installé avec le paquet. Lit la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés.
+- **[trafilatura](https://trafilatura.readthedocs.io)**, installé avec le paquet. Extraction du texte principal des pages web.
+- **[pytest](https://pytest.org)**, installé avec le paquet : `newskit test` tourne dessus.
 
 Les outils suivants en étendent les fonctionnalités quand ils sont installés :
 
@@ -148,7 +155,7 @@ Les outils suivants en étendent les fonctionnalités quand ils sont installés�
 ## Limites de la version 0.1
 
 - Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
-- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit test` puis `newskit run`.
+- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron.
 - `newskit new-graph` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
 
 ## Contribuer

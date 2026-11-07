@@ -15,7 +15,7 @@ Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle pas
 Le graphe ne reste pas dans les sujets déclarés au départ.
 
 - **Thèmes nouveaux.** Après chaque passage, le moteur cherche les groupes de notions qu'aucun sujet déclaré ne couvre. Un candidat qui revient trois passages de suite entre parmi les sujets ; les sources et les recherches le suivent.
-- **Complétion d'elle-même.** Une question à laquelle le graphe n'a pas su répondre devient une recherche du passage suivant. Un éclaireur cherche sur le web autour des sujets déclarés ; un poseur de questions interroge le graphe comme le ferait un praticien ; ce qu'un modèle de langage tient pour essentiel et que le graphe n'a pas devient une liste de sources à trouver.
+- **Auto-complétion.** Une question à laquelle le graphe n'a pas su répondre devient une recherche du passage suivant. Un éclaireur cherche sur le web autour des sujets déclarés ; un poseur de questions interroge le graphe comme le ferait un praticien ; ce qu'un modèle de langage tient pour essentiel et que le graphe n'a pas devient une liste de sources à trouver.
 - **La liste des sources.** Le moteur étudie un domaine candidat avant de le déclarer et garde la mémoire de chaque source qu'un lecteur dépose (un lien envoyé depuis le navigateur). Une source qui échoue plusieurs fois est auditée et, quand une voie existe, réparée d'elle-même (voir `sap` plus bas).
 - **Des notions nettes.** La même notion sous plusieurs libellés (traduction, sigle, variante) est fondue après qu'un modèle a confirmé qu'il s'agit exactement de la même ; les refus sont gardés et jamais redemandés.
 

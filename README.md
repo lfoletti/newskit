@@ -15,7 +15,7 @@ For developers who already use Claude Code: every model call goes through `claud
 The graph does not stay within the subjects you declared at the start.
 
 - **New themes.** After each pass, the engine looks for clusters of concepts that none of the declared subjects covers. A candidate that comes back three passes in a row joins the subjects; the sources and searches follow it.
-- **Self-completion.** A question the graph could not answer becomes a search for the next pass. A web scout searches the declared subjects; a question agent probes the graph the way a practitioner would; what a language model considers essential and the graph lacks becomes a shopping list of sources to find.
+- **Auto-completion.** A question the graph could not answer becomes a search for the next pass. A web scout searches the declared subjects; a question agent probes the graph the way a practitioner would; what a language model considers essential and the graph lacks becomes a shopping list of sources to find.
 - **The source list.** The engine assesses a candidate domain before it is declared, and keeps track of every source a user drops in (a link sent from the browser). A source that keeps failing is audited and, when a route exists, repaired on its own (see `sap` below).
 - **Clean concepts.** The same concept found under several labels (a translation, an acronym, a variant) is merged after a model confirms it is exactly the same concept; refusals are kept and never asked again.
 

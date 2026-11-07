@@ -1,16 +1,16 @@
 # Newskit
 
 [![ci](https://github.com/lfoletti/newskit/actions/workflows/ci.yml/badge.svg)](https://github.com/lfoletti/newskit/actions/workflows/ci.yml)
-[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](CHANGELOG.md)
+[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/lfoletti/newskit/blob/main/LICENSE)
+[![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](https://github.com/lfoletti/newskit/blob/main/CHANGELOG.md)
 
-English | [Français](README.fr.md)
+English | [Français](https://github.com/lfoletti/newskit/blob/main/README.fr.md)
 
 Automated topic monitoring for Claude Code. You name a subject and give a few sources; at regular intervals Newskit collects them, writes one note per item, extracts the concepts and how they relate, and keeps a knowledge graph up to date, within a spending cap. Two things set it apart from a feed reader: every answer drawn from the graph cites its note and its line, and the graph extends itself to new themes and new sources.
 
 For developers who already use Claude Code: every model call goes through `claude -p`, under your own Claude subscription. Notes, feed and newsletter are written in French; an English translation can be added (`traductions: [en]`).
 
-[![governance.news, an AI governance media built on Newskit](docs/governance-news-en.png)](https://governance.news/en/)
+[![governance.news, an AI governance media built on Newskit](https://raw.githubusercontent.com/lfoletti/newskit/main/docs/governance-news-en.png)](https://governance.news/en/)
 
 *[governance.news](https://governance.news/en/): a newsletter and a knowledge graph on AI governance in business, built on Newskit.*
 
@@ -38,7 +38,7 @@ The words used below: the **media** is your project folder; it holds one or more
 1. Install the engine and test it in an empty folder:
 
    ```sh
-   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.6"
+   pip install newskit
    mkdir my-media && cd my-media
    newskit test
    ```
@@ -160,8 +160,8 @@ The following tools extend its features when they are installed:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Report a vulnerability privately: [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](https://github.com/lfoletti/newskit/blob/main/CONTRIBUTING.md). Report a vulnerability privately: [SECURITY.md](https://github.com/lfoletti/newskit/blob/main/SECURITY.md).
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](https://github.com/lfoletti/newskit/blob/main/LICENSE).

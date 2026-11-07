@@ -1,0 +1,69 @@
+name: testpypi
+
+# Répétition de la publication sur test.pypi.org, lancée à la main. Le paquet porte la version X.Y.Z.dev<numéro du
+# run> : un numéro ne sert qu'une fois sur un index, X.Y.Z reste libre. Puis il s'installe depuis TestPyPI (ses
+# dépendances depuis PyPI) et passe l'essai du moteur.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: version de répétition
+        id: v
+        run: |
+          f=src/newskit/__init__.py
+          v=$(python -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('$f').read()).group(1))").dev${{ github.run_id }}
+          sed -i "s/^__version__ = .*/__version__ = \"$v\"/" $f
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - run: pip install build && python -m build --outdir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquet
+          path: dist/
+
+  publier:
+    # Trusted Publishing sur test.pypi.org (environnement « testpypi »).
+    needs: construire
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: paquet
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  essayer:
+    needs: [construire, publier]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: installer depuis TestPyPI et passer l'essai
+        run: |
+          python -m venv /tmp/v
+          for i in 1 2 3 4 5 6; do
+            /tmp/v/bin/pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ \
+              "newskit==${{ needs.construire.outputs.version }}" && break
+            sleep 30
+          done
+          /tmp/v/bin/newskit --version
+          git config --global user.name ci && git config --global user.email ci@example.invalid
+          mkdir /tmp/media && cd /tmp/media && /tmp/v/bin/newskit test
+          grep -q '"vert": true' cache/temoin_vert

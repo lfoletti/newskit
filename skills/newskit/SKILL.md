@@ -47,7 +47,7 @@ La commande pose les dossiers et le modèle de tâche planifiée, puis imprime l
 
 ## 5. Le témoin du jour
 
-`newskit temoin nuit` fait passer une nuit entière au moteur sur un graphe sans rapport (l'apiculture médiévale), avec des réponses enregistrées et sans aucun appel payant. Le lancer dans le dossier du média : vert, il pose `cache/temoin_vert`, avec la date et la version du moteur. Une nuit refuse de partir sans un témoin vert du jour et de la même version ; la tâche planifiée le lance d'abord.
+`newskit test` (ancien nom : `newskit temoin nuit`) fait passer une nuit entière au moteur sur un graphe sans rapport (l'apiculture médiévale), avec des réponses enregistrées et sans aucun appel payant. Le lancer dans le dossier du média : vert, il pose `cache/temoin_vert`, avec la date et la version du moteur. Une nuit refuse de partir sans un témoin vert du jour et de la même version ; la tâche planifiée le lance d'abord.
 
 ## 6. Une nuit
 

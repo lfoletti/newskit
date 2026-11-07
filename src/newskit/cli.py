@@ -2,7 +2,8 @@
 
     newskit                      les commandes, une ligne chacune
     newskit routine --graphe g   la nuit d'un graphe (newskit.routine_hebdo)
-    newskit temoin nuit          le témoin absurde ; pose cache/temoin_vert
+    newskit test                 essaie le moteur sur un graphe d'exemple, sans frais ; un passage ne part qu'après un essai réussi
+    newskit temoin nuit          le même essai, sous son ancien nom
     newskit media                le média lu : langue, traductions, modèles par rôle
     newskit <module> [options]   tout module qui se lance seul (python3 -m newskit.<module>)
 """
@@ -18,6 +19,7 @@ from importlib import resources
 import newskit
 
 ALIAS = {"routine": "routine_hebdo", "nouveau-graphe": "nouveau_graphe", "graphe": "interroger_graphe"}
+COURTES = {"test": ["temoin", "nuit"]}      # une commande courte pour une commande avec ses arguments (07.11.2026)
 
 
 def commandes() -> dict[str, str]:
@@ -45,6 +47,8 @@ def main(argv: list[str] | None = None) -> int:
     if argv[0] in {"--version", "-V"}:
         print(f"newskit {newskit.__version__}")
         return 0
+    if argv[0] in COURTES:
+        argv = [*COURTES[argv[0]], *argv[1:]]
     nom = ALIAS.get(argv[0], argv[0].replace("-", "_"))
     if nom not in commandes():
         print(f"newskit : commande inconnue « {argv[0]} » ; `newskit` les liste", file=sys.stderr)

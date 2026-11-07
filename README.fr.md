@@ -26,7 +26,7 @@ Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
 ```sh
 pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
 mkdir mon-media && cd mon-media
-newskit temoin nuit
+newskit test
 ```
 
 La dernière commande est une répétition générale. Elle fait faire au moteur un passage entier sur un graphe d'exemple sans rapport (l'apiculture médiévale), avec des réponses du modèle rejouées d'un enregistrement : aucun appel payant, une minute environ. Elle doit finir par « témoin vert » (répétition réussie).
@@ -74,7 +74,7 @@ graphes:
 | `newskit routine --graphe <nom>` | un passage : collecte, fiches, extraction des notions sous plafond, graphe |
 | `newskit graphe --graphe <nom> chercher "…"` | interroge le graphe, sans appel au modèle ; chaque réponse porte sa provenance |
 | `newskit couts --par graphe` | la dépense des sept derniers jours |
-| `newskit temoin nuit` | la répétition du jour ; un passage ne part pas sans elle |
+| `newskit test` | essaie le moteur sur un graphe d'exemple, sans frais ; un vrai passage ne part qu'après un essai réussi le même jour |
 
 ## Les gardes
 
@@ -89,13 +89,13 @@ Newskit tourne seul. Ces outils l'étendent quand ils sont présents.
 - **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Audit d'accès aux sites web. Quand une source échoue plusieurs fois, Newskit demande à sap quelle voie l'atteint encore (flux RSS, API, plan du site, HTML simple, navigateur) et répare la source.
 - **[CortexDB](https://github.com/lfoletti/cortexdb)**. Mémoire d'IA et graphe de connaissances dans un seul fichier SQLite. Un graphe peut être versé dans un cerveau CortexDB, chaque relation rattachée au passage qui la soutient, puis interrogé depuis tout client MCP.
 - **[Thalamus](https://github.com/lfoletti/thalamus)**. Une couche de gouvernance sur CortexDB pour le savoir partagé d'une organisation. Les questions restées sans réponse chez ses clients reviennent au moteur comme recherches.
-- **[graphify](https://github.com/Graphify-Labs/graphify)**. Extraction et validation de la structure des documents, la première couche du graphe.
+- **[graphify](https://github.com/Graphify-Labs/graphify)**. Lit la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés.
 - **[trafilatura](https://trafilatura.readthedocs.io)**. Extraction du texte principal des pages web.
 
 ## Limites de la version 0.1
 
 - Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
-- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine`.
+- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit test` puis `newskit routine`.
 - `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
 
 ## Contribuer

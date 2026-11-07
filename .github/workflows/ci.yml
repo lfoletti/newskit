@@ -49,7 +49,7 @@ jobs:
       - name: une nuit du témoin, dans un dossier vide
         run: |
           git config --global user.name ci && git config --global user.email ci@example.invalid
-          mkdir /tmp/media && cd /tmp/media && /tmp/v/bin/newskit temoin nuit
+          mkdir /tmp/media && cd /tmp/media && /tmp/v/bin/newskit test
           grep -q '"vert": true' cache/temoin_vert
       - name: le détail d'un témoin rouge
         if: failure()

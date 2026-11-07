@@ -26,7 +26,7 @@ You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
 ```sh
 pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
 mkdir my-media && cd my-media
-newskit temoin nuit
+newskit test
 ```
 
 The last command is a dress rehearsal. It runs one full pass of the engine on an unrelated sample graph (medieval beekeeping), with model answers replayed from a recording: no paid call, about one minute. It must end with « témoin vert » (rehearsal passed).
@@ -74,7 +74,7 @@ graphes:
 | `newskit routine --graphe <nom>` | one pass: collection, notes, concept extraction within the cap, graph |
 | `newskit graphe --graphe <nom> chercher "…"` | queries the graph, no model call; each answer carries its provenance |
 | `newskit couts --par graphe` | spending over the last seven days |
-| `newskit temoin nuit` | today's rehearsal; a pass does not start without it |
+| `newskit test` | tries the engine on a sample graph, at no cost; a real pass starts only after a successful test the same day |
 
 ## Safeguards
 
@@ -89,13 +89,13 @@ Newskit runs alone. These tools extend it when they are present.
 - **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Website access audit. When a source keeps failing, Newskit asks sap which route still reaches it (RSS feed, API, sitemap, plain HTML, browser) and repairs the source.
 - **[CortexDB](https://github.com/lfoletti/cortexdb)**. AI memory and knowledge graph in one SQLite file. A graph can be loaded into a CortexDB brain, each relation tied to the passage that supports it, and queried from any MCP client.
 - **[Thalamus](https://github.com/lfoletti/thalamus)**. A governance layer over CortexDB for an organisation's shared knowledge. Questions left unanswered by Thalamus clients return to the engine as searches.
-- **[graphify](https://github.com/Graphify-Labs/graphify)**. Extraction and validation of the document structure, the first layer of the graph.
+- **[graphify](https://github.com/Graphify-Labs/graphify)**. Reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities.
 - **[trafilatura](https://trafilatura.readthedocs.io)**. Main text extraction from web pages.
 
 ## Limits of version 0.1
 
 - The prompts to the models are written in French; the only translation is English.
-- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit temoin nuit` then `newskit routine`.
+- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit test` then `newskit routine`.
 - `newskit nouveau-graphe` writes the graph's scheduled task under `taches/`, ready to install in `/Library/LaunchDaemons`.
 
 ## Contributing

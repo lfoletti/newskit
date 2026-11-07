@@ -48,16 +48,18 @@ from newskit import fiche  # noqa: E402
 from newskit.commun import ENTETES_NAVIGATEUR, agent_robot, html_to_md  # noqa: E402
 from newskit import sante_sources as ss  # noqa: E402
 
-MOTS_MINIMUM = 120     # sous ce seuil, l'entrée est un entrefilet et n'entre pas
-MOTS_TEXTE = 300       # au-dessus, et sans marque de coupure, c'est un texte entier
+MOTS_MINIMUM = 120  # sous ce seuil, l'entrée est un entrefilet et n'entre pas
+MOTS_TEXTE = 300  # au-dessus, et sans marque de coupure, c'est un texte entier
 # Marques d'un flux qui coupe son texte. Leur absence ne prouve rien à elle
 # seule, d'où le seuil de mots qui l'accompagne.
 COUPURES = re.compile(r"(lire la suite|read more|continue reading|\[…\]|\[\.\.\.\])\s*$", re.I)
-PAUSE_PAGE = 1.0       # secondes entre deux pages lues chez le même hôte
+PAUSE_PAGE = 1.0  # secondes entre deux pages lues chez le même hôte
 
-NS = {"content": "http://purl.org/rss/1.0/modules/content/",
-      "dc": "http://purl.org/dc/elements/1.1/",
-      "atom": "http://www.w3.org/2005/Atom"}
+NS = {
+    "content": "http://purl.org/rss/1.0/modules/content/",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "atom": "http://www.w3.org/2005/Atom",
+}
 
 
 def _decompresser(octets: bytes, encodage: str | None) -> bytes:
@@ -144,6 +146,7 @@ def _ouvrir(url: str, req, flux: bool = False) -> bytes:
 def _imiter(url: str) -> bytes:
     """La réponse lue avec l'empreinte d'un navigateur par accesspath (le lecteur web), ou b"" ."""
     from newskit import lecture_web  # noqa: PLC0415
+
     if not lecture_web.accesspath_py().exists():
         print(f"  ~~ imitation impossible : accesspath introuvable ({lecture_web.accesspath_py()})", file=sys.stderr)
         return b""
@@ -151,23 +154,32 @@ def _imiter(url: str) -> bytes:
 
 
 # L'audit d'accès d'un hôte qui échoue (sante_sources.py) : sap probe d'accesspath, sans navigateur.
-_AUDIT = ("import asyncio, json, sys\nfrom accesspath.probe import probe\n"
-          "r = asyncio.run(probe(sys.argv[1])).to_dict()\nt = r.get('tier1_discovery') or {}\n"
-          "sys.stdout.write('\\nSAP ' + json.dumps({'tier': r.get('chosen_tier'), 'tls': (r.get('tls_fingerprint') or {})"
-          ".get('verdict'), 'rationale': r.get('rationale'), 'rss': [f.get('endpoint') for f in t.get('rss_feeds') or []"
-          " if f.get('status') == 200]}))\n")
+_AUDIT = (
+    "import asyncio, json, sys\nfrom accesspath.probe import probe\n"
+    "r = asyncio.run(probe(sys.argv[1])).to_dict()\nt = r.get('tier1_discovery') or {}\n"
+    "sys.stdout.write('\\nSAP ' + json.dumps({'tier': r.get('chosen_tier'), 'tls': (r.get('tls_fingerprint') or {})"
+    ".get('verdict'), 'rationale': r.get('rationale'), 'rss': [f.get('endpoint') for f in t.get('rss_feeds') or []"
+    " if f.get('status') == 200]}))\n"
+)
 
 
 def _auditer(url: str) -> dict:
     import subprocess  # noqa: PLC0415
     from newskit import lecture_web  # noqa: PLC0415
+
     py = lecture_web.accesspath_py()
     if not py.exists():
         print(f"  ~~ audit sap impossible : accesspath introuvable ({py})", file=sys.stderr)
         return {}
     try:
-        r = subprocess.run([str(py), "-c", _AUDIT, url], capture_output=True, text=True, timeout=180,
-                           cwd=str(py.parents[2]), check=False)
+        r = subprocess.run(
+            [str(py), "-c", _AUDIT, url],
+            capture_output=True,
+            text=True,
+            timeout=180,
+            cwd=str(py.parents[2]),
+            check=False,
+        )
     except (subprocess.TimeoutExpired, OSError) as e:
         print(f"  ~~ audit sap impossible : {type(e).__name__} {str(e)[:120]}", file=sys.stderr)
         return {}
@@ -177,8 +189,10 @@ def _auditer(url: str) -> dict:
             return json.loads(lignes[-1][4:])
     except ValueError:
         pass
-    print(f"  ~~ audit sap impossible : code {r.returncode}, {(r.stderr.strip().splitlines() or [''])[-1][:150]}",
-          file=sys.stderr)
+    print(
+        f"  ~~ audit sap impossible : code {r.returncode}, {(r.stderr.strip().splitlines() or [''])[-1][:150]}",
+        file=sys.stderr,
+    )
     return {}
 
 
@@ -205,6 +219,7 @@ def _utilisable(octets: bytes, flux: bool) -> bool:
 def _alerter(objet: str, corps: str) -> None:
     try:
         from newskit import notifier_courriel as nc  # noqa: PLC0415
+
         nc.envoyer(objet, corps)
     except Exception as e:  # noqa: BLE001 — une alerte manquée ne fait pas tomber la collecte
         print(f"  ~~ alerte non envoyée : {type(e).__name__}", file=sys.stderr)
@@ -212,12 +227,21 @@ def _alerter(objet: str, corps: str) -> None:
 
 def _robots_exclut_ia(url: str) -> bool:
     from newskit import lecture_web  # noqa: PLC0415
+
     return lecture_web.robots_exclut_ia(url)
 
 
 def _echec(url: str, flux: bool) -> None:
-    ss.echec(url, _maintenant(), flux=flux, auditer=_auditer, lire=_lire_pour_reparer,
-             robots_exclut_ia=_robots_exclut_ia, alerter=_alerter, utilisable=_utilisable)
+    ss.echec(
+        url,
+        _maintenant(),
+        flux=flux,
+        auditer=_auditer,
+        lire=_lire_pour_reparer,
+        robots_exclut_ia=_robots_exclut_ia,
+        alerter=_alerter,
+        utilisable=_utilisable,
+    )
 
 
 def recuperer(url: str, essais: int = 3, navigateur: bool = False, accept: str | None = None) -> bytes | None:
@@ -239,9 +263,18 @@ def recuperer(url: str, essais: int = 3, navigateur: bool = False, accept: str |
         return None
     for i in range(essais):
         try:
-            req = urllib.request.Request(lue, headers={**ENTETES_NAVIGATEUR, "Accept": accept or "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8"}
-                                         if navigateur else {
-                "User-Agent": agent_robot(), "Accept": accept or "application/rss+xml,application/atom+xml,application/xml"})
+            req = urllib.request.Request(
+                lue,
+                headers={
+                    **ENTETES_NAVIGATEUR,
+                    "Accept": accept or "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+                }
+                if navigateur
+                else {
+                    "User-Agent": agent_robot(),
+                    "Accept": accept or "application/rss+xml,application/atom+xml,application/xml",
+                },
+            )
             if flux:
                 v = _valid().get(lue) or {}
                 if v.get("ETag"):
@@ -273,10 +306,13 @@ def recuperer(url: str, essais: int = 3, navigateur: bool = False, accept: str |
 # membres (Ghost, 27.09.2026, aisecret.us) : un texte court, et l'un de ces
 # appels. Sans session, la fiche serait un entrefilet ; avec une session qui
 # ne passe plus, c'est une anomalie à dire, pas une semaine calme.
-MUR_MEMBRES = re.compile(r"(?:this (?:story|post|deep dive|article|issue) is for (?:paid |premium )?(?:members|subscribers)"
-                         r"|create a free account to continue|become a (?:paid |premium )?member|members only"
-                         r"|upgrade to (?:paid|premium|continue)|subscribe to continue|for paid subscribers"
-                         r"|this (?:content|post) is (?:for|available to) (?:paid|paying|premium))", re.I)
+MUR_MEMBRES = re.compile(
+    r"(?:this (?:story|post|deep dive|article|issue) is for (?:paid |premium )?(?:members|subscribers)"
+    r"|create a free account to continue|become a (?:paid |premium )?member|members only"
+    r"|upgrade to (?:paid|premium|continue)|subscribe to continue|for paid subscribers"
+    r"|this (?:content|post) is (?:for|available to) (?:paid|paying|premium))",
+    re.I,
+)
 
 
 def mur_membres(texte: str) -> bool:
@@ -288,7 +324,7 @@ def date_de_publication(html: str) -> str:
     balises méta de publication (article:published_time, citation_publication_date…), puis le <time datetime> de
     l'article. Jamais une date lue dans le texte : « applicable since 12 September 2025 » datait l'article de Heuking du
     1er septembre 2026, « 1 August 2024 » celui de Gleiss Lutz du 23 février 2026 (03.11.2026)."""
-    for m in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', html, re.S | re.I):
+    for m in re.findall(r"<script[^>]+application/ld\+json[^>]*>(.*?)</script>", html, re.S | re.I):
         try:
             d = json.loads(m)
         except json.JSONDecodeError:
@@ -297,19 +333,28 @@ def date_de_publication(html: str) -> str:
         for x in objets:
             if isinstance(x, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(x.get("datePublished") or "")):
                 return str(x["datePublished"])[:10]
-    for nom in ("article:published_time", "citation_publication_date", "datePublished", "citation_date",
-                "DC.date.issued", "dcterms.date"):
-        m = re.search(rf'<meta[^>]+(?:name|property|itemprop)="{re.escape(nom)}"[^>]+content="([^"]+)"', html, re.I) or \
-            re.search(rf'<meta[^>]+content="([^"]+)"[^>]+(?:name|property|itemprop)="{re.escape(nom)}"', html, re.I)
+    for nom in (
+        "article:published_time",
+        "citation_publication_date",
+        "datePublished",
+        "citation_date",
+        "DC.date.issued",
+        "dcterms.date",
+    ):
+        m = re.search(
+            rf'<meta[^>]+(?:name|property|itemprop)="{re.escape(nom)}"[^>]+content="([^"]+)"', html, re.I
+        ) or re.search(rf'<meta[^>]+content="([^"]+)"[^>]+(?:name|property|itemprop)="{re.escape(nom)}"', html, re.I)
         if m and re.match(r"\d{4}[-/]\d{2}[-/]\d{2}", m.group(1)):
             return m.group(1)[:10].replace("/", "-")
     # Le <time datetime> de l'article : celui dont la classe le dit (« article-intro__date », « entry-date »,
     # « post-date »…) ; sinon celui de l'article quand la page n'en a qu'un ; sinon le seul <time> de publication. Plusieurs dates sans celle de l'article : les
     # cartes « à lire aussi » (DCD, 03.11.2026 : 2026-11-02 au lieu du 14.02.2025), aucune.
     temps = re.findall(r"<time\b([^>]*)>", html, re.I)
+
     def jour(attrs):
         m = re.search(r'datetime="(\d{4}-\d{2}-\d{2})', attrs)
         return m.group(1) if m else ""
+
     for attrs in temps:
         if jour(attrs) and re.search(r'class="[^"]*(?:article|entry|post|published|byline)[^"]*"', attrs, re.I):
             return jour(attrs)
@@ -318,15 +363,18 @@ def date_de_publication(html: str) -> str:
         m = re.search(r'<time[^>]+datetime="(\d{4}-\d{2}-\d{2})', arts[0], re.I)
         if m:
             return m.group(1)
-    pub = {jour(a) for a in temps if jour(a) and not re.search(r'itemprop="(?:startDate|endDate|dateModified)"', a, re.I)}
+    pub = {
+        jour(a) for a in temps if jour(a) and not re.search(r'itemprop="(?:startDate|endDate|dateModified)"', a, re.I)
+    }
     return pub.pop() if len(pub) == 1 else ""
 
 
 def date_de_l_adresse(url: str) -> str:
     """La date écrite dans l'adresse d'une page (/2026/10/28/, /2026-10-28-f853 des incidents de l'OCDE.AI,
     /20261102-…, /04042023-… du PFPDT), sinon ""."""
-    m = re.search(r"/((?:19|20)\d\d)[/-](\d\d)[/-](\d\d)(?=[/-]|\b)", url) or \
-        re.search(r"/((?:19|20)\d\d)(\d\d)(\d\d)(?=\D)", url)
+    m = re.search(r"/((?:19|20)\d\d)[/-](\d\d)[/-](\d\d)(?=[/-]|\b)", url) or re.search(
+        r"/((?:19|20)\d\d)(\d\d)(\d\d)(?=\D)", url
+    )
     if m and 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31:
         return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
     # JJMMAAAA en tête du dernier segment : le PFPDT (edoeb.admin.ch/fr/04042023-utilisation-de-chatgpt…, 03.11.2026).
@@ -362,7 +410,7 @@ def meta_de_page(html: str) -> dict:
     n'a rien d'autre. Ghost et WordPress écrivent tous deux ce bloc.
     """
     meta = {"titre": "", "date": "", "auteur": "", "mots_cles": ""}
-    for m in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', html, re.S | re.I):
+    for m in re.findall(r"<script[^>]+application/ld\+json[^>]*>(.*?)</script>", html, re.S | re.I):
         try:
             d = json.loads(m)
         except json.JSONDecodeError:
@@ -386,17 +434,43 @@ def meta_de_page(html: str) -> dict:
     if not meta.get("date"):
         # Les balises méta de date, dans l'ordre de fiabilité : celles des pages académiques (RePEc, revues), puis
         # celles de l'Open Graph, puis Dublin Core (07.10.2026 : les working papers du FMI repris sur RePEc).
-        for nom in ("citation_publication_date", "citation_date", "article:published_time", "datePublished",
-                    "DC.date.issued", "DC.Date", "dcterms.date"):
-            m = re.search(rf'<meta[^>]+(?:name|property)="{re.escape(nom)}"[^>]+content="([^"]+)"', html, re.I) or \
-                re.search(rf'<meta[^>]+content="([^"]+)"[^>]+(?:name|property)="{re.escape(nom)}"', html, re.I)
+        for nom in (
+            "citation_publication_date",
+            "citation_date",
+            "article:published_time",
+            "datePublished",
+            "DC.date.issued",
+            "DC.Date",
+            "dcterms.date",
+        ):
+            m = re.search(
+                rf'<meta[^>]+(?:name|property)="{re.escape(nom)}"[^>]+content="([^"]+)"', html, re.I
+            ) or re.search(rf'<meta[^>]+content="([^"]+)"[^>]+(?:name|property)="{re.escape(nom)}"', html, re.I)
             if m and re.match(r"\d{4}[-/]\d{2}[-/]\d{2}", m.group(1)):
                 meta["date"] = m.group(1)[:10].replace("/", "-")
                 break
     if not meta.get("date"):
         # Date écrite en toutes lettres dans la page (Quantpedia : « 22.August 2025 »)
-        MOIS = {m: i for i, m in enumerate(("january", "february", "march", "april", "may", "june", "july",
-                                            "august", "september", "october", "november", "december"), 1)}
+        MOIS = {
+            m: i
+            for i, m in enumerate(
+                (
+                    "january",
+                    "february",
+                    "march",
+                    "april",
+                    "may",
+                    "june",
+                    "july",
+                    "august",
+                    "september",
+                    "october",
+                    "november",
+                    "december",
+                ),
+                1,
+            )
+        }
         # d'abord l'élément de classe « date », puis toute la page (la date est
         # souvent après 60 Ko de feuilles de style en ligne)
         zone = re.search(r'class="[^"]*\bdate\b[^"]*"[^>]*>(.{0,200}?)</(?:div|span|time|p)>', html, re.S | re.I)
@@ -436,8 +510,17 @@ def plan_de_site(xml: str, depuis: str) -> list[dict]:
         lastmod = (mod.group(1) if mod else "")[:10]
         if depuis and lastmod and lastmod < depuis:
             continue
-        out.append({"titre": "", "lien": loc.group(1).strip(), "date": "", "auteur": "",
-                    "corps": "", "complet": False, "lastmod": lastmod})
+        out.append(
+            {
+                "titre": "",
+                "lien": loc.group(1).strip(),
+                "date": "",
+                "auteur": "",
+                "corps": "",
+                "complet": False,
+                "lastmod": lastmod,
+            }
+        )
     out.sort(key=lambda d: d["lastmod"], reverse=True)
     return out
 
@@ -483,11 +566,23 @@ def entrees_du_plan_de_site(src, depuis: str) -> list[dict]:
             # étaient les plus vieux, et la date les écartait tous.
             dates = dict(re.findall(r"<sitemap>\s*<loc>\s*([^<\s]+)\s*</loc>\s*<lastmod>\s*([^<\s]+)", xml))
             if dates and depuis:
-                sous = sorted((u for u in sous if dates.get(u, "9999") >= depuis), key=lambda u: dates.get(u, "9999"), reverse=True)
+                sous = sorted(
+                    (u for u in sous if dates.get(u, "9999") >= depuis),
+                    key=lambda u: dates.get(u, "9999"),
+                    reverse=True,
+                )
             # les sous-plans de billets d'abord (wp-sitemap-posts-post, sitemap-posttype-post,
             # post-sitemap) ; sinon tout, hors taxonomies et pages de service
-            pref = [u for u in sous if re.search(r"posts?-post|posttype-post|post-sitemap|/posts?[-.]", u.rsplit("/", 1)[-1], re.I)]
-            autres = [u for u in sous if not re.search(r"taxonom|categor|tag|author|page|product|member|root", u.rsplit("/", 1)[-1], re.I)]
+            pref = [
+                u
+                for u in sous
+                if re.search(r"posts?-post|posttype-post|post-sitemap|/posts?[-.]", u.rsplit("/", 1)[-1], re.I)
+            ]
+            autres = [
+                u
+                for u in sous
+                if not re.search(r"taxonom|categor|tag|author|page|product|member|root", u.rsplit("/", 1)[-1], re.I)
+            ]
             for u in (pref or autres or sous)[:25]:
                 if u in vus:
                     continue
@@ -502,7 +597,9 @@ def entrees_du_plan_de_site(src, depuis: str) -> list[dict]:
             if re.search(r"/(category|categories|tag|tags|author|authors|page)/", lien) or lien.rstrip("/") == site:
                 continue
             # éditions traduites (/zh/, /ja/, /es-es/…) et pages hors du blog quand le site est un blog
-            if re.search(r"://[^/]+/(?:blog/)?[a-z]{2}(?:-[a-z]{2})?/", lien, re.I) and not re.search(r"://[^/]+/(?:blog/)?en(?:-[a-z]{2})?/", lien, re.I):
+            if re.search(r"://[^/]+/(?:blog/)?[a-z]{2}(?:-[a-z]{2})?/", lien, re.I) and not re.search(
+                r"://[^/]+/(?:blog/)?en(?:-[a-z]{2})?/", lien, re.I
+            ):
                 continue
             if prefixe and not lien.startswith(prefixe):
                 continue
@@ -513,8 +610,13 @@ def entrees_du_plan_de_site(src, depuis: str) -> list[dict]:
     return out
 
 
-def corps_de_page(url: str, cookie: str | None = None, navigateur: bool = False,
-                  titre_motif: str | None = None, corps_motif: str | None = None) -> tuple[int, str, bool, dict]:
+def corps_de_page(
+    url: str,
+    cookie: str | None = None,
+    navigateur: bool = False,
+    titre_motif: str | None = None,
+    corps_motif: str | None = None,
+) -> tuple[int, str, bool, dict]:
     """Lit la page d'un article et en rend le texte principal.
 
     Heuristique volontairement courte : on retire ce qui n'est jamais du corps
@@ -529,12 +631,14 @@ def corps_de_page(url: str, cookie: str | None = None, navigateur: bool = False,
         print(f"  !! page {url[:70]} : pages de l'hôte au repos jusqu'à {repos}", file=sys.stderr)
         return 0, "", False, {}
     try:
-        if ss.imite(ss.hote(url)) and not cookie:      # hôte réparé par imitation (sante_sources.py)
+        if ss.imite(ss.hote(url)) and not cookie:  # hôte réparé par imitation (sante_sources.py)
             html = _imiter(url).decode("utf-8", "replace")
             if not html:
                 raise OSError("imitation sans réponse")
         else:
-            en_tetes = dict(ENTETES_NAVIGATEUR) if navigateur else {"User-Agent": agent_robot(), "Accept-Language": "en"}
+            en_tetes = (
+                dict(ENTETES_NAVIGATEUR) if navigateur else {"User-Agent": agent_robot(), "Accept-Language": "en"}
+            )
             if cookie:
                 en_tetes["Cookie"] = cookie
             html = _ouvrir(url, urllib.request.Request(url, headers=en_tetes)).decode("utf-8", "replace")
@@ -545,7 +649,7 @@ def corps_de_page(url: str, cookie: str | None = None, navigateur: bool = False,
     ss.succes(url, _maintenant(), False)
     meta = meta_de_page(html)
     trouve = re.search(titre_motif, html, re.S | re.I) if titre_motif else None
-    if trouve:            # le titre sur la page même, quand <title> est celui du site (06.11.2026)
+    if trouve:  # le titre sur la page même, quand <title> est celui du site (06.11.2026)
         meta["titre"] = " ".join(htmlmod.unescape(re.sub(r"<[^>]+>", " ", trouve.group(1))).split())
     # Le mur des membres se cherche sur toute la page, avant d'en retirer les
     # blocs de structure : chez Ghost il est dans un <aside>, hors du bloc
@@ -554,30 +658,43 @@ def corps_de_page(url: str, cookie: str | None = None, navigateur: bool = False,
     sans_scripts = re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
     mur = mur_membres(re.sub(r"<[^>]+>", " ", sans_scripts))
     voulu = re.search(corps_motif, sans_scripts, re.S | re.I) if corps_motif else None
-    if voulu:             # le bloc du texte désigné au registre, où qu'il soit (MSIT : dans un <form>, 06.11.2026)
+    if voulu:  # le bloc du texte désigné au registre, où qu'il soit (MSIT : dans un <form>, 06.11.2026)
         md = html_to_md(voulu.group(1))
         return len(md.split()), md, mur, meta
-    html = re.sub(r"<(script|style|nav|header|footer|aside|form)\b.*?</\1>", " ", html,
-                  flags=re.S | re.I)
+    html = re.sub(r"<(script|style|nav|header|footer|aside|form)\b.*?</\1>", " ", html, flags=re.S | re.I)
     blocs = [b for _, b in re.findall(r"<(article|main)\b[^>]*>(.*?)</\1>", html, re.S | re.I)]
     blocs += re.findall(
         r'<div[^>]*class="[^"]*(?:entry-content|post-content|article-body|single-blog-post|single-post|blog-post|post-body|article-content)[^"]*"[^>]*>(.*?)</div>',
-        html, re.S | re.I)
+        html,
+        re.S | re.I,
+    )
     # Colonne d'article dont le bloc se referme trop tôt (Quantpedia : la classe
     # est sur la cellule, le texte suit dans des <p> jusqu'à la colonne latérale) :
     # on lit de la classe jusqu'au premier signe de fin d'article.
-    for m in re.finditer(r'<div[^>]*class="[^"]*(?:single-blog-post|single-post|post-body|article-content)[^"]*"[^>]*>', html, re.I):
-        fin = re.search(r'</article>|<footer\b|class="[^"]*(?:sidebar|large-4|related|comments|post-navigation)', html[m.end():], re.I)
-        blocs.append(html[m.end():m.end() + (fin.start() if fin else 60000)])
+    for m in re.finditer(
+        r'<div[^>]*class="[^"]*(?:single-blog-post|single-post|post-body|article-content)[^"]*"[^>]*>', html, re.I
+    ):
+        fin = re.search(
+            r'</article>|<footer\b|class="[^"]*(?:sidebar|large-4|related|comments|post-navigation)',
+            html[m.end() :],
+            re.I,
+        )
+        blocs.append(html[m.end() : m.end() + (fin.start() if fin else 60000)])
     if not blocs:
         # Page écrite à la main, sans bloc d'article (nicholas.carlini.com, 03.10.2026) : on en
         # garde les paragraphes, les intertitres, le code et les citations, dans l'ordre — ce
         # qu'un menu ou une colonne latérale ne contient pas.
         corps = re.search(r"<body\b[^>]*>(.*)</body>", html, re.S | re.I)
-        morceaux = re.findall(r"<(p|h[2-4]|pre|blockquote)\b[^>]*>.*?</\1>", corps.group(1), re.S | re.I) if corps else []
+        morceaux = (
+            re.findall(r"<(p|h[2-4]|pre|blockquote)\b[^>]*>.*?</\1>", corps.group(1), re.S | re.I) if corps else []
+        )
         if corps and len(morceaux) >= 5:
-            blocs = ["\n".join(m.group(0) for m in re.finditer(r"<(p|h[2-4]|pre|blockquote)\b[^>]*>.*?</\1>",
-                                                                 corps.group(1), re.S | re.I))]
+            blocs = [
+                "\n".join(
+                    m.group(0)
+                    for m in re.finditer(r"<(p|h[2-4]|pre|blockquote)\b[^>]*>.*?</\1>", corps.group(1), re.S | re.I)
+                )
+            ]
     if not blocs:
         return 0, "", mur, meta
     md = html_to_md(max(blocs, key=lambda b: len(re.sub("<[^>]+>", "", b))))
@@ -621,9 +738,13 @@ def entrees_tolerantes(brut: bytes) -> list[dict]:
     assez pour les cinq champs dont la fiche a besoin — et le rapport dit que
     la lecture a été tolérante.
     """
+
     def champ(bloc: str, nom: str) -> str:
-        m = RE_BALISE.format if False else re.search(
-            rf"<(?:\w+:)?{nom}\b[^>]*>(.*?)</(?:\w+:)?{nom}>", bloc, re.S | re.I)
+        m = (
+            RE_BALISE.format
+            if False
+            else re.search(rf"<(?:\w+:)?{nom}\b[^>]*>(.*?)</(?:\w+:)?{nom}>", bloc, re.S | re.I)
+        )
         if not m:
             return ""
         v = re.sub(r"^<!\[CDATA\[|\]\]>$", "", m.group(1).strip())
@@ -633,12 +754,14 @@ def entrees_tolerantes(brut: bytes) -> list[dict]:
     for m in RE_ITEM.finditer(brut):
         bloc = m.group(0).decode("utf-8", "replace")
         corps = champ(bloc, "encoded") or champ(bloc, "content")
-        d = {"titre": " ".join(re.sub("<[^>]+>", "", champ(bloc, "title")).split()),
-             "lien": adresse_sure(re.sub("<[^>]+>", "", champ(bloc, "link")).strip()),
-             "date": _date(champ(bloc, "pubDate") or champ(bloc, "published")),
-             "auteur": " ".join(re.sub("<[^>]+>", "", champ(bloc, "creator")).split()),
-             "corps": corps or champ(bloc, "description"),
-             "complet": bool(corps)}
+        d = {
+            "titre": " ".join(re.sub("<[^>]+>", "", champ(bloc, "title")).split()),
+            "lien": adresse_sure(re.sub("<[^>]+>", "", champ(bloc, "link")).strip()),
+            "date": _date(champ(bloc, "pubDate") or champ(bloc, "published")),
+            "auteur": " ".join(re.sub("<[^>]+>", "", champ(bloc, "creator")).split()),
+            "corps": corps or champ(bloc, "description"),
+            "complet": bool(corps),
+        }
         if d["titre"] and d["lien"]:
             out.append(d)
     return out
@@ -670,7 +793,7 @@ def entrees(brut: bytes) -> list[dict]:
                 a = " ".join(_texte(enfant).split())
                 if a and not d["auteur"]:
                     d["auteur"] = a
-            elif t == "encoded":                      # content:encoded, flux complet
+            elif t == "encoded":  # content:encoded, flux complet
                 d["corps"], d["complet"] = _texte(enfant), True
             elif t == "content" and not d["complet"]:
                 d["corps"], d["complet"] = _texte(enfant), True
@@ -707,8 +830,7 @@ def titres_de(cle_source: str) -> set[str]:
         return set()
     if not src.manifeste.exists():
         return set()
-    return {_norm(v.get("title", ""))
-            for v in json.loads(src.manifeste.read_text(encoding="utf-8")).values()}
+    return {_norm(v.get("title", "")) for v in json.loads(src.manifeste.read_text(encoding="utf-8")).values()}
 
 
 def retenu_par_mots_cles(titre: str, mots: list[str]) -> bool:
@@ -740,12 +862,25 @@ def page_par_api(src, lien: str) -> tuple[int, str, bool, dict]:
     segment = segment.upper() if regle.get("majuscules") else segment
     for a, b in (regle.get("remplacer") or {}).items():
         segment = segment.replace(a, b)
-    adresse = (str(src.api_page).replace("{chemin}", urllib.parse.quote(chemin)).replace("{url}", urllib.parse.quote(lien, safe=""))
-               .replace("{segment}", urllib.parse.quote(segment, safe="")))
-    champs = {"titre": "title", "date": "published", "corps": ["introduction", "body"], **(getattr(src, "api_champs", None) or {})}
+    adresse = (
+        str(src.api_page)
+        .replace("{chemin}", urllib.parse.quote(chemin))
+        .replace("{url}", urllib.parse.quote(lien, safe=""))
+        .replace("{segment}", urllib.parse.quote(segment, safe=""))
+    )
+    champs = {
+        "titre": "title",
+        "date": "published",
+        "corps": ["introduction", "body"],
+        **(getattr(src, "api_champs", None) or {}),
+    }
     try:
-        b = recuperer(adresse, essais=2, navigateur=getattr(src, "propres", {}).get("entetes") == "navigateur",
-                      accept="application/json")
+        b = recuperer(
+            adresse,
+            essais=2,
+            navigateur=getattr(src, "propres", {}).get("entetes") == "navigateur",
+            accept="application/json",
+        )
         d = json.loads(b.decode("utf-8", "replace")) if b else {}
     except (json.JSONDecodeError, AttributeError):
         d = {}
@@ -757,8 +892,12 @@ def page_par_api(src, lien: str) -> tuple[int, str, bool, dict]:
         for k in str(nom).split("."):
             v = v.get(k) if isinstance(v, dict) else None
         return v
-    corps = "\n\n".join(html_to_md(htmlmod.unescape(str(champ(c) or ""))) for c in
-                         ([champs["corps"]] if isinstance(champs["corps"], str) else champs["corps"]) if champ(c))
+
+    corps = "\n\n".join(
+        html_to_md(htmlmod.unescape(str(champ(c) or "")))
+        for c in ([champs["corps"]] if isinstance(champs["corps"], str) else champs["corps"])
+        if champ(c)
+    )
     date = champ(champs["date"]) or ""
     if isinstance(date, (int, float)) or str(date).isdigit():
         date = time.strftime("%Y-%m-%d", time.gmtime(int(date)))
@@ -816,9 +955,10 @@ def entrees_page_de_liste(src, limite: int) -> list[dict]:
     # depuis 1970, ou numéro de série de tableur (jours depuis le 30.12.1899).
     if page.lstrip().startswith("{"):
         try:
-            lignes = (json.loads(page).get("data") or [])
+            lignes = json.loads(page).get("data") or []
         except (json.JSONDecodeError, AttributeError):
             lignes = []
+
         def jour(x):
             s = str(x or "")
             if re.fullmatch(r"\d{5}(\.\d+)?", s):
@@ -826,13 +966,23 @@ def entrees_page_de_liste(src, limite: int) -> list[dict]:
             if re.fullmatch(r"\d{9,10}", s):
                 return time.strftime("%Y-%m-%d", time.gmtime(int(s)))
             return s[:10]
+
         for l in lignes:
             lien = urllib.parse.urljoin(src.liste, str(l.get("path") or l.get("url") or ""))
             if not chemins.search(lien) or lien in vus:
                 continue
             vus.add(lien)
-            out.append({"titre": str(l.get("title") or ""), "lien": lien, "date": jour(l.get("date") or l.get("lastModified")),
-                        "auteur": str(l.get("author") or ""), "corps": "", "complet": False, "lastmod": jour(l.get("lastModified"))})
+            out.append(
+                {
+                    "titre": str(l.get("title") or ""),
+                    "lien": lien,
+                    "date": jour(l.get("date") or l.get("lastModified")),
+                    "auteur": str(l.get("author") or ""),
+                    "corps": "",
+                    "complet": False,
+                    "lastmod": jour(l.get("lastModified")),
+                }
+            )
         out.sort(key=lambda e: e["date"], reverse=True)
         return out[:limite] if limite else out
     for href, texte in re.findall(r'<a\s[^>]*href="([^"#]+)"[^>]*>(.*?)</a>', page, flags=re.S | re.I):
@@ -848,8 +998,9 @@ def entrees_page_de_liste(src, limite: int) -> list[dict]:
                     e["titre"] = titre
             continue
         vus.add(lien)
-        out.append({"titre": titre, "lien": lien, "date": "", "auteur": "",
-                    "corps": "", "complet": False, "lastmod": ""})
+        out.append(
+            {"titre": titre, "lien": lien, "date": "", "auteur": "", "corps": "", "complet": False, "lastmod": ""}
+        )
     propres = getattr(src, "propres", {}) or {}
     if propres.get("lien_motif") and propres.get("lien_modele"):
         # Des articles ouverts par un script (onclick="fn_detail(1316)", MSIT, 06.11.2026) : l'identifiant fait l'adresse.
@@ -857,7 +1008,9 @@ def entrees_page_de_liste(src, limite: int) -> list[dict]:
             lien = str(propres["lien_modele"]).replace("{1}", ident)
             if chemins.search(lien) and lien not in vus:
                 vus.add(lien)
-                out.append({"titre": "", "lien": lien, "date": "", "auteur": "", "corps": "", "complet": False, "lastmod": ""})
+                out.append(
+                    {"titre": "", "lien": lien, "date": "", "auteur": "", "corps": "", "complet": False, "lastmod": ""}
+                )
     return out[:limite] if limite else out
 
 
@@ -867,7 +1020,9 @@ SEGMENTS_MUETS = frozenset({"index.html", "index.htm", "index.php", "index", "am
 
 
 def slug(url: str, titre: str) -> str:
-    segs = [urllib.parse.unquote(x) for x in urllib.parse.urlsplit(url).path.split("/") if x] if url else []  # adresse encodée (06.11.2026)
+    segs = (
+        [urllib.parse.unquote(x) for x in urllib.parse.urlsplit(url).path.split("/") if x] if url else []
+    )  # adresse encodée (06.11.2026)
     langue = fiche.langue_de_l_adresse(url) if url else ""
     segs = [x for x in segs if not fiche._langue_du_segment(x) and x.lower() not in SEGMENTS_MUETS]
     bout = (segs[-1] if segs else "") + (f"-{langue}" if langue and segs else "")
@@ -880,13 +1035,16 @@ def ordonner_versions(items: list[dict]) -> list[dict]:
     """Les versions d'un même article (fiche.cle_d_article) se suivent, la française d'abord, puis l'anglaise, à la
     place de la première venue ; l'ordre des articles ne change pas. La première écrite l'emporte (fiche.ecrire refuse
     les autres)."""
-    rang = {"fr": 0, "en": 1, "": 1.5}          # sans segment : la version par défaut du site
+    rang = {"fr": 0, "en": 1, "": 1.5}  # sans segment : la version par défaut du site
     groupes: dict[str, list[dict]] = {}
     for i, it in enumerate(items):
         lien = it.get("lien") or ""
         groupes.setdefault(fiche.cle_d_article(lien) if lien.startswith("http") else f"#{i}", []).append(it)
-    return [it for g in groupes.values()
-            for it in sorted(g, key=lambda x: rang.get(fiche.langue_de_l_adresse(x.get("lien") or ""), 2))]
+    return [
+        it
+        for g in groupes.values()
+        for it in sorted(g, key=lambda x: rang.get(fiche.langue_de_l_adresse(x.get("lien") or ""), 2))
+    ]
 
 
 def nom_libre(dossier: Path, nom: str, lien: str) -> str:
@@ -894,6 +1052,7 @@ def nom_libre(dossier: Path, nom: str, lien: str) -> str:
     if not (dossier / nom).exists():
         return nom
     import hashlib  # noqa: PLC0415
+
     return f"{nom[:-3]}-{hashlib.sha1(lien.encode()).hexdigest()[:6]}.md"
 
 
@@ -904,8 +1063,17 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
     pourquoi : entrefilet, hors mots-clés, doublon d'une autre source. Chacun
     de ces écarts est une décision du registre, et le rapport la rend lisible.
     """
-    compte = {"lues": 0, "neuves": 0, "partielles": 0, "entrefilets": 0,
-              "hors_sujet": 0, "doublons": 0, "murs": 0, "hors_fenetre": 0, "tolerante": False}
+    compte = {
+        "lues": 0,
+        "neuves": 0,
+        "partielles": 0,
+        "entrefilets": 0,
+        "hors_sujet": 0,
+        "doublons": 0,
+        "murs": 0,
+        "hors_fenetre": 0,
+        "tolerante": False,
+    }
     src.chemin.mkdir(parents=True, exist_ok=True)
     manifeste = json.loads(src.manifeste.read_text(encoding="utf-8")) if src.manifeste.exists() else {}
 
@@ -913,7 +1081,9 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
     if mode != "flux" and not archive_depuis:
         items = entrees_plan_quotidien(src, limite) if mode == "plan" else entrees_page_de_liste(src, limite)
         if not items:
-            echecs.append(f"{src.nom} : {'plan de site' if mode == 'plan' else 'page de liste'} injoignable, vide, ou rien de récent")
+            echecs.append(
+                f"{src.nom} : {'plan de site' if mode == 'plan' else 'page de liste'} injoignable, vide, ou rien de récent"
+            )
             return compte
     elif archive_depuis:
         # L'archive : le plan de site liste tout ce que le flux ne montre plus.
@@ -938,7 +1108,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                 return compte
             print(f"  {src.nom} : flux mal formé ({e}), lecture tolérante")
         if limite:
-            items = items[:limite]      # les flux servent le plus récent en tête
+            items = items[:limite]  # les flux servent le plus récent en tête
     compte["lues"] = len(items)
 
     lit_la_page = bool(getattr(src, "page", False)) or bool(archive_depuis) or mode != "flux"
@@ -948,15 +1118,18 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
         if cookie:
             print(f"  {src.nom} : session « {src.session} » présentée pour les pages")
         else:
-            print(f"  {src.nom} : session « {src.session} » déclarée mais {cfg.etat_session(src.session)} ; "
-                  f"les pages réservées resteront des entrefilets", file=sys.stderr)
+            print(
+                f"  {src.nom} : session « {src.session} » déclarée mais {cfg.etat_session(src.session)} ; "
+                f"les pages réservées resteront des entrefilets",
+                file=sys.stderr,
+            )
     mots_cles = list(getattr(src, "mots_cles", []) or [])
     # `exclure` : expression régulière, sans égard à la casse, sur l'adresse et le titre. Pour les
     # flux qui mêlent au sujet des ordres du jour, des pages de service ou une seconde langue
     # (03.10.2026 : LINC publie chaque article en anglais puis en français).
     exclure = re.compile(str(getattr(src, "exclure", "") or ""), re.I) if getattr(src, "exclure", "") else None
     deja_vus: set[str] = set()
-    for autre in (getattr(src, "doublons_de", []) or []):
+    for autre in getattr(src, "doublons_de", []) or []:
         deja_vus |= titres_de(autre)
 
     for it in ordonner_versions(items):
@@ -981,16 +1154,17 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
         mots = len(corps_md.split())
         # Un texte est un texte, quelle que soit la balise qui l'a porté :
         # Magenta sert 2 857 mots dans `description`.
-        complet = bool((it["complet"] and mots >= MOTS_MINIMUM)
-                       or (mots >= MOTS_TEXTE and not COUPURES.search(corps_md[-120:])))
+        complet = bool(
+            (it["complet"] and mots >= MOTS_MINIMUM) or (mots >= MOTS_TEXTE and not COUPURES.search(corps_md[-120:]))
+        )
         if mots < MOTS_MINIMUM and lit_la_page:
             if getattr(src, "propres", {}).get("api_page"):
                 n_page, md_page, mur, meta = page_par_api(src, it["lien"])
             else:
                 motifs = {k: v for k in ("titre_motif", "corps_motif") if (v := getattr(src, "propres", {}).get(k))}
-                n_page, md_page, mur, meta = corps_de_page(it["lien"], cookie,
-                                                           navigateur=getattr(src, "propres", {}).get("entetes") == "navigateur",
-                                                           **motifs)
+                n_page, md_page, mur, meta = corps_de_page(
+                    it["lien"], cookie, navigateur=getattr(src, "propres", {}).get("entetes") == "navigateur", **motifs
+                )
             time.sleep(PAUSE_PAGE)
             it["titre"] = it["titre"] or meta.get("titre", "")
             if mode == "plan":
@@ -1002,7 +1176,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                 compte["hors_fenetre"] += 1
                 continue
             if archive_depuis and not retenu_par_mots_cles(it["titre"], mots_cles):
-                compte["hors_sujet"] += 1       # le titre n'était connu qu'après lecture
+                compte["hors_sujet"] += 1  # le titre n'était connu qu'après lecture
                 continue
             if mur and n_page < MOTS_TEXTE:
                 compte["murs"] += 1
@@ -1033,12 +1207,19 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             it["origine_date"] = "inconnue"
         nom = nom_libre(src.chemin, f"{date or aujourdhui}_{slug(it['lien'], it['titre'])}.md", it["lien"])
         champs = {
-            "title": it["titre"], "subtitle": "", "author": it["auteur"],
-            "date": date, "url": it["lien"], "plateforme": getattr(src, "plateforme", "Flux RSS"),
-            "publication": src.nom, "complet": complet,
+            "title": it["titre"],
+            "subtitle": "",
+            "author": it["auteur"],
+            "date": date,
+            "url": it["lien"],
+            "plateforme": getattr(src, "plateforme", "Flux RSS"),
+            "publication": src.nom,
+            "complet": complet,
             "collected": time.strftime("%Y-%m-%d"),
-            "source": {"Plan de site": f"plan de site de {src.nom}", "Page de liste": f"page de liste de {src.nom}"}.get(
-                getattr(src, "plateforme", ""), f"flux RSS de {src.nom}"),
+            "source": {
+                "Plan de site": f"plan de site de {src.nom}",
+                "Page de liste": f"page de liste de {src.nom}",
+            }.get(getattr(src, "plateforme", ""), f"flux RSS de {src.nom}"),
             "flux": getattr(src, "plan", "") or getattr(src, "liste", "") or src.flux,
         }
         if mode == "plan":
@@ -1048,14 +1229,13 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                 champs["date_modification"] = it["lastmod"][:10]
         try:
             fiche.ecrire(src.chemin / nom, champs, f"# {it['titre']}\n\n{corps_md}")
-        except fiche.IdentiteDejaVue as deja:   # une autre fiche du graphe porte déjà ce document
+        except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
             print(f"  déjà vue : {deja}")
             continue
         except ValueError as e:
             echecs.append(f"{src.nom} : {str(e)[:100]}")
             continue
-        manifeste[it["lien"]] = {"file": nom, "title": it["titre"], "date": date,
-                                 "complet": complet, "words": mots}
+        manifeste[it["lien"]] = {"file": nom, "title": it["titre"], "date": date, "complet": complet, "words": mots}
         compte["neuves"] += 1
         compte["partielles"] += 0 if complet else 1
 
@@ -1066,23 +1246,28 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", help="ne traiter qu'une source du registre")
     ap.add_argument("--graphe", help="ne traiter que les sources d'un graphe")
-    ap.add_argument("--limite", type=int, default=40,
-                    help="entrées les plus récentes par flux (0 = tout ; défaut 40)")
-    ap.add_argument("--archive", metavar="DEPUIS",
-                    help="remonter l'archive par le plan de site (sitemap-posts.xml) depuis cette "
-                         "date AAAA-MM-JJ ; exige --source, lit chaque page")
+    ap.add_argument("--limite", type=int, default=40, help="entrées les plus récentes par flux (0 = tout ; défaut 40)")
+    ap.add_argument(
+        "--archive",
+        metavar="DEPUIS",
+        help="remonter l'archive par le plan de site (sitemap-posts.xml) depuis cette "
+        "date AAAA-MM-JJ ; exige --source, lit chaque page",
+    )
     args = ap.parse_args()
     if args.archive and not args.source:
         ap.error("--archive exige --source : on ne remonte pas toutes les archives d'un coup")
     if args.archive and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.archive):
         ap.error("--archive attend une date AAAA-MM-JJ")
 
-    sources = [s for p in ("Flux RSS", "Plan de site", "Page de liste") for s in cfg.toutes(p, graphe=args.graphe)
-               if not args.source or s.cle == args.source]
+    sources = [
+        s
+        for p in ("Flux RSS", "Plan de site", "Page de liste")
+        for s in cfg.toutes(p, graphe=args.graphe)
+        if not args.source or s.cle == args.source
+    ]
     if not sources:
         print("  aucune source « Flux RSS » au registre, rien à collecter.")
         return 0
@@ -1093,17 +1278,19 @@ def main() -> int:
         c = traiter_source(src, args.limite, echecs, args.archive or "")
         if "total" not in c:
             continue
-        total_neuf += c["neuves"]; total_partiel += c["partielles"]
-        print(f"{src.nom} : {c['lues']} entrée(s) lue(s), {c['neuves']} neuve(s), "
-              f"{c['total']} au total, {c['resumes']} en résumé, {c['entrefilets']} entrefilet(s)"
-              + (f", {c['hors_sujet']} hors mots-clés" if c["hors_sujet"] else "")
-              + (f", {c['murs']} page(s) réservée(s) aux membres" if c.get("murs") else "")
-              + (f", {c['hors_fenetre']} avant la date demandée" if c.get("hors_fenetre") else "")
-              + (f", {c['doublons']} doublon(s) d'une autre source" if c["doublons"] else "")
-              + ("  [lecture tolérante]" if c["tolerante"] else ""))
+        total_neuf += c["neuves"]
+        total_partiel += c["partielles"]
+        print(
+            f"{src.nom} : {c['lues']} entrée(s) lue(s), {c['neuves']} neuve(s), "
+            f"{c['total']} au total, {c['resumes']} en résumé, {c['entrefilets']} entrefilet(s)"
+            + (f", {c['hors_sujet']} hors mots-clés" if c["hors_sujet"] else "")
+            + (f", {c['murs']} page(s) réservée(s) aux membres" if c.get("murs") else "")
+            + (f", {c['hors_fenetre']} avant la date demandée" if c.get("hors_fenetre") else "")
+            + (f", {c['doublons']} doublon(s) d'une autre source" if c["doublons"] else "")
+            + ("  [lecture tolérante]" if c["tolerante"] else "")
+        )
 
-    print(f"\n  {total_neuf} fiche(s) neuve(s), dont {total_partiel} en résumé "
-          f"(le flux ne porte pas le texte entier)")
+    print(f"\n  {total_neuf} fiche(s) neuve(s), dont {total_partiel} en résumé (le flux ne porte pas le texte entier)")
     if echecs:
         # Un refus n'est pas une absence : ce qui n'a pas pu être lu est dit,
         # et le code de sortie le porte.

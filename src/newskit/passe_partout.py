@@ -15,6 +15,7 @@ AI) et entraient comme preuves et comme passages.
 
 Déterministe, sans appel au modèle ; relancé par la routine après chaque composition. Les textes de référence (articles de
 loi) ne sont pas comptés : leurs répétitions sont de la substance (formules finales d'un règlement)."""
+
 from __future__ import annotations
 
 import argparse
@@ -29,8 +30,8 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402
 
-SEUIL = 5            # un paragraphe présent dans autant de fiches d'une même source est du passe-partout
-MOTS_MIN = 6         # en dessous, un paragraphe n'est pas jugé (il est de toute façon sauté par la lecture)
+SEUIL = 5  # un paragraphe présent dans autant de fiches d'une même source est du passe-partout
+MOTS_MIN = 6  # en dessous, un paragraphe n'est pas jugé (il est de toute façon sauté par la lecture)
 
 
 def normaliser(texte: str) -> str:
@@ -47,7 +48,8 @@ def chemin(graphe: str) -> Path:
 
 def calculer(graphe: str) -> dict:
     from newskit import interroger_graphe as ig  # noqa: PLC0415
-    ig.PASSE_PARTOUT.clear()                                   # compter les fiches telles quelles, sans le filtre
+
+    ig.PASSE_PARTOUT.clear()  # compter les fiches telles quelles, sans le filtre
     comptes: dict[str, Counter] = defaultdict(Counter)
     apercus: dict[str, str] = {}
     total = 0
@@ -71,11 +73,22 @@ def calculer(graphe: str) -> dict:
                 comptes[source][e] += 1
                 apercus.setdefault(e, normaliser(texte)[:120])
     retenus = {e: n for c in comptes.values() for e, n in c.items() if n >= SEUIL}
-    par_source = {s: {"paragraphes": sum(c.values()), "passe_partout": sum(n for e, n in c.items() if n >= SEUIL)}
-                  for s, c in comptes.items()}
-    return {"graphe": graphe, "calcule_le": time.strftime("%Y-%m-%d %H:%M"), "seuil": SEUIL, "paragraphes": total,
-            "retenus": len(retenus), "occurrences": sum(retenus.values()), "par_source": par_source,
-            "empreintes": {e: {"fiches": n, "apercu": apercus[e]} for e, n in sorted(retenus.items(), key=lambda kv: -kv[1])}}
+    par_source = {
+        s: {"paragraphes": sum(c.values()), "passe_partout": sum(n for e, n in c.items() if n >= SEUIL)}
+        for s, c in comptes.items()
+    }
+    return {
+        "graphe": graphe,
+        "calcule_le": time.strftime("%Y-%m-%d %H:%M"),
+        "seuil": SEUIL,
+        "paragraphes": total,
+        "retenus": len(retenus),
+        "occurrences": sum(retenus.values()),
+        "par_source": par_source,
+        "empreintes": {
+            e: {"fiches": n, "apercu": apercus[e]} for e, n in sorted(retenus.items(), key=lambda kv: -kv[1])
+        },
+    }
 
 
 def main() -> int:
@@ -94,12 +107,16 @@ def main() -> int:
     else:
         r = calculer(g)
         p.write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"  {g} : {r['paragraphes']} paragraphes lus, {r['retenus']} passe-partout ({r['occurrences']} occurrences, "
-          f"{100 * r['occurrences'] / max(r['paragraphes'], 1):.1f} %), seuil {r['seuil']} fiches, calculé le {r['calcule_le']}")
+    print(
+        f"  {g} : {r['paragraphes']} paragraphes lus, {r['retenus']} passe-partout ({r['occurrences']} occurrences, "
+        f"{100 * r['occurrences'] / max(r['paragraphes'], 1):.1f} %), seuil {r['seuil']} fiches, calculé le {r['calcule_le']}"
+    )
     for s, v in sorted(r["par_source"].items(), key=lambda kv: -kv[1]["passe_partout"]):
         if v["passe_partout"]:
-            print(f"    {s:28} {v['paragraphes']:6} paragraphes, passe-partout {100 * v['passe_partout'] / max(v['paragraphes'], 1):4.1f} %")
-    for e, v in list(r["empreintes"].items())[:a.montrer]:
+            print(
+                f"    {s:28} {v['paragraphes']:6} paragraphes, passe-partout {100 * v['passe_partout'] / max(v['paragraphes'], 1):4.1f} %"
+            )
+    for e, v in list(r["empreintes"].items())[: a.montrer]:
         print(f"    ×{v['fiches']:3}  {v['apercu']}")
     return 0
 

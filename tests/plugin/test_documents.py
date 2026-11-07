@@ -39,8 +39,12 @@ def prose(texte: str) -> list[tuple[int, str]]:
 
 @pytest.mark.parametrize("nom", DOCUMENTS)
 def test_les_espaces_sont_insecables(nom):
-    fautes = [f"{nom}:{n} {quoi} : {ligne.strip()[:80]}" for n, ligne in prose((ICI / nom).read_text(encoding="utf-8"))
-              for motif, quoi in FAUTES if motif.search(ligne)]
+    fautes = [
+        f"{nom}:{n} {quoi} : {ligne.strip()[:80]}"
+        for n, ligne in prose((ICI / nom).read_text(encoding="utf-8"))
+        for motif, quoi in FAUTES
+        if motif.search(ligne)
+    ]
     assert fautes == []
 
 

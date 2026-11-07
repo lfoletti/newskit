@@ -62,7 +62,9 @@ API = "https://api.openalex.org/works"
 def demander(url: str, essais: int = 3) -> dict | None:
     for i in range(essais):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": agent_robot()}), timeout=40) as r:
+            with urllib.request.urlopen(
+                urllib.request.Request(url, headers={"User-Agent": agent_robot()}), timeout=40
+            ) as r:
                 return json.load(r)
         except Exception as e:
             if i == essais - 1:
@@ -103,8 +105,9 @@ def mots_entiers(termes) -> re.Pattern | None:
     return re.compile(r"(?<![a-z0-9])(?:" + "|".join(re.escape(t) for t in termes) + r")s?(?![a-z0-9])", re.I)
 
 
-def dans_le_sujet(titre: str, texte: str, lexique: list[str], faibles: re.Pattern | None,
-                  ancre: re.Pattern | None) -> bool:
+def dans_le_sujet(
+    titre: str, texte: str, lexique: list[str], faibles: re.Pattern | None, ancre: re.Pattern | None
+) -> bool:
     """Un mot-clé du lexique suffit (sous-chaîne) ; un mot faible ne compte qu'avec l'ancre dans le titre."""
     if not lexique and not faibles:
         return True
@@ -138,8 +141,10 @@ def main() -> int:
         hors_sujet = 0
         vus = ecrits = sans_resume = 0
         for q in src.requetes:
-            u = (f"{API}?search={urllib.parse.quote(q)}&per-page={par}&sort=publication_date:desc"
-                 f"&filter=from_publication_date:{depuis},language:en{filtre_dom}&mailto={contact()}")
+            u = (
+                f"{API}?search={urllib.parse.quote(q)}&per-page={par}&sort=publication_date:desc"
+                f"&filter=from_publication_date:{depuis},language:en{filtre_dom}&mailto={contact()}"
+            )
             d = demander(u)
             if d is None:
                 echecs.append(f"{src.nom} : requête « {q} » sans réponse")
@@ -160,15 +165,18 @@ def main() -> int:
                 if not dans_le_sujet(titre, titre + " " + res, lexique, faibles, ancre):
                     hors_sujet += 1
                     continue
-                auteurs = ", ".join((a.get("author") or {}).get("display_name", "")
-                                    for a in (w.get("authorships") or [])[:6])
+                auteurs = ", ".join(
+                    (a.get("author") or {}).get("display_name", "") for a in (w.get("authorships") or [])[:6]
+                )
                 revue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
                 plat = re.sub(r"[^a-z0-9]+", "-", (doi or titre).lower()).strip("-")[:80]
                 corps = [f"# {titre}", ""]
-                corps += [res, ""] if res else ["*OpenAlex ne porte pas de résumé pour ce travail : "
-                                                "la fiche est bibliographique.*", ""]
-                corps += [f"Revue : {revue or '?'} · citations : {w.get('cited_by_count', 0)} · "
-                          f"requête : « {q} »", ""]
+                corps += (
+                    [res, ""]
+                    if res
+                    else ["*OpenAlex ne porte pas de résumé pour ce travail : la fiche est bibliographique.*", ""]
+                )
+                corps += [f"Revue : {revue or '?'} · citations : {w.get('cited_by_count', 0)} · requête : « {q} »", ""]
                 if institutions(w):
                     corps += [f"Institutions des auteurs : {institutions(w)}", ""]
                 if doi:
@@ -176,14 +184,24 @@ def main() -> int:
                 if pdf:
                     corps += [f"Accès libre : {pdf}", ""]
                 champs = {
-                    "title": titre, "subtitle": "", "author": auteurs, "date": date, "url": url,
-                    "plateforme": "OpenAlex", "publication": revue or "OpenAlex", "complet": bool(res),
-                    "collected": time.strftime("%Y-%m-%d"), "source": f"OpenAlex, requête « {q} »",
-                    "doi": doi, "revue": revue, "requete": q, "citations": int(w.get("cited_by_count") or 0),
+                    "title": titre,
+                    "subtitle": "",
+                    "author": auteurs,
+                    "date": date,
+                    "url": url,
+                    "plateforme": "OpenAlex",
+                    "publication": revue or "OpenAlex",
+                    "complet": bool(res),
+                    "collected": time.strftime("%Y-%m-%d"),
+                    "source": f"OpenAlex, requête « {q} »",
+                    "doi": doi,
+                    "revue": revue,
+                    "requete": q,
+                    "citations": int(w.get("cited_by_count") or 0),
                 }
                 try:
                     fiche.ecrire(src.chemin / f"{date}_{plat}.md", champs, "\n".join(corps))
-                except fiche.IdentiteDejaVue as deja:   # une autre fiche du graphe porte déjà ce document
+                except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
                     print(f"  déjà vue : {deja}")
                     continue
                 except ValueError as e:
@@ -194,9 +212,11 @@ def main() -> int:
                 sans_resume += 0 if res else 1
             time.sleep(2)
         src.manifeste.write_text(json.dumps(manifeste, indent=1, ensure_ascii=False), encoding="utf-8")
-        print(f"  {src.nom} : {vus} travail(aux) lu(s) depuis le {depuis}, {ecrits} fiche(s) neuve(s)"
-              f"{f', dont {sans_resume} sans résumé' if sans_resume else ''}"
-              f"{f', {hors_sujet} écarté(s) hors lexique' if hors_sujet else ''}, {len(manifeste)} au total")
+        print(
+            f"  {src.nom} : {vus} travail(aux) lu(s) depuis le {depuis}, {ecrits} fiche(s) neuve(s)"
+            f"{f', dont {sans_resume} sans résumé' if sans_resume else ''}"
+            f"{f', {hors_sujet} écarté(s) hors lexique' if hors_sujet else ''}, {len(manifeste)} au total"
+        )
     for e in echecs:
         print(f"  !! {e}", file=sys.stderr)
     # Un refus n'est pas une absence : ce qui n'a pas pu être lu se lit dans le code de sortie (comme collecte_rss).

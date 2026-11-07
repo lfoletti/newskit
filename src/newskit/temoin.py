@@ -42,9 +42,9 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.
 GRAPHE = "apiculture-medievale"
 CONSIGNE_INCONNUE = 98
 RESEAU_COUPE = 97
-RESEAU = ("ssh", "scp", "rsync", "curl", "wget")   # binaires qui échappent au canari : remplacés dans le PATH
-TEMOIN = CODE / "donnees_temoin"          # les fiches absurdes et les réponses enregistrées, versionnées
-COPIES = ()   # le paquet est copié entier sous code/newskit (N5)
+RESEAU = ("ssh", "scp", "rsync", "curl", "wget")  # binaires qui échappent au canari : remplacés dans le PATH
+TEMOIN = CODE / "donnees_temoin"  # les fiches absurdes et les réponses enregistrées, versionnées
+COPIES = ()  # le paquet est copié entier sous code/newskit (N5)
 # La date des fiches du témoin qui n'en écrivent pas : celle de leur enregistrement (06.11.2026). Elle entre dans les
 # consignes ; fixée, une copie neuve du moteur rejoue les mêmes réponses (07.11.2026).
 DATE_DES_FICHES = dt.date(2026, 11, 6)
@@ -56,24 +56,39 @@ class Temoin:
     reponses: Path
 
     @property
-    def code(self) -> Path: return self.dossier / "code"
+    def code(self) -> Path:
+        return self.dossier / "code"
+
     @property
-    def donnees(self) -> Path: return self.dossier / "donnees"
+    def donnees(self) -> Path:
+        return self.dossier / "donnees"
+
     @property
-    def maison(self) -> Path: return self.dossier / "maison"
+    def maison(self) -> Path:
+        return self.dossier / "maison"
+
     @property
-    def bin(self) -> Path: return self.dossier / "bin"
+    def bin(self) -> Path:
+        return self.dossier / "bin"
+
     @property
-    def canari(self) -> Path: return self.dossier / "canari"
+    def canari(self) -> Path:
+        return self.dossier / "canari"
+
     @property
-    def journal(self) -> Path: return self.dossier / "canari.jsonl"
+    def journal(self) -> Path:
+        return self.dossier / "canari.jsonl"
+
     @property
-    def manquantes(self) -> Path: return self.dossier / "manquantes"
+    def manquantes(self) -> Path:
+        return self.dossier / "manquantes"
 
 
 def empreinte(modele: str, schema: str, consigne: str) -> str:
     """La clé d'une réponse enregistrée : le modèle, le schéma et la consigne aux blancs normalisés."""
-    return hashlib.sha256("\n".join((modele or "", schema or "", " ".join((consigne or "").split()))).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        "\n".join((modele or "", schema or "", " ".join((consigne or "").split()))).encode("utf-8")
+    ).hexdigest()
 
 
 def sources_reseau() -> list[dict]:
@@ -81,22 +96,77 @@ def sources_reseau() -> list[dict]:
     (anticorps test_refus_n_est_pas_absence)."""
     base = {"abonnement": "gratuit", "dense": True, "graphe": GRAPHE, "posture": "recherche"}
     return [
-        {**base, "cle": "ruchers_rss", "plateforme": "Flux RSS", "nom": "Gazette des ruchers", "dossier": "ruchers/rss",
-         "flux": "https://gazette.ruchers.invalid/rss", "site": "https://gazette.ruchers.invalid"},
-        {**base, "cle": "ruchers_liste", "plateforme": "Page de liste", "nom": "Annales de Valmiel",
-         "dossier": "ruchers/liste", "liste": "https://annales.valmiel.invalid/", "chemins": r"valmiel\.invalid/\d+",
-         "site": "https://annales.valmiel.invalid"},
-        {**base, "cle": "ruchers_plan", "plateforme": "Plan de site", "nom": "Archives de Hohenruche",
-         "dossier": "ruchers/plan", "plan": "https://archives.hohenruche.invalid/sitemap.xml",
-         "chemins": r"hohenruche\.invalid/[a-z-]+/$", "site": "https://archives.hohenruche.invalid"},
-        {**base, "cle": "ruchers_revue", "plateforme": "Revue", "nom": "Revue d'apiculture médiévale",
-         "dossier": "ruchers/revue", "issn": "0000-0000"},
-        {**base, "cle": "ruchers_openalex", "plateforme": "OpenAlex", "nom": "OpenAlex, essaimage", "dossier": "ruchers/openalex",
-         "jours": 365, "par_requete": 4, "mots_cles": ["swarm", "beeswax"], "requetes": ["medieval beekeeping swarm"]},
-        {**base, "cle": "ruchers_github", "plateforme": "GitHub", "nom": "GitHub, ruchers", "dossier": "ruchers/github",
-         "jours": 30, "par_requete": 4, "etoiles_min": 1, "requetes": ["topic:beekeeping"]},
-        {**base, "cle": "ruchers_hf", "plateforme": "HuggingFace", "nom": "HuggingFace, ruchers", "dossier": "ruchers/hf",
-         "jours": 30, "par_requete": 4, "activite_min": 1, "genres": ["datasets"], "requetes": ["beekeeping"]},
+        {
+            **base,
+            "cle": "ruchers_rss",
+            "plateforme": "Flux RSS",
+            "nom": "Gazette des ruchers",
+            "dossier": "ruchers/rss",
+            "flux": "https://gazette.ruchers.invalid/rss",
+            "site": "https://gazette.ruchers.invalid",
+        },
+        {
+            **base,
+            "cle": "ruchers_liste",
+            "plateforme": "Page de liste",
+            "nom": "Annales de Valmiel",
+            "dossier": "ruchers/liste",
+            "liste": "https://annales.valmiel.invalid/",
+            "chemins": r"valmiel\.invalid/\d+",
+            "site": "https://annales.valmiel.invalid",
+        },
+        {
+            **base,
+            "cle": "ruchers_plan",
+            "plateforme": "Plan de site",
+            "nom": "Archives de Hohenruche",
+            "dossier": "ruchers/plan",
+            "plan": "https://archives.hohenruche.invalid/sitemap.xml",
+            "chemins": r"hohenruche\.invalid/[a-z-]+/$",
+            "site": "https://archives.hohenruche.invalid",
+        },
+        {
+            **base,
+            "cle": "ruchers_revue",
+            "plateforme": "Revue",
+            "nom": "Revue d'apiculture médiévale",
+            "dossier": "ruchers/revue",
+            "issn": "0000-0000",
+        },
+        {
+            **base,
+            "cle": "ruchers_openalex",
+            "plateforme": "OpenAlex",
+            "nom": "OpenAlex, essaimage",
+            "dossier": "ruchers/openalex",
+            "jours": 365,
+            "par_requete": 4,
+            "mots_cles": ["swarm", "beeswax"],
+            "requetes": ["medieval beekeeping swarm"],
+        },
+        {
+            **base,
+            "cle": "ruchers_github",
+            "plateforme": "GitHub",
+            "nom": "GitHub, ruchers",
+            "dossier": "ruchers/github",
+            "jours": 30,
+            "par_requete": 4,
+            "etoiles_min": 1,
+            "requetes": ["topic:beekeeping"],
+        },
+        {
+            **base,
+            "cle": "ruchers_hf",
+            "plateforme": "HuggingFace",
+            "nom": "HuggingFace, ruchers",
+            "dossier": "ruchers/hf",
+            "jours": 30,
+            "par_requete": 4,
+            "activite_min": 1,
+            "genres": ["datasets"],
+            "requetes": ["beekeeping"],
+        },
     ]
 
 
@@ -106,20 +176,40 @@ def registre(reseau: bool = False) -> dict:
     fichiers = sorted(p.name for p in (TEMOIN / "dossier").glob("*.md"))
     return {
         "version": 1,
-        "edition": {"nom": "temoin", "principal": GRAPHE, "graphe_du_site": GRAPHE,
-                    "domaine_principal": "medieval beekeeping", "launchd": "local.temoin"},
-        "graphes": {GRAPHE: {"libelle": "Apiculture médiévale", "domaine": "medieval beekeeping: swarming, wax, apiary law"}},
-        "sources": [{"cle": "ruchers_dossier", "plateforme": "Dossier local", "nom": "Carnets des ruchers",
-                     "dossier": "ruchers/dossier", "abonnement": "interne", "dense": True, "graphe": GRAPHE,
-                     "racine": "dossier_local", "fichiers": fichiers}] + (sources_reseau() if reseau else []),
+        "edition": {
+            "nom": "temoin",
+            "principal": GRAPHE,
+            "graphe_du_site": GRAPHE,
+            "domaine_principal": "medieval beekeeping",
+            "launchd": "local.temoin",
+        },
+        "graphes": {
+            GRAPHE: {"libelle": "Apiculture médiévale", "domaine": "medieval beekeeping: swarming, wax, apiary law"}
+        },
+        "sources": [
+            {
+                "cle": "ruchers_dossier",
+                "plateforme": "Dossier local",
+                "nom": "Carnets des ruchers",
+                "dossier": "ruchers/dossier",
+                "abonnement": "interne",
+                "dense": True,
+                "graphe": GRAPHE,
+                "racine": "dossier_local",
+                "fichiers": fichiers,
+            }
+        ]
+        + (sources_reseau() if reseau else []),
     }
 
 
 def photo_du_reel() -> dict:
     """L'état du vrai registre des coûts et de la vraie marque de limite avant un passage du témoin (fuites_vers_le_reel)."""
     reg, marque = RACINE / "cache" / "couts.jsonl", RACINE / "cache" / "limite_atteinte"
-    return {"taille": reg.stat().st_size if reg.exists() else 0,
-            "marque": (marque.stat().st_size, marque.stat().st_mtime_ns) if marque.exists() else None}
+    return {
+        "taille": reg.stat().st_size if reg.exists() else 0,
+        "marque": (marque.stat().st_size, marque.stat().st_mtime_ns) if marque.exists() else None,
+    }
 
 
 def fuites_vers_le_reel(photo: dict, graphes_reels: set[str] | None = None) -> list[str]:
@@ -128,6 +218,7 @@ def fuites_vers_le_reel(photo: dict, graphes_reels: set[str] | None = None) -> l
     registre pendant le passage (07.11.2026) : le registre bouge, seule une ligne étrangère aux vrais graphes est une
     fuite."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     reels = set(cfg.graphes()) if graphes_reels is None else graphes_reels
     reg, marque = RACINE / "cache" / "couts.jsonl", RACINE / "cache" / "limite_atteinte"
     out = []
@@ -150,9 +241,14 @@ def fuites_vers_le_reel(photo: dict, graphes_reels: set[str] | None = None) -> l
 def ecrire_dossier(donnees: Path, reg: dict) -> None:
     """Le dossier du média du témoin, premier client de config.yaml (NEWSKIT.md, § Le dossier du média) : l'identité et
     les graphes dans `config.yaml`, les sources dans `sources.yaml`, qu'il nomme."""
-    config = {"version": 1, "media": {**reg["edition"], "langue": "fr"}, "sources": "sources.yaml",
-              "graphes": reg["graphes"]}
+    config = {
+        "version": 1,
+        "media": {**reg["edition"], "langue": "fr"},
+        "sources": "sources.yaml",
+        "graphes": reg["graphes"],
+    }
     import yaml  # noqa: PLC0415
+
     sources = {k: v for k, v in reg.items() if k not in ("edition", "graphes")}
     for nom, d in (("config.yaml", config), ("sources.yaml", sources)):
         (donnees / nom).write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -294,11 +390,12 @@ def preparer(dossier: Path, reponses: Path | None = None, reseau: bool = False) 
     shutil.copytree(CODE, t.code / "newskit", ignore=ignorer)
     subprocess.run(["git", "init", "-q", str(t.code)], check=True)
     import yaml  # noqa: PLC0415
+
     ecrire_dossier(t.donnees, registre(reseau))
     shutil.copytree(TEMOIN / "dossier", t.donnees / "dossier_local")
     fixe = time.mktime(DATE_DES_FICHES.timetuple()) + 12 * 3600
     for f in (t.donnees / "dossier_local").rglob("*"):
-        os.utime(f, (fixe, fixe))               # la date d'une fiche sans date écrite : la même pour toute copie
+        os.utime(f, (fixe, fixe))  # la date d'une fiche sans date écrite : la même pour toute copie
     f = t.bin / "claude"
     f.write_text(FAUX_CLAUDE.format(python=sys.executable, code=CONSIGNE_INCONNUE), encoding="utf-8")
     f.chmod(0o755)
@@ -315,23 +412,25 @@ def environnement(t: Temoin, reel: list[Path] | None = None) -> dict[str, str]:
     maison réels)."""
     env = {k: v for k, v in os.environ.items() if not k.startswith(("NEWSKIT_", "TEMOIN_", "CORTEXDB_DOSSIER"))}
     racines = reel if reel is not None else [CODE, RACINE, Path.home()]
-    env.update({
-        "HOME": str(t.maison),
-        "PATH": os.pathsep.join([str(t.bin), env.get("PATH", "")]),
-        "PYTHONPATH": os.pathsep.join([str(t.canari), str(t.code)]),
-        "PYTHONUSERBASE": site.getuserbase(),        # les paquets de l'utilisateur restent lisibles sous une autre maison
-        "PYTHONDONTWRITEBYTECODE": "1",
-        "PYTHONHASHSEED": "0",
-        "HF_HUB_OFFLINE": "1",
-        "NEWSKIT_DONNEES": str(t.donnees),
-        "NEWSKIT_CONTACT_EMAIL": "temoin@exemple.invalid",
-        "TEMOIN_REEL": os.pathsep.join(str(Path(p).resolve()) for p in racines),
-        "TEMOIN_ICI": str(t.dossier),
-        "TEMOIN_JOURNAL": str(t.journal),
-        "TEMOIN_REPONSES": str(t.reponses),
-        "TEMOIN_MANQUANTES": str(t.manquantes),
-        "TEMOIN_APPELS": str(t.dossier / "appels.jsonl"),
-    })
+    env.update(
+        {
+            "HOME": str(t.maison),
+            "PATH": os.pathsep.join([str(t.bin), env.get("PATH", "")]),
+            "PYTHONPATH": os.pathsep.join([str(t.canari), str(t.code)]),
+            "PYTHONUSERBASE": site.getuserbase(),  # les paquets de l'utilisateur restent lisibles sous une autre maison
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONHASHSEED": "0",
+            "HF_HUB_OFFLINE": "1",
+            "NEWSKIT_DONNEES": str(t.donnees),
+            "NEWSKIT_CONTACT_EMAIL": "temoin@exemple.invalid",
+            "TEMOIN_REEL": os.pathsep.join(str(Path(p).resolve()) for p in racines),
+            "TEMOIN_ICI": str(t.dossier),
+            "TEMOIN_JOURNAL": str(t.journal),
+            "TEMOIN_REPONSES": str(t.reponses),
+            "TEMOIN_MANQUANTES": str(t.manquantes),
+            "TEMOIN_APPELS": str(t.dossier / "appels.jsonl"),
+        }
+    )
     return env
 
 
@@ -344,7 +443,7 @@ def vrai_claude() -> Path | None:
     return None
 
 
-PLAFOND = 30            # appels payés par réenregistrement, au plus (CHANTIER_GENERIQUE.md § 4.3)
+PLAFOND = 30  # appels payés par réenregistrement, au plus (CHANTIER_GENERIQUE.md § 4.3)
 
 
 def reenregistrer(t: Temoin, plafond: int = PLAFOND, claude: Path | None = None, delai: int = 900) -> dict:
@@ -354,18 +453,20 @@ def reenregistrer(t: Temoin, plafond: int = PLAFOND, claude: Path | None = None,
     poste « temoin ». Une réponse en erreur reste manquante ; la limite d'usage arrête tout."""
     import time  # noqa: PLC0415
     from newskit import couts  # noqa: PLC0415
+
     claude = claude or vrai_claude()
     if claude is None:
         raise SystemExit("témoin : aucun vrai claude sur le PATH")
     manquantes = sorted(t.manquantes.glob("*.json")) if t.manquantes.exists() else []
     bilan = {"payes": 0, "erreurs": 0, "restantes": len(manquantes), "cout_usd": 0.0}
-    for m in manquantes[:max(plafond, 0)]:
+    for m in manquantes[: max(plafond, 0)]:
         if couts.en_limite():
             break
         d = json.loads(m.read_text(encoding="utf-8"))
         t0 = time.time()
-        r = subprocess.run([str(claude), *d["argv"]], input=d["consigne"], capture_output=True, text=True,
-                           timeout=delai, cwd=t.dossier)
+        r = subprocess.run(
+            [str(claude), *d["argv"]], input=d["consigne"], capture_output=True, text=True, timeout=delai, cwd=t.dossier
+        )
         env = couts.enregistrer("temoin", GRAPHE, d.get("modele") or None, r, time.time() - t0)
         bilan["cout_usd"] = round(bilan["cout_usd"] + float(env.get("total_cost_usd") or 0), 6)
         if r.returncode == 0 and env and not env.get("is_error"):
@@ -381,7 +482,7 @@ def reenregistrer(t: Temoin, plafond: int = PLAFOND, claude: Path | None = None,
 
 # --- Le passage entier (CHANTIER_GENERIQUE.md § 4.3) ------------------------------------------------------------------------------
 
-MARQUE = "temoin_vert"          # sous cache/ des vraies données : date, commit, verdict du dernier passage
+MARQUE = "temoin_vert"  # sous cache/ des vraies données : date, commit, verdict du dernier passage
 
 
 def commit_du_code() -> str:
@@ -390,6 +491,7 @@ def commit_du_code() -> str:
     if r.returncode == 0 and r.stdout.strip():
         return r.stdout.strip()
     import newskit  # noqa: PLC0415
+
     return f"v{newskit.__version__}"
 
 
@@ -412,8 +514,13 @@ def verdict(racine: Path, commit: str, jour: str) -> tuple[bool, str]:
 def essayer() -> tuple[int, str]:
     """Le témoin entier : tous les tests tests/test_temoin_*.py. Rend (code, dernière ligne de pytest)."""
     tests = sorted(str(x) for x in (CODE / "donnees_temoin" / "tests").glob("test_temoin_*.py"))
-    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *tests], cwd=CODE,
-                       capture_output=True, text=True, timeout=3600)
+    r = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *tests],
+        cwd=CODE,
+        capture_output=True,
+        text=True,
+        timeout=3600,
+    )
     lignes = [x for x in r.stdout.splitlines() if x.strip()]
     return r.returncode, (lignes[-1] if lignes else r.stderr.strip()[-300:])
 
@@ -421,16 +528,37 @@ def essayer() -> tuple[int, str]:
 def rejouer(dossier: Path) -> Temoin:
     """Un passage de la routine dans un témoin neuf, pour recueillir les consignes manquantes (code 98)."""
     t = preparer(dossier)
-    subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", GRAPHE, "--sans-commit",
-                    "--sans-courriel"], env=environnement(t), cwd=t.donnees, capture_output=True, text=True, timeout=1800)
+    subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
     return t
 
 
-def nuit(racine: Path | None = None, essai=essayer, rejeu=rejouer, payer=None, commit: str | None = None,
-         jour: str | None = None, plafond: int = PLAFOND) -> int:
+def nuit(
+    racine: Path | None = None,
+    essai=essayer,
+    rejeu=rejouer,
+    payer=None,
+    commit: str | None = None,
+    jour: str | None = None,
+    plafond: int = PLAFOND,
+) -> int:
     """Passe le témoin et pose la marque. Un rouge d'enregistrement (consignes manquantes) paie les manquantes sous
     `plafond` et repasse une fois ; un rouge d'infrastructure pose une marque rouge sans rien payer."""
     import time  # noqa: PLC0415
+
     racine = Path(racine or RACINE)
     commit, jour = commit or commit_du_code(), jour or time.strftime("%Y-%m-%d")
     code, ligne = essai()
@@ -441,25 +569,36 @@ def nuit(racine: Path | None = None, essai=essayer, rejeu=rejouer, payer=None, c
             neuves = (payer or reenregistrer)(t, plafond)["payes"]
             if neuves:
                 code, ligne = essai()
-    m = {"date": jour, "commit": commit, "vert": code == 0, "detail": ligne, "reponses_neuves": neuves,
-         "le": time.strftime("%Y-%m-%d %H:%M:%S")}
+    m = {
+        "date": jour,
+        "commit": commit,
+        "vert": code == 0,
+        "detail": ligne,
+        "reponses_neuves": neuves,
+        "le": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
     p = racine / "cache" / MARQUE
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
-    print(f"témoin {'vert' if code == 0 else 'ROUGE'} sur {commit[:9]} : {ligne}"
-          + (f" ; {neuves} réponse(s) neuve(s) dans tests/temoin/reponses, à commiter" if neuves else ""))
+    print(
+        f"témoin {'vert' if code == 0 else 'ROUGE'} sur {commit[:9]} : {ligne}"
+        + (f" ; {neuves} réponse(s) neuve(s) dans tests/temoin/reponses, à commiter" if neuves else "")
+    )
     return 0 if code == 0 else 1
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse  # noqa: PLC0415
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = ap.add_subparsers(dest="cmd", required=True)
     sp.add_parser("preparer").add_argument("dossier", type=Path)
     e = sp.add_parser("reenregistrer", help="paie les consignes manquantes d'un témoin déjà passé, sous un plafond")
     e.add_argument("dossier", type=Path)
     e.add_argument("--plafond", type=int, default=PLAFOND)
-    sp.add_parser("passage", aliases=["nuit"], help="passe le témoin entier et pose cache/temoin_vert (le daemon de 00:30)")
+    sp.add_parser(
+        "passage", aliases=["nuit"], help="passe le témoin entier et pose cache/temoin_vert (le daemon de 00:30)"
+    )
     a = ap.parse_args(argv)
     if a.cmd in ("passage", "nuit"):
         return nuit()

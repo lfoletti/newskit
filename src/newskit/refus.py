@@ -10,6 +10,7 @@ versement au cerveau (puits_cortexdb.corps_versable) le lisent. Le refus se lit 
 Une fiche refusée change d'empreinte : l'extraction la reprend d'elle-même d'après le résumé, et le versement en place
 remplace son document au cerveau.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,7 @@ def refuse(chemin: str, entete: dict) -> bool:
     """Vrai si la source de la fiche ou l'un de ses auteurs a refusé : le texte ne sert plus au graphe."""
     droits = _droits()
     if not droits and not _sources_masquees():
-        return False                                  # aucun refus nulle part : rien à lire de plus
+        return False  # aucun refus nulle part : rien à lire de plus
     return not cfg.fiche_publiable(cfg.source_du_chemin(chemin), entete, droits)
 
 
@@ -63,15 +64,24 @@ def _index() -> dict[str, list[str]]:
         for b in (F.get("pile") or []) + (F.get("billets") or []) + archive:
             if b.get("chemin") and b.get("tenu") is not False and b["chemin"] not in fil:
                 en = b.get("en") or {}
-                fil[b["chemin"]] = [x for x in (b.get("titre"), b.get("descriptif"),
-                                                *((en.get("titre"), en.get("texte")) if en.get("tenu") else ())) if x]
+                fil[b["chemin"]] = [
+                    x
+                    for x in (
+                        b.get("titre"),
+                        b.get("descriptif"),
+                        *((en.get("titre"), en.get("texte")) if en.get("tenu") else ()),
+                    )
+                    if x
+                ]
     lettres: dict[str, list[str]] = {}
     for p in sorted((RACINE / "lettres").glob("*/*.json")):
         try:
             L = json.loads(p.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        elements = list(L.get("faits") or []) + [x for g in ("aussi", "bref") for v in (L.get(g) or {}).values() for x in v]
+        elements = list(L.get("faits") or []) + [
+            x for g in ("aussi", "bref") for v in (L.get(g) or {}).values() for x in v
+        ]
         for x in elements:
             texte = x.get("paragraphe") or x.get("descriptif")
             if x.get("chemin") and texte:

@@ -31,10 +31,10 @@ from newskit import config_sources as cfg  # noqa: E402
 from newskit import couts  # noqa: E402
 from newskit import themes_emergents as te  # noqa: E402
 
-PASSAGES_SECOND_ESSAI = 10     # extraits servis à la tentative élargie (10.10.2026)
-SEUIL_PROFONDEUR = 0.7          # verdict publié : « tenu » à partir de 70 % de réponses justes
-SEUIL_APPROFONDISSEMENT = 0.9   # mais on creuse tout sujet sous 90 % (09.10.2026 : « tenu » n'est pas « fini »)
-SOUS_JEUX_PAR_PASSAGE = 2       # sujets déclarés sans sous-jeu composés à un passage (--poser-du-jour) ; un appel chacun
+PASSAGES_SECOND_ESSAI = 10  # extraits servis à la tentative élargie (10.10.2026)
+SEUIL_PROFONDEUR = 0.7  # verdict publié : « tenu » à partir de 70 % de réponses justes
+SEUIL_APPROFONDISSEMENT = 0.9  # mais on creuse tout sujet sous 90 % (09.10.2026 : « tenu » n'est pas « fini »)
+SOUS_JEUX_PAR_PASSAGE = 2  # sujets déclarés sans sous-jeu composés à un passage (--poser-du-jour) ; un appel chacun
 
 
 def chemins(graphe: str) -> tuple[Path, Path]:
@@ -42,8 +42,15 @@ def chemins(graphe: str) -> tuple[Path, Path]:
     return base / "themes_banc.json", base / "themes_banc_historique.jsonl"
 
 
-def composer(graphe: str, themes: list[str], par_theme: int, delai: int, p_jeu: Path | None = None, local: bool | None = None,
-             completer: bool = False) -> list[dict]:
+def composer(
+    graphe: str,
+    themes: list[str],
+    par_theme: int,
+    delai: int,
+    p_jeu: Path | None = None,
+    local: bool | None = None,
+    completer: bool = False,
+) -> list[dict]:
     """Pour chaque thème : la moitié de questions de fond, l'autre sur l'actualité du thème, triées comme le banc.
     Le jeu est écrit après CHAQUE thème dans `p_jeu` et un thème déjà présent n'est pas recomposé (08.10.2026 : le
     pilote d'un graphe d'image, interrompu par la pause neuf minutes après son lancement, n'avait rien écrit ; ses recherches web
@@ -63,15 +70,34 @@ def composer(graphe: str, themes: list[str], par_theme: int, delai: int, p_jeu: 
             break
         n_f, n_r = par_theme // 2, par_theme - par_theme // 2
         print(f"  thème : {th[:90]}", flush=True)
-        if local:      # le modèle cherche, nous lisons (banc.questions_recentes_locales, verifier_localement)
+        if local:  # le modèle cherche, nous lisons (banc.questions_recentes_locales, verifier_localement)
             fond = banc.verifier_localement(graphe, banc.questions_de_fond(graphe, [th], n_f + 3, delai), delai)
             rec = banc.questions_recentes_locales(graphe, [th], n_r + 2, delai, vues)
         else:
             fond = banc.verifier_sur_le_web(banc.questions_de_fond(graphe, [th], n_f + 3, delai), delai)
             rec = banc.questions_recentes(graphe, [th], n_r + 2, delai, vues)
         horo = time.strftime("%Y-%m-%d %H:%M")
-        lot = [{**q, "type": "ag_fond", "origine": "question de spécialiste, de fond", "source": "", "theme": th, "ajoutee": horo} for q in fond] + \
-              [{**q, "type": "ag_recent", "origine": "question de spécialiste, actualité", "source": "", "theme": th, "ajoutee": horo} for q in rec]
+        lot = [
+            {
+                **q,
+                "type": "ag_fond",
+                "origine": "question de spécialiste, de fond",
+                "source": "",
+                "theme": th,
+                "ajoutee": horo,
+            }
+            for q in fond
+        ] + [
+            {
+                **q,
+                "type": "ag_recent",
+                "origine": "question de spécialiste, actualité",
+                "source": "",
+                "theme": th,
+                "ajoutee": horo,
+            }
+            for q in rec
+        ]
         lot = banc.hors_sujet_retirees(graphe, lot)
         lot = [q for q in lot if q["type"] == "ag_fond"][:n_f] + [q for q in lot if q["type"] == "ag_recent"][:n_r]
         vues |= banc.adresses_de(lot)
@@ -102,8 +128,10 @@ def poser(graphe: str, etiquette: str, themes: list[str] | None = None, enregist
     bornes = cfg.banc()
     p_cours = p_jeu.with_name("themes_banc_en_cours.json")
     # Thème par thème, l'état écrit après chacun : une mesure dure une heure et ne doit rien perdre.
-    reponses: dict[int, dict] = {}; verdicts: dict[int, str] = {}; par_theme: dict[str, dict] = {}
-    conso: dict = {}                                  # ce que coûte une réponse, cumulé sur les thèmes (09.10.2026)
+    reponses: dict[int, dict] = {}
+    verdicts: dict[int, str] = {}
+    par_theme: dict[str, dict] = {}
+    conso: dict = {}  # ce que coûte une réponse, cumulé sur les thèmes (09.10.2026)
     for th in dict.fromkeys(q["theme"] for q in questions):
         qs = [q for q in questions if q["theme"] == th]
         rep = banc.repondre(graphe, "graphe", qs, bornes)
@@ -126,33 +154,62 @@ def poser(graphe: str, etiquette: str, themes: list[str] | None = None, enregist
                 conso[k] = round(conso.get(k, 0) + v, 4)
             revenues = {i: r for i, r in rep2.items() if (r or {}).get("reponse", "").strip()}
             rep.update(revenues)
-            print(f"      second essai : {len(sans)} « ne sait pas », {len(revenues)} répondue(s) au second essai", flush=True)
+            print(
+                f"      second essai : {len(sans)} « ne sait pas », {len(revenues)} répondue(s) au second essai",
+                flush=True,
+            )
         if couts.en_limite():
-            print(f"  ARRÊT : limite d'usage atteinte au thème « {th[:60]} » — mesure non enregistrée, état dans "
-                  f"{p_cours.name}", file=sys.stderr)
-            p_cours.write_text(json.dumps({"reponses": reponses, "verdicts": verdicts}, ensure_ascii=False), encoding="utf-8")
+            print(
+                f"  ARRÊT : limite d'usage atteinte au thème « {th[:60]} » — mesure non enregistrée, état dans "
+                f"{p_cours.name}",
+                file=sys.stderr,
+            )
+            p_cours.write_text(
+                json.dumps({"reponses": reponses, "verdicts": verdicts}, ensure_ascii=False), encoding="utf-8"
+            )
             return None
         reponses.update(rep)
         verdicts.update(banc.juger(qs, rep, bornes["delai"]))
-        par_theme[th] = {"ensemble": banc.parts([verdicts[q["i"]] for q in qs]),
-                         "fond": banc.parts([verdicts[q["i"]] for q in qs if q["type"] == "ag_fond"]),
-                         "actualite": banc.parts([verdicts[q["i"]] for q in qs if q["type"] == "ag_recent"]),
-                         "profond": banc.parts([verdicts[q["i"]] for q in qs])["juste"] >= SEUIL_PROFONDEUR}
-        print(f"    {th[:70]:70} {round(par_theme[th]['ensemble']['juste'] * 100):3d} % juste"
-              f"{'  profond' if par_theme[th]['profond'] else ''}", flush=True)
-        p_cours.write_text(json.dumps({"par_theme": par_theme, "verdicts": verdicts}, ensure_ascii=False), encoding="utf-8")
+        par_theme[th] = {
+            "ensemble": banc.parts([verdicts[q["i"]] for q in qs]),
+            "fond": banc.parts([verdicts[q["i"]] for q in qs if q["type"] == "ag_fond"]),
+            "actualite": banc.parts([verdicts[q["i"]] for q in qs if q["type"] == "ag_recent"]),
+            "profond": banc.parts([verdicts[q["i"]] for q in qs])["juste"] >= SEUIL_PROFONDEUR,
+        }
+        print(
+            f"    {th[:70]:70} {round(par_theme[th]['ensemble']['juste'] * 100):3d} % juste"
+            f"{'  profond' if par_theme[th]['profond'] else ''}",
+            flush=True,
+        )
+        p_cours.write_text(
+            json.dumps({"par_theme": par_theme, "verdicts": verdicts}, ensure_ascii=False), encoding="utf-8"
+        )
     if sum(1 for v in reponses.values() if v.get("reponse")) < len(questions) // 5:
         print(f"  {graphe} : réponses manquantes (limite d'usage ?) — mesure non enregistrée", file=sys.stderr)
         return None
     # Le « socle » comme mesure de profondeur (porteur, 08.10.2026) : un thème est tenu quand le graphe répond juste à
     # SEUIL_PROFONDEUR de ses questions, et non quand ses notions existent comme nœuds.
     profonds = sum(1 for v in par_theme.values() if v["profond"])
-    mesure = {"graphe": graphe, "horodatage": time.strftime("%Y-%m-%dT%H-%M"), "etiquette": etiquette,
-              "methode": banc.methode_du_graphe(graphe), "ensemble": banc.parts(list(verdicts.values())),
-              "profondeur": {"themes_profonds": profonds, "themes": len(par_theme), "seuil": SEUIL_PROFONDEUR},
-              "couts": banc.par_question(conso, len(questions)), "par_theme": par_theme,
-              "details": [{"i": q["i"], "theme": q["theme"], "type": q["type"], "verdict": verdicts[q["i"]],
-                           "reponse": reponses.get(q["i"], {}).get("reponse", "")} for q in questions]}
+    mesure = {
+        "graphe": graphe,
+        "horodatage": time.strftime("%Y-%m-%dT%H-%M"),
+        "etiquette": etiquette,
+        "methode": banc.methode_du_graphe(graphe),
+        "ensemble": banc.parts(list(verdicts.values())),
+        "profondeur": {"themes_profonds": profonds, "themes": len(par_theme), "seuil": SEUIL_PROFONDEUR},
+        "couts": banc.par_question(conso, len(questions)),
+        "par_theme": par_theme,
+        "details": [
+            {
+                "i": q["i"],
+                "theme": q["theme"],
+                "type": q["type"],
+                "verdict": verdicts[q["i"]],
+                "reponse": reponses.get(q["i"], {}).get("reponse", ""),
+            }
+            for q in questions
+        ],
+    }
     if themes and enregistrer and p_hist.exists():
         # Une pose partielle complète la dernière mesure (11.10.2026) : les sujets non posés gardent leurs résultats et
         # la ligne d'historique reste entière — la page et l'acuité lisent la dernière ligne, qui montrerait sinon le
@@ -166,10 +223,17 @@ def poser(graphe: str, etiquette: str, themes: list[str] | None = None, enregist
             pt = {**derniere["par_theme"], **par_theme}
             det = [d for d in derniere.get("details", []) if d.get("theme") not in poses] + mesure["details"]
             profonds = sum(1 for v in pt.values() if v["profond"])
-            mesure.update({"par_theme": pt, "details": det, "ensemble": banc.parts([d["verdict"] for d in det]),
-                           "profondeur": {"themes_profonds": profonds, "themes": len(pt), "seuil": SEUIL_PROFONDEUR},
-                           "etiquette": f"{etiquette} — complément : {len(poses)} sujet(s) posé(s) sur la mesure du "
-                                        f"{derniere['horodatage'][:10]}", "complement_de": derniere["horodatage"]})
+            mesure.update(
+                {
+                    "par_theme": pt,
+                    "details": det,
+                    "ensemble": banc.parts([d["verdict"] for d in det]),
+                    "profondeur": {"themes_profonds": profonds, "themes": len(pt), "seuil": SEUIL_PROFONDEUR},
+                    "etiquette": f"{etiquette} — complément : {len(poses)} sujet(s) posé(s) sur la mesure du "
+                    f"{derniere['horodatage'][:10]}",
+                    "complement_de": derniere["horodatage"],
+                }
+            )
             par_theme = pt
     p_cours.unlink(missing_ok=True)
     if not enregistrer:
@@ -180,32 +244,54 @@ def poser(graphe: str, etiquette: str, themes: list[str] | None = None, enregist
         h.write(json.dumps(mesure, ensure_ascii=False) + "\n")
     # Un sujet neuf tenu au banc par thème sort de l'approfondissement (themes_emergents.nouveaux).
     etat_t = te.lire_etat(graphe)
-    tenus = [th for th, v in par_theme.items() if v["ensemble"]["juste"] >= SEUIL_APPROFONDISSEMENT
-             and etat_t["nouveaux"].get(th, {}).get("statut") == "en cours"]
+    tenus = [
+        th
+        for th, v in par_theme.items()
+        if v["ensemble"]["juste"] >= SEUIL_APPROFONDISSEMENT
+        and etat_t["nouveaux"].get(th, {}).get("statut") == "en cours"
+    ]
     for th in tenus:
-        etat_t["nouveaux"][th]["statut"] = "tenu"; etat_t["nouveaux"][th]["tenu_le"] = time.strftime("%Y-%m-%d")
+        etat_t["nouveaux"][th]["statut"] = "tenu"
+        etat_t["nouveaux"][th]["tenu_le"] = time.strftime("%Y-%m-%d")
     # Un sujet sous SEUIL_APPROFONDISSEMENT entre en approfondissement comme un sujet neuf (09.10.2026) : tête de
     # l'éclaireur et du poseur (les plus faibles d'abord), suivi dans le rapport, jusqu'à 90 % — « tenu » (70 %) est
     # le verdict de la page, pas la fin du travail.
-    faibles = [th for th, v in par_theme.items() if v["ensemble"]["juste"] < SEUIL_APPROFONDISSEMENT
-               and etat_t["nouveaux"].get(th, {}).get("statut") != "en cours"]
-    for th, v in par_theme.items():                 # le score à jour, pour ordonner la file
+    faibles = [
+        th
+        for th, v in par_theme.items()
+        if v["ensemble"]["juste"] < SEUIL_APPROFONDISSEMENT
+        and etat_t["nouveaux"].get(th, {}).get("statut") != "en cours"
+    ]
+    for th, v in par_theme.items():  # le score à jour, pour ordonner la file
         if th in etat_t["nouveaux"]:
             etat_t["nouveaux"][th]["juste"] = round(v["ensemble"]["juste"], 2)
     for th in faibles:
-        etat_t["nouveaux"][th] = {"date": time.strftime("%Y-%m-%d"), "cle": te.cle_de(th), "nuits": 0, "arxiv": [],
-                                  "statut": "en cours", "notions": [], "origine": "banc par thème",
-                                  "juste": round(par_theme[th]["ensemble"]["juste"], 2)}
+        etat_t["nouveaux"][th] = {
+            "date": time.strftime("%Y-%m-%d"),
+            "cle": te.cle_de(th),
+            "nuits": 0,
+            "arxiv": [],
+            "statut": "en cours",
+            "notions": [],
+            "origine": "banc par thème",
+            "juste": round(par_theme[th]["ensemble"]["juste"], 2),
+        }
     if tenus or faibles:
         te.ecrire_etat(graphe, etat_t)
     if tenus or faibles:
         te.ecrire_etat(graphe, etat_t)
     if tenus:
-        print(f"  sujet(s) sortis de l'approfondissement (≥ {SEUIL_APPROFONDISSEMENT:.0%}) : {' ; '.join(t[:50] for t in tenus)}")
+        print(
+            f"  sujet(s) sortis de l'approfondissement (≥ {SEUIL_APPROFONDISSEMENT:.0%}) : {' ; '.join(t[:50] for t in tenus)}"
+        )
     if faibles:
-        print(f"  sujet(s) sous {SEUIL_APPROFONDISSEMENT:.0%}, en approfondissement : {' ; '.join(t[:50] for t in faibles)}")
+        print(
+            f"  sujet(s) sous {SEUIL_APPROFONDISSEMENT:.0%}, en approfondissement : {' ; '.join(t[:50] for t in faibles)}"
+        )
     afficher([mesure])
-    print(f"  profondeur : {profonds} thème(s) tenu(s) sur {len(par_theme)} (≥ {SEUIL_PROFONDEUR:.0%} de réponses justes)")
+    print(
+        f"  profondeur : {profonds} thème(s) tenu(s) sur {len(par_theme)} (≥ {SEUIL_PROFONDEUR:.0%} de réponses justes)"
+    )
     return mesure
 
 
@@ -214,19 +300,26 @@ def combler(graphe: str, delai: int, themes: list[str] | None = None, questions:
     mesure entre au graphe par la voie de l'éclaireur, la question est marquée « comblée » (hors mesure : on ne reteste
     pas une page qu'on a fait entrer), et une question neuve la remplace sur le même sujet (09.10.2026)."""
     from newskit import eclaireur  # noqa: PLC0415
+
     p_jeu, p_hist = chemins(graphe)
     if not p_jeu.exists() or not p_hist.exists():
-        print(f"  {graphe} : pas de jeu ou pas de mesure par thème"); return 0
+        print(f"  {graphe} : pas de jeu ou pas de mesure par thème")
+        return 0
     jeu = json.loads(p_jeu.read_text(encoding="utf-8"))
     par_i = {q["i"]: q for q in jeu}
     m = json.loads(p_hist.read_text(encoding="utf-8").splitlines()[-1])
-    manquees = [par_i[d["i"]] for d in m.get("details", []) if d.get("verdict") != "juste" and d["i"] in par_i and not par_i[d["i"]].get("comblee")]
-    if themes:        # --themes : les seuls sujets à combler (porteur, 11.10.2026 : un sujet, pas tout le jeu)
+    manquees = [
+        par_i[d["i"]]
+        for d in m.get("details", [])
+        if d.get("verdict") != "juste" and d["i"] in par_i and not par_i[d["i"]].get("comblee")
+    ]
+    if themes:  # --themes : les seuls sujets à combler (porteur, 11.10.2026 : un sujet, pas tout le jeu)
         manquees = [q for q in manquees if any(th.casefold() in q["theme"].casefold() for th in themes)]
-    if questions:     # --questions : les seules questions à combler (une perte à la repose se repose avant d'être crue)
+    if questions:  # --questions : les seules questions à combler (une perte à la repose se repose avant d'être crue)
         manquees = [q for q in manquees if int(q["i"]) in set(questions)]
     if not manquees:
-        print(f"  {graphe} : aucune question manquée à combler"); return 0
+        print(f"  {graphe} : aucune question manquée à combler")
+        return 0
     bornes = cfg.eclaireur(graphe)
     interdites = banc.adresses_du_banc(graphe) if hasattr(banc, "adresses_du_banc") else set()
     memoire, connues = eclaireur.lire_memoire(), eclaireur.adresses_connues(graphe)
@@ -236,13 +329,23 @@ def combler(graphe: str, delai: int, themes: list[str] | None = None, questions:
         url = next(iter(banc.adresses_de([q])), "")
         if not url or url in interdites:
             continue
-        ligne = eclaireur.ingerer(graphe, {"url": url, "titre": "", "point": 0}, [("banc par thème", q["question"])],
-                                  bornes, connues, memoire, aujourdhui)
-        if ligne.startswith("  --  écartée"):      # relue par lecture_web, comme un lien déposé (11.10.2026)
-            ligne = eclaireur.relire_et_ecrire(graphe, url, "banc par thème", q["question"], bornes, connues, aujourdhui, ligne)
+        ligne = eclaireur.ingerer(
+            graphe,
+            {"url": url, "titre": "", "point": 0},
+            [("banc par thème", q["question"])],
+            bornes,
+            connues,
+            memoire,
+            aujourdhui,
+        )
+        if ligne.startswith("  --  écartée"):  # relue par lecture_web, comme un lien déposé (11.10.2026)
+            ligne = eclaireur.relire_et_ecrire(
+                graphe, url, "banc par thème", q["question"], bornes, connues, aujourdhui, ligne
+            )
         print(f"    {ligne.strip()[:120]}")
         if ligne.startswith("  ok") or "déjà au graphe" in ligne:
-            q["comblee"] = aujourdhui; q["ingeree"] = ligne.startswith("  ok")
+            q["comblee"] = aujourdhui
+            q["ingeree"] = ligne.startswith("  ok")
             comblees[q["theme"]] = comblees.get(q["theme"], 0) + 1
     eclaireur.DOSSIER.mkdir(parents=True, exist_ok=True)
     eclaireur.MEMOIRE.write_text(json.dumps(memoire, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -250,10 +353,13 @@ def combler(graphe: str, delai: int, themes: list[str] | None = None, questions:
     # Les remplaçantes, sujet par sujet, autant que de comblées (deux au moins pour que fond et actualité soient servis).
     for th, n in comblees.items():
         if couts.en_limite():
-            print("  ARRÊT : limite d'usage atteinte, remplaçantes au passage suivant", file=sys.stderr); break
+            print("  ARRÊT : limite d'usage atteinte, remplaçantes au passage suivant", file=sys.stderr)
+            break
         composer(graphe, [th], max(2, n), delai, p_jeu=p_jeu, completer=True)
-    print(f"  {graphe} : {sum(comblees.values())} question(s) comblée(s) sur {len(manquees)} manquée(s), "
-          f"{len(comblees)} sujet(s) recomplété(s) ; la prochaine pose mesurera les remplaçantes")
+    print(
+        f"  {graphe} : {sum(comblees.values())} question(s) comblée(s) sur {len(manquees)} manquée(s), "
+        f"{len(comblees)} sujet(s) recomplété(s) ; la prochaine pose mesurera les remplaçantes"
+    )
     return 0
 
 
@@ -266,9 +372,10 @@ def ecarter(graphe: str, i: int, raison: str) -> int:
     jeu = json.loads(p_jeu.read_text(encoding="utf-8"))
     q = next((x for x in jeu if x["i"] == i), None)
     if q is None:
-        print(f"  pas de question n° {i}", file=sys.stderr); return 1
+        print(f"  pas de question n° {i}", file=sys.stderr)
+        return 1
     q["ecartee"] = {"date": time.strftime("%Y-%m-%d"), "raison": raison}
-    q["comblee"] = q.get("comblee") or time.strftime("%Y-%m-%d")       # hors mesure, comme une question comblée
+    q["comblee"] = q.get("comblee") or time.strftime("%Y-%m-%d")  # hors mesure, comme une question comblée
     p_jeu.write_text(json.dumps(jeu, ensure_ascii=False, indent=1), encoding="utf-8")
     if p_hist.exists():
         lignes = p_hist.read_text(encoding="utf-8").splitlines()
@@ -278,18 +385,32 @@ def ecarter(graphe: str, i: int, raison: str) -> int:
             par_theme = {}
             for th in dict.fromkeys(d["theme"] for d in details):
                 ds = [d for d in details if d["theme"] == th]
-                par_theme[th] = {"ensemble": banc.parts([d["verdict"] for d in ds]),
-                                 "fond": banc.parts([d["verdict"] for d in ds if d["type"] == "ag_fond"]),
-                                 "actualite": banc.parts([d["verdict"] for d in ds if d["type"] == "ag_recent"]),
-                                 "profond": banc.parts([d["verdict"] for d in ds])["juste"] >= SEUIL_PROFONDEUR}
-            corr = {**m, "etiquette": m.get("etiquette", "") + f" — corrigée : question {i} écartée par le porteur ({raison[:60]})",
-                    "ensemble": banc.parts([d["verdict"] for d in details]), "par_theme": par_theme, "details": details,
-                    "profondeur": {**(m.get("profondeur") or {}), "themes_profonds": sum(1 for v in par_theme.values() if v["profond"]), "themes": len(par_theme)},
-                    "corrige": {"question": i, "raison": raison, "date": time.strftime("%Y-%m-%d")}}
+                par_theme[th] = {
+                    "ensemble": banc.parts([d["verdict"] for d in ds]),
+                    "fond": banc.parts([d["verdict"] for d in ds if d["type"] == "ag_fond"]),
+                    "actualite": banc.parts([d["verdict"] for d in ds if d["type"] == "ag_recent"]),
+                    "profond": banc.parts([d["verdict"] for d in ds])["juste"] >= SEUIL_PROFONDEUR,
+                }
+            corr = {
+                **m,
+                "etiquette": m.get("etiquette", "")
+                + f" — corrigée : question {i} écartée par le porteur ({raison[:60]})",
+                "ensemble": banc.parts([d["verdict"] for d in details]),
+                "par_theme": par_theme,
+                "details": details,
+                "profondeur": {
+                    **(m.get("profondeur") or {}),
+                    "themes_profonds": sum(1 for v in par_theme.values() if v["profond"]),
+                    "themes": len(par_theme),
+                },
+                "corrige": {"question": i, "raison": raison, "date": time.strftime("%Y-%m-%d")},
+            }
             with open(p_hist, "a", encoding="utf-8") as h:
                 h.write(json.dumps(corr, ensure_ascii=False) + "\n")
-            print(f"  mesure recomptée sans la question {i} : {banc.trois_parts(corr["ensemble"])}, "
-                  f"{corr['profondeur']['themes_profonds']} sujet(s) tenu(s) sur {corr['profondeur']['themes']}")
+            print(
+                f"  mesure recomptée sans la question {i} : {banc.trois_parts(corr['ensemble'])}, "
+                f"{corr['profondeur']['themes_profonds']} sujet(s) tenu(s) sur {corr['profondeur']['themes']}"
+            )
     print(f"  question {i} écartée : {q['question'][:90]}")
     return 0
 
@@ -323,24 +444,58 @@ def main() -> int:
     ap.add_argument("--composer", action="store_true")
     ap.add_argument("--themes", nargs="+", help="thèmes à questionner (défaut : les sujets déclarés)")
     ap.add_argument("--par-theme", type=int, default=10)
-    ap.add_argument("--completer", action="store_true",
-                    help="avec --composer : ajouter --par-theme questions à un sujet déjà composé (un sujet sous dix questions)")
+    ap.add_argument(
+        "--completer",
+        action="store_true",
+        help="avec --composer : ajouter --par-theme questions à un sujet déjà composé (un sujet sous dix questions)",
+    )
     ap.add_argument("--poser", action="store_true")
     ap.add_argument("--etiquette", default="mesure")
     ap.add_argument("--etat", action="store_true")
-    ap.add_argument("--local", dest="local", action="store_true", default=None, help="composer par lecture locale (défaut : registre banc.lecture_locale, vrai)")
-    ap.add_argument("--modele-lit", dest="local", action="store_false", help="l'ancienne voie : le modèle cherche et lit lui-même (WebFetch)")
-    ap.add_argument("--sortie", help="écrire le jeu composé dans ce fichier plutôt que dans themes_banc.json (essai, comparaison)")
-    ap.add_argument("--ecarter", type=int, metavar="I", help="écarter la question n° I du jeu (réponse attendue moins juste que le graphe), avec --raison")
+    ap.add_argument(
+        "--local",
+        dest="local",
+        action="store_true",
+        default=None,
+        help="composer par lecture locale (défaut : registre banc.lecture_locale, vrai)",
+    )
+    ap.add_argument(
+        "--modele-lit",
+        dest="local",
+        action="store_false",
+        help="l'ancienne voie : le modèle cherche et lit lui-même (WebFetch)",
+    )
+    ap.add_argument(
+        "--sortie", help="écrire le jeu composé dans ce fichier plutôt que dans themes_banc.json (essai, comparaison)"
+    )
+    ap.add_argument(
+        "--ecarter",
+        type=int,
+        metavar="I",
+        help="écarter la question n° I du jeu (réponse attendue moins juste que le graphe), avec --raison",
+    )
     ap.add_argument("--raison", default="réponse attendue jugée moins juste que celle du graphe par le porteur")
-    ap.add_argument("--questions", type=int, nargs="+", metavar="I", help="avec --combler : les seules questions (n° I) à combler")
-    ap.add_argument("--combler", action="store_true",
-                    help="ingérer les pages des questions manquées à la dernière mesure, les retirer du jeu, composer leurs remplaçantes")
-    ap.add_argument("--sans-cartes", action="store_true",
-                    help="poser sans le routage par les cartes des sujets (KG_SANS_CARTES=1 pour synthese.repondre) : mesurer l'un contre l'autre")
-    ap.add_argument("--essai", action="store_true", help="avec --poser : ne rien enregistrer (échantillon, comparaison)")
-    ap.add_argument("--poser-du-jour", action="store_true",
-                    help="poser si c'est dû : jamais mesuré, dernière mesure de plus de banc.renouveler_jours jours, ou thème nouveau au jeu")
+    ap.add_argument(
+        "--questions", type=int, nargs="+", metavar="I", help="avec --combler : les seules questions (n° I) à combler"
+    )
+    ap.add_argument(
+        "--combler",
+        action="store_true",
+        help="ingérer les pages des questions manquées à la dernière mesure, les retirer du jeu, composer leurs remplaçantes",
+    )
+    ap.add_argument(
+        "--sans-cartes",
+        action="store_true",
+        help="poser sans le routage par les cartes des sujets (KG_SANS_CARTES=1 pour synthese.repondre) : mesurer l'un contre l'autre",
+    )
+    ap.add_argument(
+        "--essai", action="store_true", help="avec --poser : ne rien enregistrer (échantillon, comparaison)"
+    )
+    ap.add_argument(
+        "--poser-du-jour",
+        action="store_true",
+        help="poser si c'est dû : jamais mesuré, dernière mesure de plus de banc.renouveler_jours jours, ou thème nouveau au jeu",
+    )
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
     banc.CONTEXTE.update(poste="banc_themes", graphe=g)  # registre des coûts
@@ -361,7 +516,8 @@ def main() -> int:
     if a.poser_du_jour:
         p_jeu, p_hist = chemins(g)
         if not p_jeu.exists():
-            print(f"  {g} : pas de jeu par thème"); return 0
+            print(f"  {g} : pas de jeu par thème")
+            return 0
         jours = cfg.banc().get("renouveler_jours", 0) or 30
         themes_jeu = {q.get("theme") for q in json.loads(p_jeu.read_text(encoding="utf-8"))}
         # Un sujet déclaré à la main (`themes_emergents.py declarer`) n'a pas de sous-jeu : la routine n'en composait que
@@ -379,18 +535,31 @@ def main() -> int:
             themes_jeu = {x.get("theme") for x in q}
             for th in manquants:
                 print(f"  {g} : sous-jeu composé pour le sujet déclaré sans questions « {th[:60]} »")
-        mesures = [json.loads(l) for l in p_hist.read_text(encoding="utf-8").splitlines() if l.strip()] if p_hist.exists() else []
+        mesures = (
+            [json.loads(l) for l in p_hist.read_text(encoding="utf-8").splitlines() if l.strip()]
+            if p_hist.exists()
+            else []
+        )
         if mesures:
             derniere = mesures[-1]
             age = (time.time() - time.mktime(time.strptime(derniere["horodatage"], "%Y-%m-%dT%H-%M"))) / 86400
             neufs = themes_jeu - set(derniere["par_theme"])
             horo_m = derniere["horodatage"].replace("T", " ").replace("-", ":", 4).replace(":", "-", 2)
-            ajoutees = sum(1 for q in json.loads(p_jeu.read_text(encoding="utf-8"))
-                           if not q.get("comblee") and str(q.get("ajoutee") or "") > horo_m)
+            ajoutees = sum(
+                1
+                for q in json.loads(p_jeu.read_text(encoding="utf-8"))
+                if not q.get("comblee") and str(q.get("ajoutee") or "") > horo_m
+            )
             if age < jours and not neufs and not ajoutees:
-                print(f"  {g} : mesure par thème du {derniere['horodatage'][:10]}, renouvellement dans {int(jours - age)} jour(s)"); return 0
-            etiquette = f"mesure du {time.strftime('%Y-%m-%d')}" + (f", {len(neufs)} thème(s) nouveau(x)" if neufs else "") \
+                print(
+                    f"  {g} : mesure par thème du {derniere['horodatage'][:10]}, renouvellement dans {int(jours - age)} jour(s)"
+                )
+                return 0
+            etiquette = (
+                f"mesure du {time.strftime('%Y-%m-%d')}"
+                + (f", {len(neufs)} thème(s) nouveau(x)" if neufs else "")
                 + (f", {ajoutees} question(s) ajoutée(s)" if ajoutees else "")
+            )
         else:
             etiquette = f"première mesure, {time.strftime('%Y-%m-%d')}"
         return 0 if poser(g, etiquette) else 1

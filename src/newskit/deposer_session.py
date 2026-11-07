@@ -35,6 +35,7 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402
 
+
 def cookies_attendus(nom_session: str) -> tuple[str, ...]:
     """Les cookies sans lesquels le site ne reconnaît pas de session : `cookies:` de la session au registre (N2). Les
     autres cookies (préférences, mesure d'audience) peuvent manquer sans conséquence."""
@@ -74,12 +75,15 @@ def examiner(nom_session: str, valeur: str, genre_: str = "cookie") -> tuple[boo
         return True, f"{len(v)} caractères"
     noms = noms_de_cookies(v)
     attendus = cookies_attendus(nom_session)
-    courts = [n if len(n) <= 30 else n[:27] + '…' for n in noms[:12]]
+    courts = [n if len(n) <= 30 else n[:27] + "…" for n in noms[:12]]
     detail = f"{len(v)} caractères, {len(noms)} cookie(s) : {', '.join(courts)}"
     if len(noms) > 12:
         detail += ", …"
     if v.lower().startswith("cookie:"):
-        return False, detail + "\n  l'en-tête commence par « cookie: » : coller la valeur seule, sans le nom de l'en-tête"
+        return (
+            False,
+            detail + "\n  l'en-tête commence par « cookie: » : coller la valeur seule, sans le nom de l'en-tête",
+        )
     if "=" not in v:
         return False, detail + "\n  ce n'est pas un en-tête cookie (aucun nom=valeur)"
     bizarres = sorted({c for c in v if ord(c) < 32 or ord(c) > 126})
@@ -89,8 +93,10 @@ def examiner(nom_session: str, valeur: str, genre_: str = "cookie") -> tuple[boo
         # contrôle) fait répondre 400 au serveur, ce qui ressemble à un refus.
         return False, detail + f"\n  {len(bizarres)} caractère(s) hors ASCII imprimable : {bizarres[:5]!r}"
     if attendus and not any(a in noms for a in attendus):
-        return False, detail + (f"\n  le cookie de session « {attendus[0]} » manque : la valeur ne vient pas "
-                                f"d'une requête connectée à ce site")
+        return False, detail + (
+            f"\n  le cookie de session « {attendus[0]} » manque : la valeur ne vient pas "
+            f"d'une requête connectée à ce site"
+        )
     if len(v) in (1023, 1024):
         return False, detail + "\n  longueur exactement 1 024 : tronquée par le terminal, à recoller par ce script"
     return True, detail
@@ -140,8 +146,7 @@ def trousseau_ouvert() -> bool:
     recréée pour cette raison. On vérifie donc avant de toucher à quoi que ce
     soit, et on déverrouille à l'écran si nécessaire.
     """
-    r = subprocess.run(["security", "show-keychain-info", str(TROUSSEAU)],
-                       capture_output=True, text=True)
+    r = subprocess.run(["security", "show-keychain-info", str(TROUSSEAU)], capture_output=True, text=True)
     return "not allowed" not in (r.stderr or "")
 
 
@@ -169,8 +174,9 @@ def deposer(nom_session: str, valeur: str) -> int:
     if not ouvrir_trousseau():
         return 1
     if cfg.etat_session(nom_session) != "absente":
-        r = subprocess.run(["security", "delete-generic-password", "-a", compte, "-s", service],
-                           capture_output=True, text=True)
+        r = subprocess.run(
+            ["security", "delete-generic-password", "-a", compte, "-s", service], capture_output=True, text=True
+        )
         if r.returncode != 0:
             print(f"  l'ancienne entrée n'a pas pu être supprimée : {r.stderr.strip()}", file=sys.stderr)
             return 1
@@ -178,9 +184,11 @@ def deposer(nom_session: str, valeur: str) -> int:
     # La valeur passe en argument de `security`, comme le fait déjà la variante
     # `-w "$(pbpaste)"` du registre : brièvement visible dans la table des
     # processus, jamais dans un fichier ni dans l'historique du shell.
-    r = subprocess.run(["security", "add-generic-password", "-a", compte, "-s", service,
-                        "-T", "/usr/bin/security", "-w", valeur],
-                       capture_output=True, text=True)
+    r = subprocess.run(
+        ["security", "add-generic-password", "-a", compte, "-s", service, "-T", "/usr/bin/security", "-w", valeur],
+        capture_output=True,
+        text=True,
+    )
     if r.returncode != 0:
         print(f"  security a refusé : {r.stderr.strip()}", file=sys.stderr)
         return 1

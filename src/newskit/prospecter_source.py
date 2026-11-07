@@ -52,17 +52,31 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code 
 from newskit import collecte_rss as rss  # noqa: E402
 from newskit.commun import UA_NAVIGATEUR as UA, html_to_md  # noqa: E402
 
-CHEMINS_FLUX = ("/feed/", "/feed", "/rss/", "/rss.xml", "/atom.xml", "/index.xml",
-                "/feed.xml", "/blog/feed.xml", "/blog/rss.xml")
+CHEMINS_FLUX = (
+    "/feed/",
+    "/feed",
+    "/rss/",
+    "/rss.xml",
+    "/atom.xml",
+    "/index.xml",
+    "/feed.xml",
+    "/blog/feed.xml",
+    "/blog/rss.xml",
+)
 MOTS_MINIMUM = 120
 MOIS_MORT = 18
 
 
 def _get(url: str, json_attendu: bool = False, timeout: int = 25):
-    req = urllib.request.Request(url, headers={
-        "User-Agent": UA,
-        "Accept": "application/json" if json_attendu
-        else "application/rss+xml,application/atom+xml,application/xml,text/html"})
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": UA,
+            "Accept": "application/json"
+            if json_attendu
+            else "application/rss+xml,application/atom+xml,application/xml,text/html",
+        },
+    )
     with urllib.request.urlopen(req, timeout=timeout) as r:
         brut = r.read()
     return json.loads(brut) if json_attendu else brut
@@ -78,12 +92,15 @@ def essai_substack(domaine: str) -> dict | None:
         return None
     mots = [int(p.get("wordcount") or 0) for p in d if p.get("wordcount")]
     payants = sum(1 for p in d if p.get("audience") == "only_paid")
-    return {"echantillon": " ".join((p.get("title") or "") + " " + (p.get("subtitle") or "")
-                                    for p in d),
-            "voie": "Substack", "adresse": f"https://{domaine}",
-            "entrees": len(d), "dernier": d[0]["post_date"][:10],
-            "mots": int(statistics.median(mots)) if mots else 0,
-            "note": f"{payants}/{len(d)} billets réservés aux abonnés payants"}
+    return {
+        "echantillon": " ".join((p.get("title") or "") + " " + (p.get("subtitle") or "") for p in d),
+        "voie": "Substack",
+        "adresse": f"https://{domaine}",
+        "entrees": len(d),
+        "dernier": d[0]["post_date"][:10],
+        "mots": int(statistics.median(mots)) if mots else 0,
+        "note": f"{payants}/{len(d)} billets réservés aux abonnés payants",
+    }
 
 
 def flux_declare(domaine: str) -> str | None:
@@ -93,7 +110,7 @@ def flux_declare(domaine: str) -> str | None:
             html = _get(schema + domaine).decode("utf-8", "replace")
         except Exception:
             continue
-        for m in re.finditer(r'<link[^>]+>', html, re.I):
+        for m in re.finditer(r"<link[^>]+>", html, re.I):
             bal = m.group(0)
             if "alternate" in bal.lower() and re.search(r"rss|atom", bal, re.I):
                 href = re.search(r'href="([^"]+)"', bal)
@@ -132,14 +149,18 @@ def essai_flux(domaine: str) -> dict | None:
 def mesurer_flux(url: str, items: list[dict], decouvert: bool = False) -> dict:
     mots = [len(html_to_md(htmlmod.unescape(i["corps"])).split()) for i in items[:12]]
     dates = [i["date"] for i in items if i["date"]]
-    echantillon = " ".join((i["titre"] + " " + htmlmod.unescape(i["corps"])[:1500])
-                           for i in items[:12])
-    return {"echantillon": re.sub(r"<[^>]+>", " ", echantillon),
-            "voie": "flux" + (" (autodécouvert)" if decouvert else ""), "adresse": url,
-            "entrees": len(items), "dernier": max(dates) if dates else "?",
-            "mots": int(statistics.median(mots)) if mots else 0,
-            "note": "le flux porte le texte" if (mots and statistics.median(mots) >= MOTS_MINIMUM)
-                    else "flux sans texte : il faudra lire la page (page: true)"}
+    echantillon = " ".join((i["titre"] + " " + htmlmod.unescape(i["corps"])[:1500]) for i in items[:12])
+    return {
+        "echantillon": re.sub(r"<[^>]+>", " ", echantillon),
+        "voie": "flux" + (" (autodécouvert)" if decouvert else ""),
+        "adresse": url,
+        "entrees": len(items),
+        "dernier": max(dates) if dates else "?",
+        "mots": int(statistics.median(mots)) if mots else 0,
+        "note": "le flux porte le texte"
+        if (mots and statistics.median(mots) >= MOTS_MINIMUM)
+        else "flux sans texte : il faudra lire la page (page: true)",
+    }
 
 
 def pertinence(r: dict, items_texte: str) -> tuple[int, str]:
@@ -184,7 +205,7 @@ def sante_des_sources() -> int:
         elif s.plateforme == "Substack":
             r = essai_substack(s.domaine)
         else:
-            continue                      # sources locales ou sans réseau
+            continue  # sources locales ou sans réseau
         v, pourquoi = verdict(r)
         mauvaises += 0 if v == "OUI" else 1
         if r:
@@ -230,23 +251,54 @@ def verdict(r: dict) -> tuple[str, str]:
 def bloc_yaml(domaine: str, r: dict) -> str:
     cle = re.sub(r"[^a-z0-9]+", "_", domaine.lower()).strip("_")[:40]
     if r["voie"] == "Substack":
-        return (f"  - cle: {cle}\n    plateforme: Substack\n    nom: ?\n"
-                f"    dossier: substack/{cle}\n    domaine: {domaine}\n    abonnement: gratuit")
+        return (
+            f"  - cle: {cle}\n    plateforme: Substack\n    nom: ?\n"
+            f"    dossier: substack/{cle}\n    domaine: {domaine}\n    abonnement: gratuit"
+        )
     lire_page = "\n    page: true" if r["mots"] < MOTS_MINIMUM else ""
-    return (f"  - cle: {cle}\n    plateforme: Flux RSS\n    nom: ?\n"
-            f"    dossier: rss/{cle}\n    abonnement: gratuit\n"
-            f"    flux: {r['adresse']}\n    site: https://{domaine}{lire_page}")
+    return (
+        f"  - cle: {cle}\n    plateforme: Flux RSS\n    nom: ?\n"
+        f"    dossier: rss/{cle}\n    abonnement: gratuit\n"
+        f"    flux: {r['adresse']}\n    site: https://{domaine}{lire_page}"
+    )
 
 
 # Domaines qui ne seront jamais une source de veille : dépôts de code, réseaux
 # sociaux, encyclopédies, boutiques, hébergeurs d'images. Les écarter ici évite
 # de les repeser à chaque passage.
-JAMAIS = ("arxiv.org", "github.com", "gitlab.com", "doi.org", "youtube.com", "youtu.be",
-          "x.com", "twitter.com", "linkedin.com", "substack.com", "medium.com",
-          "wikipedia.org", "reddit.com", "discord.com", "discord.gg", "threads.net",
-          "facebook.com", "instagram.com", "tiktok.com", "amazon.com", "shoutout.io",
-          "unsplash.com", "nostarch.com", "eventbrite.com", "zoom.us", "docs.google.com",
-          "drive.google.com", "forms.gle", "bit.ly", "t.co", "lnkd.in")
+JAMAIS = (
+    "arxiv.org",
+    "github.com",
+    "gitlab.com",
+    "doi.org",
+    "youtube.com",
+    "youtu.be",
+    "x.com",
+    "twitter.com",
+    "linkedin.com",
+    "substack.com",
+    "medium.com",
+    "wikipedia.org",
+    "reddit.com",
+    "discord.com",
+    "discord.gg",
+    "threads.net",
+    "facebook.com",
+    "instagram.com",
+    "tiktok.com",
+    "amazon.com",
+    "shoutout.io",
+    "unsplash.com",
+    "nostarch.com",
+    "eventbrite.com",
+    "zoom.us",
+    "docs.google.com",
+    "drive.google.com",
+    "forms.gle",
+    "bit.ly",
+    "t.co",
+    "lnkd.in",
+)
 
 
 def candidats_du_corpus(combien: int) -> list[tuple[str, int, int]]:
@@ -273,8 +325,7 @@ def candidats_du_corpus(combien: int) -> list[tuple[str, int, int]]:
         for champ in ("domaine", "site", "flux"):
             v = getattr(s, champ, None)
             if v:
-                declares.add(urllib.parse.urlsplit(
-                    v if "//" in v else "https://" + v).netloc.removeprefix("www."))
+                declares.add(urllib.parse.urlsplit(v if "//" in v else "https://" + v).netloc.removeprefix("www."))
 
     citations: Counter = Counter()
     fiches: dict[str, set] = {}
@@ -295,14 +346,20 @@ def candidats_du_corpus(combien: int) -> list[tuple[str, int, int]]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("domaines", nargs="*", help="domaines à éprouver")
     ap.add_argument("--fichier", type=Path, help="fichier de domaines, un par ligne")
-    ap.add_argument("--depuis-corpus", type=int, metavar="N", nargs="?", const=12,
-                    help="éprouver les N domaines que le corpus cite le plus sans les suivre")
-    ap.add_argument("--sante", action="store_true",
-                    help="réexaminer les sources déjà déclarées : éteintes, muettes, maigries")
+    ap.add_argument(
+        "--depuis-corpus",
+        type=int,
+        metavar="N",
+        nargs="?",
+        const=12,
+        help="éprouver les N domaines que le corpus cite le plus sans les suivre",
+    )
+    ap.add_argument(
+        "--sante", action="store_true", help="réexaminer les sources déjà déclarées : éteintes, muettes, maigries"
+    )
     args = ap.parse_args()
 
     if args.sante:
@@ -316,8 +373,7 @@ def main() -> int:
             origine[hote] = f"cité par {fic} fiche(s), {cit} fois"
         print(f"  {len(domaines)} domaine(s) proposés par le corpus lui-même\n")
     if args.fichier:
-        domaines += [l.strip() for l in args.fichier.read_text().splitlines()
-                     if l.strip() and not l.startswith("#")]
+        domaines += [l.strip() for l in args.fichier.read_text().splitlines() if l.strip() and not l.startswith("#")]
     if not domaines:
         ap.error("aucun domaine à éprouver (voir --depuis-corpus ou --sante)")
 
@@ -342,8 +398,9 @@ def main() -> int:
         time.sleep(0.5)
 
     if retenus:
-        print(f"\n  {len(retenus)} source(s) collectable(s). À déclarer dans sources.yaml "
-              f"après avoir choisi le nom :\n")
+        print(
+            f"\n  {len(retenus)} source(s) collectable(s). À déclarer dans sources.yaml après avoir choisi le nom :\n"
+        )
         for d, r in retenus:
             print(bloc_yaml(d, r), "\n")
     return 0

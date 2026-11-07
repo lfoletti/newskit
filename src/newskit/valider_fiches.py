@@ -21,6 +21,7 @@ from pathlib import Path
 from newskit import fiche  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 DOSSIERS = ["sources", "recherche"]
 
 
@@ -29,9 +30,7 @@ def main() -> int:
     ap.add_argument("--detail", action="store_true", help="liste chaque manquement")
     args = ap.parse_args()
 
-    chemins = sorted(
-        c for d in DOSSIERS for c in (RACINE / d).rglob("*.md") if not c.name.startswith("_")
-    )
+    chemins = sorted(c for d in DOSSIERS for c in (RACINE / d).rglob("*.md") if not c.name.startswith("_"))
     total_err = total_avert = 0
     par_type: Counter = Counter()
 
@@ -46,7 +45,8 @@ def main() -> int:
             continue
         erreurs, avertissements = fiche.valider(champs)
         e2, a2 = fiche.verifier_corps(corps, champs)
-        erreurs += e2; avertissements += a2
+        erreurs += e2
+        avertissements += a2
         total_err += len(erreurs)
         total_avert += len(avertissements)
         for e in erreurs:

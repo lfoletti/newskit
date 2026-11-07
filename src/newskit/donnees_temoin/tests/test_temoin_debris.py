@@ -27,9 +27,21 @@ RETIREE = "vol-de-ruche"
 
 
 def _passe(t):
-    return subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                           "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                          capture_output=True, text=True, timeout=900)
+    return subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -38,14 +50,16 @@ def recompose(tmp_path_factory):
     r1 = _passe(t)
     assert r1.returncode == 0, r1.stdout[-1500:]
     retirees = list(t.donnees.rglob(f"{RETIREE}*.md"))
-    assert len(retirees) == 2                              # l'original du dossier et sa copie collectée
+    assert len(retirees) == 2  # l'original du dossier et sa copie collectée
     for p in retirees:
         p.unlink()
     y = next((t.donnees / "sources" / "ruchers" / "dossier").glob("marque-des-ruches*.md"))
-    y.write_text(y.read_text(encoding="utf-8") + "\n## **Le registre des marques**\n\nIl compte 63 marques.\n",
-                 encoding="utf-8")
-    (t.donnees / "cache" / "limite_atteinte").write_text(time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n",
-                                                         encoding="utf-8")
+    y.write_text(
+        y.read_text(encoding="utf-8") + "\n## **Le registre des marques**\n\nIl compte 63 marques.\n", encoding="utf-8"
+    )
+    (t.donnees / "cache" / "limite_atteinte").write_text(
+        time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n", encoding="utf-8"
+    )
     r2 = _passe(t)
     g = json.load(gzip.open(t.donnees / "graphe" / "graphe.json.gz"))
     return t, r2, g
@@ -54,7 +68,9 @@ def recompose(tmp_path_factory):
 def test_aucune_arete_ne_cite_une_fiche_absente(recompose):
     t, r, g = recompose
     assert r.returncode == 0, r.stdout[-1500:]
-    absentes = [l["source_file"] for l in g["links"] if l.get("source_file") and not (t.donnees / l["source_file"]).exists()]
+    absentes = [
+        l["source_file"] for l in g["links"] if l.get("source_file") and not (t.donnees / l["source_file"]).exists()
+    ]
     assert absentes == []
 
 
@@ -67,4 +83,4 @@ def test_aucun_libelle_de_balisage(recompose):
     _, _, g = recompose
     balises = [x["label"] for x in g["nodes"] if re.search(r"\*\*|__|`|^\s*#|^\W*$", x.get("label") or "")]
     assert balises == []
-    assert any(x.get("label") == "Le registre des marques" for x in g["nodes"])   # nettoyé, pas perdu
+    assert any(x.get("label") == "Le registre des marques" for x in g["nodes"])  # nettoyé, pas perdu

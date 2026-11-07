@@ -10,6 +10,7 @@ le modèle est vérifiée MOT POUR MOT dans le texte avant d'être gardée — c
 
     python3 -m newskit.lecture_web <url> [<url>…]      # ce que le modèle recevrait : titre, date, mots, début du texte
 """
+
 from __future__ import annotations
 
 import re
@@ -29,20 +30,25 @@ ENTETES = ENTETES_NAVIGATEUR
 REFUS = {401, 403, 429, 451, 503}
 # Un mur anti-robot servi en 200 : marques de Cloudflare, DataDome, PerimeterX, Imperva, Akamai, AWS WAF. Cherchées seulement
 # dans le titre et le code d'une page courte (un article qui en parle reste un article).
-RE_MUR = re.compile(r"<title>\s*(just a moment|attention required|access denied|pardon our interruption|"
-                    r"un instant)|/cdn-cgi/challenge-platform/|cf-chl-|captcha-delivery\.com|px-captcha|"
-                    r"_incapsula_resource|awsWafCookieDomainList|gokuProps", re.I)
+RE_MUR = re.compile(
+    r"<title>\s*(just a moment|attention required|access denied|pardon our interruption|"
+    r"un instant)|/cdn-cgi/challenge-platform/|cf-chl-|captcha-delivery\.com|px-captcha|"
+    r"_incapsula_resource|awsWafCookieDomainList|gokuProps",
+    re.I,
+)
 MOTS_MUR = 200
-MOTS_LUE = 80               # sous 80 mots, une page n'est pas lue : « page trop courte »
+MOTS_LUE = 80  # sous 80 mots, une page n'est pas lue : « page trop courte »
 
 
 def _obtenir(url: str, entetes: dict | None = None) -> tuple[bytes, str, str, str]:
     """(octets, type, jeu de caractères, raison) ; raison non vide si la page est refusée ou injoignable."""
     import urllib.error  # noqa: PLC0415
     import urllib.request  # noqa: PLC0415
+
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers=dict(entetes or ENTETES)), timeout=DELAI) as r:
             from newskit import collecte_rss as cr  # noqa: PLC0415
+
             octets = cr._decompresser(r.read(), r.headers.get("Content-Encoding"))
             return octets, r.headers.get_content_type() or "", r.headers.get_content_charset() or "utf-8", ""
     except urllib.error.HTTPError as e:
@@ -77,14 +83,24 @@ def telecharger(url: str) -> tuple[str, str]:
 # mur AWS WAF à tout client sans JavaScript (26 mots lus pour le règlement 2024/1689). Le dépôt Cellar de l'Office des
 # publications rend l'acte entier en XHTML par négociation de contenu, sans mur : 92 410 mots pour l'AI Act.
 CELLAR = "https://publications.europa.eu/resource/celex/"
-TYPES_ELI = {"reg": "R", "reg_impl": "R", "reg_del": "R", "dir": "L", "dir_impl": "L", "dir_del": "L", "dec": "D",
-             "dec_impl": "D", "dec_del": "D"}
+TYPES_ELI = {
+    "reg": "R",
+    "reg_impl": "R",
+    "reg_del": "R",
+    "dir": "L",
+    "dir_impl": "L",
+    "dir_del": "L",
+    "dec": "D",
+    "dec_impl": "D",
+    "dec_del": "D",
+}
 LANGUES = {"en": "eng", "fr": "fra", "de": "deu", "it": "ita", "es": "spa", "nl": "nld", "pt": "por", "pl": "pol"}
 
 
 def celex_de(url: str) -> tuple[str, str] | None:
     """(numéro CELEX, langue en trois lettres) d'une adresse d'EUR-Lex, ou None."""
     import urllib.parse  # noqa: PLC0415
+
     u = urllib.parse.unquote(url or "")
     if not re.match(r"https?://(www\.)?eur-lex\.europa\.eu/", u, re.I):
         return None
@@ -105,6 +121,7 @@ def _texte_pdf(octets: bytes) -> str:
     """Le texte d'un PDF, extrait localement par pypdf (déjà installé), une page après l'autre."""
     import io  # noqa: PLC0415
     import pypdf  # noqa: PLC0415
+
     lecteur = pypdf.PdfReader(io.BytesIO(octets))
     return "\n".join((pg.extract_text() or "").strip() for pg in lecteur.pages).strip()
 
@@ -125,9 +142,11 @@ RE_NOTE_CROCHET = re.compile(r"^\s*\[\d{1,3}\]\s*\S")
 RE_NOTE_POINT = re.compile(r"^\s*\d{1,3}\.\s+\S")
 RE_TITRE_NOTES = re.compile(
     r"^\W*(foot ?notes?|end ?notes?|notes?|references|sources|notes de bas de page|fussnoten|fu(ss|ß)noten|anmerkungen|"
-    r"endnoten|voetnoten|noten|note|notas|referencias|referenze)\W*$", re.I)
-MOTS_PARASITE = 25          # une ligne d'abonnement : moins de 25 mots
-MOTS_PARTAGE = 8            # une ligne de partage : un bouton, quelques mots (« Teilen der Bevölkerung… » est du fond)
+    r"endnoten|voetnoten|noten|note|notas|referencias|referenze)\W*$",
+    re.I,
+)
+MOTS_PARASITE = 25  # une ligne d'abonnement : moins de 25 mots
+MOTS_PARTAGE = 8  # une ligne de partage : un bouton, quelques mots (« Teilen der Bevölkerung… » est du fond)
 RE_ABONNEMENT = re.compile(  # sur le texte plié (`_plier`) : minuscules, sans accents
     r"^(subscribe|sign up|signup|join our (mailing list|newsletter)|get our newsletter|stay (current|up to date|informed)|"
     r"abonnez vous|abonne toi|s abonner|inscrivez vous|recevez notre (lettre|newsletter)|"
@@ -136,11 +155,13 @@ RE_ABONNEMENT = re.compile(  # sur le texte plié (`_plier`) : minuscules, sans 
     r"iscriviti|abbonati|"
     r"suscribete|suscribase|suscribirse|registrate)\b"
     r"|\b(newsletter|nieuwsbrief|boletin|lettre d information)\b.*\b(sign up|subscribe|abonn|inscri|iscriv|suscri|aanmeld)"
-    r"|\b(sign up|subscribe|abonn|inscri|iscriv|suscri|aanmeld)\w*\b.*\b(newsletter|nieuwsbrief|boletin)\b")
+    r"|\b(sign up|subscribe|abonn|inscri|iscriv|suscri|aanmeld)\w*\b.*\b(newsletter|nieuwsbrief|boletin)\b"
+)
 RE_PARTAGE = re.compile(
     r"^(share( this| on| via| article|$)|follow us|partager|partagez|suivez nous|teilen|diesen artikel teilen|"
     r"artikel teilen|folgen sie uns|delen|deel dit|deel dit artikel|volg ons|condividi|seguici|comparte|compartir|"
-    r"siguenos)\b")
+    r"siguenos)\b"
+)
 
 
 def _parasite(ligne: str) -> bool:
@@ -163,7 +184,8 @@ def nettoyer(texte: str) -> tuple[str, str]:
     while debut > 0:
         l = lignes[debut - 1]
         if not l.strip():
-            debut -= 1; continue
+            debut -= 1
+            continue
         if RE_NOTE_CROCHET.match(l):
             crochets += 1
         elif not RE_NOTE_POINT.match(l):
@@ -192,11 +214,58 @@ def nettoyer(texte: str) -> tuple[str, str]:
 # une audition du Bundestag dans un onglet. On reprend les blocs feuilles de la page (texte propre d'un p, li, dt, dd,
 # td, th, titre, div…) qui manquent au texte, chacun après le dernier bloc que trafilatura a gardé (une clé et sa valeur
 # restent voisines) ; ni menus, en-têtes, pieds, ni bloc avant le premier gardé (il n'a pas d'ancre), ni hors de <main>.
-BALISES_BLOC = {"p", "div", "li", "ul", "ol", "dl", "dt", "dd", "table", "thead", "tbody", "tfoot", "tr", "td", "th",
-                "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "main", "blockquote", "pre", "figure",
-                "figcaption", "caption", "header", "footer", "nav", "aside", "form", "br"}
-BALISES_OTEES = ("script", "style", "noscript", "nav", "header", "footer", "aside", "form", "template", "svg", "button",
-                 "select", "iframe")
+BALISES_BLOC = {
+    "p",
+    "div",
+    "li",
+    "ul",
+    "ol",
+    "dl",
+    "dt",
+    "dd",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "td",
+    "th",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "section",
+    "article",
+    "main",
+    "blockquote",
+    "pre",
+    "figure",
+    "figcaption",
+    "caption",
+    "header",
+    "footer",
+    "nav",
+    "aside",
+    "form",
+    "br",
+}
+BALISES_OTEES = (
+    "script",
+    "style",
+    "noscript",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "form",
+    "template",
+    "svg",
+    "button",
+    "select",
+    "iframe",
+)
 
 
 def _reparer(html: str) -> str:
@@ -208,6 +277,7 @@ def _feuilles(html: str) -> list[str]:
     """Le texte propre de chaque bloc de la zone principale (<main>, sinon le plus long <article>, sinon la page), dans
     l'ordre du document : le texte du bloc et de ses éléments en ligne, sans celui de ses blocs enfants."""
     import lxml.html  # noqa: PLC0415
+
     try:
         doc = lxml.html.document_fromstring(html)
     except Exception:  # noqa: BLE001
@@ -254,17 +324,17 @@ def rattraper(html: str, texte: str) -> tuple[str, int]:
         if p in plie:
             tete = " ".join(p.split()[:4])
             j = next((k for k in range(pos, len(pl)) if tete in pl[k]), None)
-            j = ancre if j is None else j   # jamais en arrière : la carte d'une fiche voisine ramenait l'ancre en tête
+            j = ancre if j is None else j  # jamais en arrière : la carte d'une fiche voisine ramenait l'ancre en tête
             if j is not None:
                 ancre, pos = j, max(pos, j)
             continue
         if p in vus:
             continue
         if len(p.split()) < 2 and not re.search(r"\d", p):
-            continue                       # un mot seul : un bouton, un onglet
+            continue  # un mot seul : un bouton, un onglet
         vus.add(p)
         ajouts.setdefault(ancre, []).append(f)
-    ajouts.pop(None, None)                 # avant le premier bloc gardé : un en-tête, sans ancre
+    ajouts.pop(None, None)  # avant le premier bloc gardé : un en-tête, sans ancre
     if not ajouts:
         return texte, 0
     out = []
@@ -282,7 +352,9 @@ INFOCURIA_API = "https://infocuriaws.curia.europa.eu/blob/"
 
 def infocuria_api(url: str) -> str | None:
     """L'adresse de l'API qui rend le document d'une page InfoCuria, ou None."""
-    m = re.match(r"https?://infocuria\.curia\.europa\.eu/tabs/document/([^/]+)/(\d{4})/([^/]+)/[^/]+/([^/?#]+)", url or "")
+    m = re.match(
+        r"https?://infocuria\.curia\.europa\.eu/tabs/document/([^/]+)/(\d{4})/([^/]+)/[^/]+/([^/?#]+)", url or ""
+    )
     if not m:
         return None
     juridiction, annee, procedure, fichier = m.groups()
@@ -291,8 +363,26 @@ def infocuria_api(url: str) -> str | None:
     return f"{INFOCURIA_API}{voie}/{juridiction}/{annee}/{procedure.replace('-', '_')}/{fichier}"
 
 
-MOIS_EN = {m: i for i, m in enumerate(("january", "february", "march", "april", "may", "june", "july", "august",
-                                        "september", "october", "november", "december"), 1)}
+MOIS_EN = {
+    m: i
+    for i, m in enumerate(
+        (
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+        ),
+        1,
+    )
+}
 
 
 def fiche_infocuria(texte: str) -> dict:
@@ -330,51 +420,80 @@ def editeur_declare(meta) -> str:
     page ne déclare rien, et le domaine n'est pas un nom d'éditeur."""
     nom = str(getattr(meta, "sitename", "") or "").strip()
     hote = str(getattr(meta, "hostname", "") or "").lower().removeprefix("www.")
-    return "" if not nom or nom.lower().removeprefix("www.") == hote or re.fullmatch(r"[\w.-]+\.[a-z]{2,}", nom) else nom
+    return (
+        "" if not nom or nom.lower().removeprefix("www.") == hote or re.fullmatch(r"[\w.-]+\.[a-z]{2,}", nom) else nom
+    )
 
 
 def _lire(url: str) -> dict:
     """{url, titre, date, texte, notes, mots, voie} — texte principal de la page, notes de bas de page à part ; texte
     vide si rien n'est lisible."""
-    titre = date = editeur = ""; texte = ""; voie = ""
+    titre = date = editeur = ""
+    texte = ""
+    voie = ""
     try:
         import trafilatura  # noqa: PLC0415
         from trafilatura.settings import use_config  # noqa: PLC0415
+
         conf = use_config()
         celex = celex_de(url)
         if celex:
-            octets, genre, jeu, raison = _obtenir(CELLAR + celex[0], {**ENTETES, "Accept": "application/xhtml+xml",
-                                                                       "Accept-Language": celex[1]})
+            octets, genre, jeu, raison = _obtenir(
+                CELLAR + celex[0], {**ENTETES, "Accept": "application/xhtml+xml", "Accept-Language": celex[1]}
+            )
         else:
             octets, genre, jeu, raison = _obtenir(infocuria_api(url) or url)
         if raison:
             return {"url": url, "titre": "", "date": "", "texte": "", "notes": "", "mots": 0, "voie": raison}
         if "pdf" in genre or octets[:5] == b"%PDF-":
             texte, _ = nettoyer(_texte_pdf(octets))
-            return {"url": url, "titre": "", "date": "", "texte": texte, "notes": "", "mots": len(texte.split()),
-                    "voie": "pdf (pypdf)" if len(texte.split()) >= MOTS_LUE else f"page trop courte (pdf, {len(texte.split())} mots)"}
+            return {
+                "url": url,
+                "titre": "",
+                "date": "",
+                "texte": texte,
+                "notes": "",
+                "mots": len(texte.split()),
+                "voie": "pdf (pypdf)"
+                if len(texte.split()) >= MOTS_LUE
+                else f"page trop courte (pdf, {len(texte.split())} mots)",
+            }
         brut = _decoder(octets, jeu)
         if not celex and _mur(brut):
-            return {"url": url, "titre": "", "date": "", "texte": "", "notes": "", "mots": 0,
-                    "voie": "refusée (mur anti-robot)"}
+            return {
+                "url": url,
+                "titre": "",
+                "date": "",
+                "texte": "",
+                "notes": "",
+                "mots": 0,
+                "voie": "refusée (mur anti-robot)",
+            }
         brut = _reparer(brut)
         if brut:
-            texte = trafilatura.extract(brut, include_comments=False, include_tables=True, favor_recall=True,
-                                        url=url, config=conf) or ""
+            texte = (
+                trafilatura.extract(
+                    brut, include_comments=False, include_tables=True, favor_recall=True, url=url, config=conf
+                )
+                or ""
+            )
             texte, repris = rattraper(brut, texte) if texte else (texte, 0)
             meta = trafilatura.extract_metadata(brut, default_url=url)
             if meta:
                 titre, date, editeur = meta.title or "", meta.date or "", editeur_declare(meta)
-            if celex:                      # le titre de Cellar est un nom de fichier (« L_202401689EN.000101.fmx.xml »)
+            if celex:  # le titre de Cellar est un nom de fichier (« L_202401689EN.000101.fmx.xml »)
                 m = re.search(r'<p class="oj-doc-ti"[^>]*>(.*?)</p>', brut, re.S)
                 titre = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(1))).strip() if m else titre
-            voie = (f"eur-lex (cellar {celex[0]})" if celex else "trafilatura") + (f" + {repris} bloc(s) repris" if repris else "")
+            voie = (f"eur-lex (cellar {celex[0]})" if celex else "trafilatura") + (
+                f" + {repris} bloc(s) repris" if repris else ""
+            )
     except Exception as e:  # noqa: BLE001
         voie = f"trafilatura absente ou en échec ({type(e).__name__})"
     if len(texte.split()) < MOTS_LUE:
         # Repli : notre extracteur (balises article/main/entry-content, méta de date), sans dépendance.
         try:
             from newskit import collecte_rss as cr  # noqa: PLC0415
+
             n_mots, t2, mur, meta2 = cr.corps_de_page(url)
             if n_mots > len(texte.split()) and not mur:
                 texte, voie = t2, "corps_de_page"
@@ -385,8 +504,16 @@ def _lire(url: str) -> dict:
     texte, notes = nettoyer(texte)
     if len(texte.split()) < MOTS_LUE:
         voie = f"page trop courte ({len(texte.split())} mots" + (f", {voie})" if voie else ")")
-    return {"url": url, "titre": titre.strip()[:200], "date": date[:10], "texte": texte, "notes": notes,
-            "mots": len(texte.split()), "voie": voie, **({"editeur": editeur} if editeur else {})}
+    return {
+        "url": url,
+        "titre": titre.strip()[:200],
+        "date": date[:10],
+        "texte": texte,
+        "notes": notes,
+        "mots": len(texte.split()),
+        "voie": voie,
+        **({"editeur": editeur} if editeur else {}),
+    }
 
 
 # --- Une page refusée n'est pas négligée (mainteneur, 04.11.2026) ------------------------------------------------------------
@@ -394,13 +521,24 @@ def _lire(url: str) -> dict:
 # facilement » ; « imitation si robots.txt l'admet ». Voies, dans l'ordre de sap (accesspath) : l'imitation de
 # l'empreinte d'un navigateur par accesspath, seulement si robots.txt n'exclut pas les robots d'IA ; la copie
 # d'archive de la Wayback Machine ; sinon un geste humain (`geste` vrai), que le reporter consigne.
-ROBOTS_IA = ("ClaudeBot", "Claude-User", "Claude-SearchBot", "anthropic-ai", "GPTBot", "ChatGPT-User", "CCBot",
-             "PerplexityBot", "Google-Extended")
+ROBOTS_IA = (
+    "ClaudeBot",
+    "Claude-User",
+    "Claude-SearchBot",
+    "anthropic-ai",
+    "GPTBot",
+    "ChatGPT-User",
+    "CCBot",
+    "PerplexityBot",
+    "Google-Extended",
+)
 # L'interpréteur d'accesspath : d'abord l'environnement installé hors de ~/Documents, que macOS refuse aux daemons
 # (06.11.2026, 23 h 37 : « Operation not permitted » sur .venv/pyvenv.cfg) ; sinon la copie de travail d'accesspath.
 # ACCESSPATH_PY, posé, l'emporte (tests).
-ACCESSPATH_CANDIDATS = (Path.home() / "Agents" / "accesspath-env" / "bin" / "python",
-                        Path.home() / "Documents" / "accesspath" / ".venv" / "bin" / "python")
+ACCESSPATH_CANDIDATS = (
+    Path.home() / "Agents" / "accesspath-env" / "bin" / "python",
+    Path.home() / "Documents" / "accesspath" / ".venv" / "bin" / "python",
+)
 ACCESSPATH_PY: Path | None = None
 
 
@@ -408,9 +546,13 @@ def accesspath_py() -> Path:
     if ACCESSPATH_PY is not None:
         return ACCESSPATH_PY
     return next((c for c in ACCESSPATH_CANDIDATS if c.exists()), ACCESSPATH_CANDIDATS[-1])
-_IMITER = ("import asyncio, sys\nfrom accesspath import _http as h\n"
-           "r = asyncio.run(h.aimpersonate_get(sys.argv[1], total_timeout=30))\n"
-           "sys.stdout.write(r.content.decode('utf-8', 'replace') if r.status_code == 200 else '')\n")
+
+
+_IMITER = (
+    "import asyncio, sys\nfrom accesspath import _http as h\n"
+    "r = asyncio.run(h.aimpersonate_get(sys.argv[1], total_timeout=30))\n"
+    "sys.stdout.write(r.content.decode('utf-8', 'replace') if r.status_code == 200 else '')\n"
+)
 
 
 def robots_exclut_ia(url: str) -> bool:
@@ -418,6 +560,7 @@ def robots_exclut_ia(url: str) -> bool:
     lisible : faux (rien n'est exclu)."""
     import urllib.parse  # noqa: PLC0415
     import urllib.robotparser  # noqa: PLC0415
+
     u = urllib.parse.urlsplit(url)
     octets, _, jeu, raison = _obtenir(f"{u.scheme}://{u.netloc}/robots.txt")
     if raison or not octets:
@@ -431,16 +574,27 @@ def _page_de_html(url: str, brut: str, voie: str) -> dict:
     texte, titre, date, editeur = "", "", "", ""
     try:
         import trafilatura  # noqa: PLC0415
-        texte = trafilatura.extract(_reparer(brut), include_comments=False, include_tables=True, favor_recall=True,
-                                    url=url) or ""
+
+        texte = (
+            trafilatura.extract(_reparer(brut), include_comments=False, include_tables=True, favor_recall=True, url=url)
+            or ""
+        )
         meta = trafilatura.extract_metadata(brut, default_url=url)
         if meta:
             titre, date, editeur = meta.title or "", meta.date or "", editeur_declare(meta)
     except Exception:  # noqa: BLE001
         pass
     texte, notes = nettoyer(texte)
-    return {"url": url, "titre": titre.strip()[:200], "date": (date or "")[:10], "texte": texte, "notes": notes,
-            "mots": len(texte.split()), "voie": voie, **({"editeur": editeur} if editeur else {})}
+    return {
+        "url": url,
+        "titre": titre.strip()[:200],
+        "date": (date or "")[:10],
+        "texte": texte,
+        "notes": notes,
+        "mots": len(texte.split()),
+        "voie": voie,
+        **({"editeur": editeur} if editeur else {}),
+    }
 
 
 def imiter(url: str) -> str:
@@ -450,8 +604,14 @@ def imiter(url: str) -> str:
     if not py.exists():
         return ""
     try:
-        r = subprocess.run([str(py), "-c", _IMITER, url], capture_output=True, text=True, timeout=45,
-                           cwd=str(py.parents[2]), check=False)
+        r = subprocess.run(
+            [str(py), "-c", _IMITER, url],
+            capture_output=True,
+            text=True,
+            timeout=45,
+            cwd=str(py.parents[2]),
+            check=False,
+        )
     except (subprocess.TimeoutExpired, OSError):
         return ""
     return r.stdout if r.returncode == 0 else ""
@@ -461,6 +621,7 @@ def copie_archive(url: str) -> str:
     """L'adresse brute (« id_ ») de la copie la plus proche à la Wayback Machine, ou ""."""
     import json  # noqa: PLC0415
     import urllib.parse  # noqa: PLC0415
+
     octets, _, jeu, raison = _obtenir("https://archive.org/wayback/available?url=" + urllib.parse.quote(url, safe=""))
     if raison or not octets:
         return ""
@@ -495,8 +656,16 @@ def lire_autrement(url: str, raison: str) -> dict:
         essais.append("copie d'archive illisible")
     else:
         essais.append("aucune copie d'archive")
-    return {"url": url, "titre": "", "date": "", "texte": "", "notes": "", "mots": 0, "voie": " ; ".join(essais),
-            "geste": True}
+    return {
+        "url": url,
+        "titre": "",
+        "date": "",
+        "texte": "",
+        "notes": "",
+        "mots": 0,
+        "voie": " ; ".join(essais),
+        "geste": True,
+    }
 
 
 # Tri des paragraphes pour le modèle, sans modèle (03.11.2026, décision du porteur). Le texte lu reste entier (`lire`,
@@ -508,9 +677,10 @@ def lire_autrement(url: str, raison: str) -> dict:
 # 35 (97 %) à 4 000 ; avec les termes, 28, 34, 34, 34, et 35 seulement à 8 000. D'où 4 000, le plus petit budget qui
 # garde au moins 95 % des citations ; la perte restante est l'AI Act entier (92 409 mots).
 BUDGET_EXTRAIT = 4000
-PROCHE = 10                 # un nombre « proche » : à dix mots au plus d'un mot des questions
-MOTS_PARAGRAPHE = 12        # le premier paragraphe : la première ligne d'au moins douze mots
-MOTS_VIDES = set("""
+PROCHE = 10  # un nombre « proche » : à dix mots au plus d'un mot des questions
+MOTS_PARAGRAPHE = 12  # le premier paragraphe : la première ligne d'au moins douze mots
+MOTS_VIDES = set(
+    """
 a an and are as at be been but by can could did do does for from had has have how if in into is it its may might not
 of on or our should so than that the their them then there these they this those to was we were what when where which
 who whom whose why will with would yes no also more most other such only very about after before over under between
@@ -522,7 +692,8 @@ bei im ins nach nicht noch nur auch als wie wer was wann warum welche welcher da
 het een en van op te dat die zijn voor met niet aan om ook als bij door naar wordt worden hoe wat wie waarom welke
 il lo gli della delle dei degli nel nella per con non che sono una uno come anche piu dal dalla al alla
 el los las del para por con una uno como mas pero sus esta este estos estas son fue ser hay que cual cuales cuando
-""".split())
+""".split()
+)
 RE_NOMBRE = re.compile(r"\d")
 
 
@@ -532,9 +703,11 @@ def _cles(texte: str) -> list[str]:
     out = []
     for m in _plier(texte).split():
         if m.isdigit():
-            out.append(m); continue
+            out.append(m)
+            continue
         if len(m) < 3 or m in MOTS_VIDES:
-            out.append(""); continue
+            out.append("")
+            continue
         out.append(m[:5])
     return out
 
@@ -542,14 +715,53 @@ def _cles(texte: str) -> list[str]:
 # Tri bilingue (03.11.2026, décision du porteur) : les questions du reporter sont en français, les pages en anglais,
 # en allemand, en italien. Les libellés anglais des notions du graphe qui touchent les questions (les noms propres
 # des questions, cherchés comme `interroger_graphe.py chercher`, et leurs voisines) s'ajoutent aux mots des questions.
-TERMES_PAR_NOM = 3          # notions retenues par nom propre des questions (les plus reliées)
-VOISINES = 6                # voisines retenues par notion (les plus reliées)
-MOTS_LIBELLE = 5            # un libellé plus long est une affaire, pas une notion (« Biancardi c. Italie… »)
-RE_NOM_PROPRE = re.compile(r"(?<![\w-])(?:[A-Z][\w&/.-]*[A-Za-z0-9]|[A-Z]{2,})(?:[ -](?:[A-Z][\w&/.-]*[A-Za-z0-9]|"
-                           r"[A-Z]{2,}|\d[\w/]*))*")
-MOTS_DE_PHRASE = {"qui", "que", "quel", "quels", "quelle", "quelles", "quand", "combien", "comment", "pourquoi", "est",
-                  "le", "la", "les", "l", "un", "une", "des", "du", "de", "depuis", "y", "cela", "ce", "a", "il", "elle",
-                  "sujet", "hypothese", "questions", "question", "selon", "sources", "source", "en", "et", "ou", "si"}
+TERMES_PAR_NOM = 3  # notions retenues par nom propre des questions (les plus reliées)
+VOISINES = 6  # voisines retenues par notion (les plus reliées)
+MOTS_LIBELLE = 5  # un libellé plus long est une affaire, pas une notion (« Biancardi c. Italie… »)
+RE_NOM_PROPRE = re.compile(
+    r"(?<![\w-])(?:[A-Z][\w&/.-]*[A-Za-z0-9]|[A-Z]{2,})(?:[ -](?:[A-Z][\w&/.-]*[A-Za-z0-9]|"
+    r"[A-Z]{2,}|\d[\w/]*))*"
+)
+MOTS_DE_PHRASE = {
+    "qui",
+    "que",
+    "quel",
+    "quels",
+    "quelle",
+    "quelles",
+    "quand",
+    "combien",
+    "comment",
+    "pourquoi",
+    "est",
+    "le",
+    "la",
+    "les",
+    "l",
+    "un",
+    "une",
+    "des",
+    "du",
+    "de",
+    "depuis",
+    "y",
+    "cela",
+    "ce",
+    "a",
+    "il",
+    "elle",
+    "sujet",
+    "hypothese",
+    "questions",
+    "question",
+    "selon",
+    "sources",
+    "source",
+    "en",
+    "et",
+    "ou",
+    "si",
+}
 
 
 def termes_du_graphe(questions: list[str], graphe: str | Path) -> list[str]:
@@ -557,9 +769,13 @@ def termes_du_graphe(questions: list[str], graphe: str | Path) -> list[str]:
     les plus reliées. Un graphe absent ou illisible ne donne aucun terme."""
     try:
         from newskit import interroger_graphe as ig  # noqa: PLC0415
-        chemin = Path(graphe) if str(graphe).endswith(".json") or "/" in str(graphe) else ig._graphe_ou_chemin(str(graphe))
+
+        chemin = (
+            Path(graphe) if str(graphe).endswith(".json") or "/" in str(graphe) else ig._graphe_ou_chemin(str(graphe))
+        )
         from networkx.readwrite import json_graph  # noqa: PLC0415
         import json  # noqa: PLC0415
+
         G = json_graph.node_link_graph(json.loads(chemin.read_text(encoding="utf-8")), edges="links")
     except Exception:  # noqa: BLE001
         return []
@@ -571,7 +787,7 @@ def termes_du_graphe(questions: list[str], graphe: str | Path) -> list[str]:
     for q in questions or []:
         for m in RE_NOM_PROPRE.finditer(q):
             mots = _plier(m.group(0)).split()
-            while mots and mots[0] in MOTS_DE_PHRASE:      # « La Bundesnetzagentur » en tête de phrase
+            while mots and mots[0] in MOTS_DE_PHRASE:  # « La Bundesnetzagentur » en tête de phrase
                 mots.pop(0)
             while mots and mots[-1] in MOTS_DE_PHRASE:
                 mots.pop()
@@ -586,10 +802,18 @@ def termes_du_graphe(questions: list[str], graphe: str | Path) -> list[str]:
         lib = str(G.nodes[n].get("label") or n)
         if lib not in termes:
             termes.append(lib)
+
     for nom, large in dict.fromkeys(noms):
-        trouves = par_libelle.get(nom) or ([n for lib, ns in par_libelle.items()   # le nom exact d'abord
-                                            if len(lib.split()) <= MOTS_LIBELLE and f" {nom} " in f" {lib} " for n in ns]
-                                           if large else [])
+        trouves = par_libelle.get(nom) or (
+            [
+                n
+                for lib, ns in par_libelle.items()  # le nom exact d'abord
+                if len(lib.split()) <= MOTS_LIBELLE and f" {nom} " in f" {lib} "
+                for n in ns
+            ]
+            if large
+            else []
+        )
         for n in sorted(trouves, key=lambda x: -G.degree(x))[:TERMES_PAR_NOM]:
             ajouter(n)
             for v in sorted((v for v in G.neighbors(n) if v in notion), key=lambda x: -G.degree(x))[:VOISINES]:
@@ -597,8 +821,9 @@ def termes_du_graphe(questions: list[str], graphe: str | Path) -> list[str]:
     return termes
 
 
-def extrait_utile(texte: str, questions: list[str], budget_mots: int = BUDGET_EXTRAIT,
-                  termes: list[str] | None = None) -> str:
+def extrait_utile(
+    texte: str, questions: list[str], budget_mots: int = BUDGET_EXTRAIT, termes: list[str] | None = None
+) -> str:
     """Les paragraphes de `texte` utiles aux `questions` (et aux `termes` du graphe), dans l'ordre d'origine, en
     `budget_mots` mots au plus (le titre et le premier paragraphe entrent toujours). Un texte qui tient dans le budget
     est rendu tel quel."""
@@ -626,7 +851,8 @@ def extrait_utile(texte: str, questions: list[str], budget_mots: int = BUDGET_EX
     for _, _, i in sorted(rangs):
         n = len(lignes[i].split())
         if total + n <= budget_mots:
-            garde.add(i); total += n
+            garde.add(i)
+            total += n
     return "\n".join(lignes[i] for i in sorted(garde))
 
 
@@ -653,7 +879,8 @@ def citation_dans(citation: str, texte: str | dict) -> bool:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print(__doc__); return 2
+        print(__doc__)
+        return 2
     for u in sys.argv[1:]:
         p = lire(u)
         print(f"{p['url']}\n  {p['titre']!r}  {p['date']}  {p['mots']} mots  ({p['voie']})\n  {p['texte'][:400]!r}\n")

@@ -30,57 +30,100 @@ from newskit import reporter as rp  # noqa: E402
 
 POSTE = "angle"
 MOTS_LECTURE = 25
-MOTS_SOURCE = 900                   # texte d'une source donné au modèle, au plus
-SOURCES_GRAPHE = 4                  # fiches du graphe données comme sources, en plus de celle du billet
+MOTS_SOURCE = 900  # texte d'une source donné au modèle, au plus
+SOURCES_GRAPHE = 4  # fiches du graphe données comme sources, en plus de celle du billet
 
-SCHEMA = {"type": "object", "required": ["lecture", "preuves", "questions"], "properties": {
-    "lecture": {"type": "string"},
-    "preuves": {"type": "array", "items": {"type": "object", "required": ["source", "citation"], "properties": {
-        "source": {"type": "integer"}, "citation": {"type": "string"}}}},
-    "questions": {"type": "array", "items": {"type": "integer"}}}}
-SCHEMA_WEB = {"type": "object", "required": ["urls"], "properties": {"urls": {"type": "array", "items": {"type": "string"}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["lecture", "preuves", "questions"],
+    "properties": {
+        "lecture": {"type": "string"},
+        "preuves": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["source", "citation"],
+                "properties": {"source": {"type": "integer"}, "citation": {"type": "string"}},
+            },
+        },
+        "questions": {"type": "array", "items": {"type": "integer"}},
+    },
+}
+SCHEMA_WEB = {
+    "type": "object",
+    "required": ["urls"],
+    "properties": {"urls": {"type": "array", "items": {"type": "string"}}},
+}
 
 
 class Budget(rp.Budget):
     """Le budget d'un billet (angle_usd_billet), dans celui de la lettre (angle_usd_lettre)."""
 
-    def __init__(self, usd_billet: float, usd_lettre: float, depense_lettre: float = 0.0, recherches: int = 2,
-                 pages: int = 2, ecartes=()):
-        super().__init__(recherches=recherches, pages=pages, usd=usd_billet, lettre_usd=usd_lettre,
-                         depense_lettre=depense_lettre, ecartes=ecartes)
+    def __init__(
+        self,
+        usd_billet: float,
+        usd_lettre: float,
+        depense_lettre: float = 0.0,
+        recherches: int = 2,
+        pages: int = 2,
+        ecartes=(),
+    ):
+        super().__init__(
+            recherches=recherches,
+            pages=pages,
+            usd=usd_billet,
+            lettre_usd=usd_lettre,
+            depense_lettre=depense_lettre,
+            ecartes=ecartes,
+        )
 
 
 def _sources_texte(sources: dict[int, dict]) -> str:
-    return "\n\n".join(f"[{n}] {s.get('editeur') or ''} — {s.get('titre') or ''} ({s.get('url') or ''})\n"
-                       + " ".join(str(s.get("texte") or "").split()[:MOTS_SOURCE]) for n, s in sources.items())
+    return "\n\n".join(
+        f"[{n}] {s.get('editeur') or ''} — {s.get('titre') or ''} ({s.get('url') or ''})\n"
+        + " ".join(str(s.get("texte") or "").split()[:MOTS_SOURCE])
+        for n, s in sources.items()
+    )
 
 
 def invite(billet: dict, sources: dict[int, dict], graphe_txt: str, raison: str = "") -> str:
-    relance = (f"Ta première réponse a été refusée par le contrôle : {raison}. Réécris-la en tenant chaque règle.\n"
-               + ("Donne le précédent (question 2) ou le texte (question 3) : un fait absent du chapeau, tiré d'une "
-                  "autre source que celle du billet (source 1) ; sinon rends une lecture vide.\n" if raison.startswith(
-                      "n'apporte rien") else "") + "\n" if raison else "")
-    return (relance + "Tu écris l'angle critique d'un billet d'une lettre d'actualité en français, d'après ses seules "
-            "sources numérotées. La critique confronte des faits sourcés, jamais un adjectif ni une opinion.\n"
-            "Réponds d'abord à la question 2, le précédent : ce qui existait avant, et ce qui change vraiment ; puis à "
-            "la question 3, le texte : ce que la loi ou la règle impose, et ce qui est fait (délai, portée, qui "
-            "contrôle). La question 1 (l'annonce et les faits) peut servir si les sources la documentent.\n"
-            f"Écris une seule phrase de {MOTS_LECTURE} mots au plus, sans libellé ni ouverture, sans adjectif "
-            "d'évaluation (historique, inédit, majeur, crucial…), avec des dates absolues ; pas d'intention prêtée à "
-            "un acteur. Chaque fait de la phrase a sa preuve : le numéro de sa source et une citation de 6 à 14 mots, "
-            "copiée mot pour mot de cette source, dans sa langue. Chaque nombre, date et nom de la phrase figure dans "
-            "une citation. Dans « questions », les numéros des questions auxquelles la phrase répond.\n"
-            "Si aucune source ne répond aux questions 1 à 3, rends une lecture vide et aucune preuve : n'écris rien de "
-            "mémoire.\n\n"
-            f"=== BILLET\n{billet.get('titre') or ''}\n{billet.get('chapeau') or ''}\n\n"
-            f"=== SOURCES\n{_sources_texte(sources)}\n\n=== GRAPHE (passages)\n{graphe_txt}\n")
+    relance = (
+        f"Ta première réponse a été refusée par le contrôle : {raison}. Réécris-la en tenant chaque règle.\n"
+        + (
+            "Donne le précédent (question 2) ou le texte (question 3) : un fait absent du chapeau, tiré d'une "
+            "autre source que celle du billet (source 1) ; sinon rends une lecture vide.\n"
+            if raison.startswith("n'apporte rien")
+            else ""
+        )
+        + "\n"
+        if raison
+        else ""
+    )
+    return (
+        relance + "Tu écris l'angle critique d'un billet d'une lettre d'actualité en français, d'après ses seules "
+        "sources numérotées. La critique confronte des faits sourcés, jamais un adjectif ni une opinion.\n"
+        "Réponds d'abord à la question 2, le précédent : ce qui existait avant, et ce qui change vraiment ; puis à "
+        "la question 3, le texte : ce que la loi ou la règle impose, et ce qui est fait (délai, portée, qui "
+        "contrôle). La question 1 (l'annonce et les faits) peut servir si les sources la documentent.\n"
+        f"Écris une seule phrase de {MOTS_LECTURE} mots au plus, sans libellé ni ouverture, sans adjectif "
+        "d'évaluation (historique, inédit, majeur, crucial…), avec des dates absolues ; pas d'intention prêtée à "
+        "un acteur. Chaque fait de la phrase a sa preuve : le numéro de sa source et une citation de 6 à 14 mots, "
+        "copiée mot pour mot de cette source, dans sa langue. Chaque nombre, date et nom de la phrase figure dans "
+        "une citation. Dans « questions », les numéros des questions auxquelles la phrase répond.\n"
+        "Si aucune source ne répond aux questions 1 à 3, rends une lecture vide et aucune preuve : n'écris rien de "
+        "mémoire.\n\n"
+        f"=== BILLET\n{billet.get('titre') or ''}\n{billet.get('chapeau') or ''}\n\n"
+        f"=== SOURCES\n{_sources_texte(sources)}\n\n=== GRAPHE (passages)\n{graphe_txt}\n"
+    )
 
 
 def invite_web(billet: dict, recherches: int, pages: int) -> str:
-    return (f"Cherche sur le web, en {recherches} recherches au plus, le précédent (ce qui existait avant) et le texte "
-            f"(ce que la loi ou la règle impose) du fait suivant. Rends au plus {pages} adresses de pages primaires ou "
-            "de presse qui les documentent, sans les résumer.\n\n"
-            f"{billet.get('titre') or ''}\n{billet.get('chapeau') or ''}\n")
+    return (
+        f"Cherche sur le web, en {recherches} recherches au plus, le précédent (ce qui existait avant) et le texte "
+        f"(ce que la loi ou la règle impose) du fait suivant. Rends au plus {pages} adresses de pages primaires ou "
+        "de presse qui les documentent, sans les résumer.\n\n"
+        f"{billet.get('titre') or ''}\n{billet.get('chapeau') or ''}\n"
+    )
 
 
 def _jetons(t: str) -> set[str]:
@@ -105,14 +148,14 @@ def fait_neuf(lecture: str, chapeau: str, citations_ailleurs: list[str]) -> bool
 def controler(r: dict, sources: dict[int, dict], chapeau: str | None = None) -> str:
     """Pourquoi une lecture ne tient pas le contrôle sans modèle (vide : elle tient). Avec le chapeau du billet :
     l'angle doit aussi porter un fait neuf, prouvé hors de la source du billet (source 1)."""
-    lecture = lt.sans_libelle(r.get("lecture") or "")      # les 25 mots se comptent sans libellé
+    lecture = lt.sans_libelle(r.get("lecture") or "")  # les 25 mots se comptent sans libellé
     n = lt.compter_mots(lecture)
     if n > MOTS_LECTURE:
         return f"{n} mots, {MOTS_LECTURE} au plus"
     if len(lt.phrases(lecture)) > 1:
         return "une seule phrase"
     m = re.search(r"(?<![a-z])(plutot que|tandis que)(?![a-z])", lt.plier(lecture))
-    if m:                                    # angle 8 de la v8 (mainteneur, 03.11.2026)
+    if m:  # angle 8 de la v8 (mainteneur, 03.11.2026)
         return f"tournure : {'plutôt que' if m.group(1) == 'plutot que' else 'tandis que'}"
     tr = lt.tournure(lecture) or lt.preuve(lecture)
     if tr:
@@ -130,7 +173,7 @@ def controler(r: dict, sources: dict[int, dict], chapeau: str | None = None) -> 
     if faute:
         return faute
     g = lt.formule_generique(lecture, " ".join(str(s.get("texte") or "") for s in sources.values()))
-    if g:                                    # angle 12 de la v8 : « des contrôles de sécurité »
+    if g:  # angle 12 de la v8 : « des contrôles de sécurité »
         return g
     ailleurs = [str(p.get("citation") or "") for p in preuves if p.get("source") != 1]
     if chapeau is not None and not fait_neuf(lecture, chapeau, ailleurs):
@@ -138,8 +181,17 @@ def controler(r: dict, sources: dict[int, dict], chapeau: str | None = None) -> 
     return ""
 
 
-def angle(billet: dict, graphe: str, budget: Budget, graphe_, lire=lw.lire, web: bool = True, invite_=None,
-          invite_web_=None, controle=None) -> dict:
+def angle(
+    billet: dict,
+    graphe: str,
+    budget: Budget,
+    graphe_,
+    lire=lw.lire,
+    web: bool = True,
+    invite_=None,
+    invite_web_=None,
+    controle=None,
+) -> dict:
     """{lecture, preuves, refus, cout} pour un billet ({titre, chapeau, fiche}) ; lecture vide sans fait prouvé.
     `invite_`, `invite_web_`, `controle` : une autre question posée aux mêmes sources, par la même marche (la
     définition d'un terme, fil.definir) ; par défaut l'angle critique."""
@@ -161,9 +213,17 @@ def angle(billet: dict, graphe: str, budget: Budget, graphe_, lire=lw.lire, web:
     if vide and web and budget.recherches and budget.pages:
         # Le graphe ne répond à aucune des questions 1 à 3 : le web, 2 recherches et 2 pages au plus.
         avant = len(sources)
-        w = rp.appeler(invite_web_(billet, budget.recherches, budget.pages), SCHEMA_WEB, budget, graphe,
-                       "angle : recherche", outils="WebSearch", recherches=budget.recherches, poste=POSTE)
-        for u in [str(x) for x in (w or {}).get("urls") or []][:budget.pages]:
+        w = rp.appeler(
+            invite_web_(billet, budget.recherches, budget.pages),
+            SCHEMA_WEB,
+            budget,
+            graphe,
+            "angle : recherche",
+            outils="WebSearch",
+            recherches=budget.recherches,
+            poste=POSTE,
+        )
+        for u in [str(x) for x in (w or {}).get("urls") or []][: budget.pages]:
             if rp.domaine(u) in budget.ecartes:
                 continue
             page = lire(u)
@@ -176,20 +236,29 @@ def angle(billet: dict, graphe: str, budget: Budget, graphe_, lire=lw.lire, web:
         raison = controle(r, sources, billet.get("chapeau") or "")
         if raison:
             refus.append(raison)
-            r = ecrire(raison)                 # une relance, raison donnée, puis abandon
-            raison2 = controle(r, sources, billet.get("chapeau") or "") if r and str(r.get("lecture") or "").strip() else "pas de réponse"
+            r = ecrire(raison)  # une relance, raison donnée, puis abandon
+            raison2 = (
+                controle(r, sources, billet.get("chapeau") or "")
+                if r and str(r.get("lecture") or "").strip()
+                else "pas de réponse"
+            )
             if raison2:
                 refus.append(raison2)
                 r = None
     ok = r is not None and str(r.get("lecture") or "").strip()
     preuves = [{**p, "url": sources[p["source"]].get("url", "")} for p in (r or {}).get("preuves") or []] if ok else []
-    return {"lecture": lt.ponctuation_fr(lt.sans_libelle(r["lecture"])) if ok else "", "preuves": preuves,
-            "refus": refus, "cout": round(budget.depense - depart, 4)}
+    return {
+        "lecture": lt.ponctuation_fr(lt.sans_libelle(r["lecture"])) if ok else "",
+        "preuves": preuves,
+        "refus": refus,
+        "cout": round(budget.depense - depart, 4),
+    }
 
 
 def graphe_du(graphe: str):
     """La recherche au graphe d'un billet : reporter.graphe_d_abord, puis les fiches qu'elle nomme, chargées."""
     from newskit import interroger_graphe as ig  # noqa: PLC0415
+
     G = ig.charger(cfg.chemins_du_graphe(graphe)["graphe"])
 
     def chercher(billet: dict, graphe_: str) -> dict:
@@ -197,6 +266,7 @@ def graphe_du(graphe: str):
         g = rp.graphe_d_abord(G, {"titre": f.get("titre", ""), "chemin": f.get("chemin", "")}, graphe_)
         fiches = lt.charger_fiches([c for c in g.get("fiches") or [] if c != f.get("chemin")][:SOURCES_GRAPHE])
         return {"texte": g.get("texte", ""), "fiches": list(fiches.values())}
+
     return chercher
 
 
@@ -226,12 +296,22 @@ def annoter(L: dict, fiches: dict[str, dict], graphe: str, graphe_=None, lire=lw
         fiche = fiches.get(x.get("chemin") or "")
         if not fiche:
             continue
-        budget = Budget(b["angle_usd_billet"], b["angle_usd_lettre"], total, int(b["angle_recherches"]),
-                        int(b["angle_pages"]), b.get("domaines_ecartes") or ())
+        budget = Budget(
+            b["angle_usd_billet"],
+            b["angle_usd_lettre"],
+            total,
+            int(b["angle_recherches"]),
+            int(b["angle_pages"]),
+            b.get("domaines_ecartes") or (),
+        )
         if budget.reste_usd() <= 0 or total >= b["angle_usd_lettre"]:
-            stats["non_tentes"] += 1           # coupure stricte : le billet garde sa place
+            stats["non_tentes"] += 1  # coupure stricte : le billet garde sa place
             continue
-        billet = {"titre": x.get("titre", ""), "chapeau": x.get("paragraphe") or x.get("descriptif") or "", "fiche": fiche}
+        billet = {
+            "titre": x.get("titre", ""),
+            "chapeau": x.get("paragraphe") or x.get("descriptif") or "",
+            "fiche": fiche,
+        }
         try:
             r = angle(billet, graphe, budget, chercher, lire=lire)
         except Exception as e:  # noqa: BLE001
@@ -246,12 +326,18 @@ def annoter(L: dict, fiches: dict[str, dict], graphe: str, graphe_=None, lire=lw
             x["lecture"], x["preuves"] = r["lecture"], r.get("preuves") or []
         elif genre == "autre":
             deplacer.append((g, x))
-    for g, x in deplacer:                       # sans fait trouvé : le billet de rubrique passe en brève
+    for g, x in deplacer:  # sans fait trouvé : le billet de rubrique passe en brève
         L["aussi"][g].remove(x)
         if not L["aussi"][g]:
             del L["aussi"][g]
         # La brève garde le développement du billet (lettre du 05.11.2026 : six brèves sur huit en titre seul).
-        L["bref"].setdefault(g, []).append({"titre": x["titre"], "descriptif": x.get("descriptif") or x.get("paragraphe") or "",
-                                            "url": x["source"]["url"], "chemin": x.get("chemin", "")})
-    L["cout_angle"], L["angles"], L["angles_refus"] = round(total, 4), stats, refus   # aux Coulisses de l'essai
+        L["bref"].setdefault(g, []).append(
+            {
+                "titre": x["titre"],
+                "descriptif": x.get("descriptif") or x.get("paragraphe") or "",
+                "url": x["source"]["url"],
+                "chemin": x.get("chemin", ""),
+            }
+        )
+    L["cout_angle"], L["angles"], L["angles_refus"] = round(total, 4), stats, refus  # aux Coulisses de l'essai
     return L

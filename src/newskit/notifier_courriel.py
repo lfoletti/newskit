@@ -34,8 +34,9 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 RAPPORT = RACINE / "ROUTINE.md"
-LETTRES = RACINE / "lettres"   # chaque lettre envoyée, gardée (suivi) : deploiement/lettres.py en fait sa page
+LETTRES = RACINE / "lettres"  # chaque lettre envoyée, gardée (suivi) : deploiement/lettres.py en fait sa page
 
 from newskit import commun  # noqa: E402
 from newskit import config_sources as cfg  # noqa: E402
@@ -56,7 +57,7 @@ def lire_rapport(rapport: str) -> dict:
         except ValueError:
             return []
         out = []
-        for l in lignes[i + 1:]:
+        for l in lignes[i + 1 :]:
             if l.startswith("#"):
                 break
             if l.startswith("- "):
@@ -86,7 +87,7 @@ def lire_rapport(rapport: str) -> dict:
     if i >= 0:
         m = re.search(r"\((\d+)\)", lignes[i])
         total_neuves = int(m.group(1)) if m else 0
-        for l in lignes[i + 1:]:
+        for l in lignes[i + 1 :]:
             if l.startswith("#"):
                 break
             g = re.match(r"\*\*(.+?) \((\d+)\)\*\*$", l.strip())
@@ -118,30 +119,50 @@ def lire_rapport(rapport: str) -> dict:
         neuf = f"+{total_neuves}"
     titre_notions = next((l for l in lignes if l.startswith("### Nouvelles notions")), "### Nouvelles notions")
     m_n = re.search(r"\((\d+)\)", titre_notions)
-    return {"date": date, "etat": etat, "fiches": fiches, "noeuds": noeuds, "aretes": aretes,
-            "neuf": neuf, "afaire": afaire, "notions_neuves": int(m_n.group(1)) if m_n else None,
-            "ecart_noeuds": ecart(noeuds, noeuds_p), "ecart_aretes": ecart(aretes, aretes_p),
-            "notions": section(titre_notions),
-            "assistes": section("### Ce qui demande une session assistée"),
-            "echecs": section("### Échecs bloquants"),
-            "alertes": section("### Alertes"),
-            "autres_graphes": section("### Autres graphes"),
-            "groupes": groupes, "total_neuves": total_neuves, "modifiees": modifiees,
-            "deroule": deroule}
+    return {
+        "date": date,
+        "etat": etat,
+        "fiches": fiches,
+        "noeuds": noeuds,
+        "aretes": aretes,
+        "neuf": neuf,
+        "afaire": afaire,
+        "notions_neuves": int(m_n.group(1)) if m_n else None,
+        "ecart_noeuds": ecart(noeuds, noeuds_p),
+        "ecart_aretes": ecart(aretes, aretes_p),
+        "notions": section(titre_notions),
+        "assistes": section("### Ce qui demande une session assistée"),
+        "echecs": section("### Échecs bloquants"),
+        "alertes": section("### Alertes"),
+        "autres_graphes": section("### Autres graphes"),
+        "groupes": groupes,
+        "total_neuves": total_neuves,
+        "modifiees": modifiees,
+        "deroule": deroule,
+    }
 
 
 def pour_le_graphe(objet: str, html: str, graphe: str) -> tuple[str, str]:
     """L'objet et l'en-tête du courriel d'un graphe à part : le nom du graphe après celui de l'édition."""
     nom = cfg.edition()["nom"]
-    return (objet.replace(f"{nom} —", f"{nom} ({graphe}) —", 1),
-            html.replace(f"{_echapper(nom)} — routine hebdomadaire", f"{_echapper(nom)} — graphe {graphe}", 1))
+    return (
+        objet.replace(f"{nom} —", f"{nom} ({graphe}) —", 1),
+        html.replace(f"{_echapper(nom)} — routine hebdomadaire", f"{_echapper(nom)} — graphe {graphe}", 1),
+    )
 
 
 def resumer(rapport: str) -> tuple[str, str]:
     """(objet, corps en texte simple) à partir de ROUTINE.md. Sans réseau, testable."""
     r = lire_rapport(rapport)
     date, etat, fiches, noeuds, aretes, neuf, afaire = (
-        r["date"], r["etat"], r["fiches"], r["noeuds"], r["aretes"], r["neuf"], r["afaire"])
+        r["date"],
+        r["etat"],
+        r["fiches"],
+        r["noeuds"],
+        r["aretes"],
+        r["neuf"],
+        r["afaire"],
+    )
     assistes, echecs = r["assistes"], r["echecs"]
 
     objet = f"{cfg.edition()['nom']} — {etat or 'sans état'}"
@@ -154,9 +175,13 @@ def resumer(rapport: str) -> tuple[str, str]:
 
     corps = [f"Routine du {date}", f"État : {etat}", ""]
     if fiches:
-        en = r["ecart_noeuds"]; ea = r["ecart_aretes"]
-        corps += [f"Corpus : {fiches} fiches ({neuf} cette semaine)",
-                  f"Graphe : {noeuds} nœuds{f' ({en})' if en else ''}, {aretes} arêtes{f' ({ea})' if ea else ''}", ""]
+        en = r["ecart_noeuds"]
+        ea = r["ecart_aretes"]
+        corps += [
+            f"Corpus : {fiches} fiches ({neuf} cette semaine)",
+            f"Graphe : {noeuds} nœuds{f' ({en})' if en else ''}, {aretes} arêtes{f' ({ea})' if ea else ''}",
+            "",
+        ]
     if r["notions"]:
         compte = f" ({r['notions_neuves']})" if r.get("notions_neuves") is not None else ""
         corps += [f"Nouvelles notions au graphe, par thème{compte} :"] + [f"  - {n}" for n in r["notions"]] + [""]
@@ -196,7 +221,9 @@ def resumer(rapport: str) -> tuple[str, str]:
 # c'est ce que les clients de messagerie rendent de façon prévisible, Gmail
 # compris, qui ignore les feuilles de style externes et une partie du <style>.
 
-_POLICE = "font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;"
+_POLICE = (
+    "font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;"
+)
 _GRIS_FOND = "#eceef0"
 _BLANC = "#ffffff"
 _TEXTE = "#1f2328"
@@ -205,7 +232,7 @@ _FILET = "#d0d7de"
 
 
 def _echapper(t: str) -> str:
-    return (t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def composer_html(rapport: str) -> str:
@@ -216,16 +243,20 @@ def composer_html(rapport: str) -> str:
     couleur_etat = "#a40e26" if echec else "#1a7f37"
 
     def ligne(libelle: str, valeur: str) -> str:
-        return (f'<tr><td style="{_POLICE} color:{_TEXTE}; font-weight:bold; padding:4px 16px 4px 0; '
-                f'white-space:nowrap; vertical-align:top;">{_echapper(libelle)}</td>'
-                f'<td style="{_POLICE} color:{_TEXTE}; font-weight:normal; padding:4px 0;">{_echapper(valeur)}</td></tr>')
+        return (
+            f'<tr><td style="{_POLICE} color:{_TEXTE}; font-weight:bold; padding:4px 16px 4px 0; '
+            f'white-space:nowrap; vertical-align:top;">{_echapper(libelle)}</td>'
+            f'<td style="{_POLICE} color:{_TEXTE}; font-weight:normal; padding:4px 0;">{_echapper(valeur)}</td></tr>'
+        )
 
     def titre(t: str) -> str:
-        return (f'<p style="{_POLICE} color:{_TEXTE}; font-weight:bold; margin:20px 0 6px 0;">{_echapper(t)}</p>')
+        return f'<p style="{_POLICE} color:{_TEXTE}; font-weight:bold; margin:20px 0 6px 0;">{_echapper(t)}</p>'
 
     def liste(items: list[str]) -> str:
-        lis = "".join(f'<li style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0 0 6px 0;">'
-                      f'{_echapper(i)}</li>' for i in items)
+        lis = "".join(
+            f'<li style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0 0 6px 0;">{_echapper(i)}</li>'
+            for i in items
+        )
         return f'<ul style="margin:0; padding-left:20px;">{lis}</ul>'
 
     blocs = [
@@ -234,16 +265,25 @@ def composer_html(rapport: str) -> str:
         f'<p style="{_POLICE} font-weight:bold; color:{couleur_etat}; margin:0 0 16px 0;">{_echapper(etat)}</p>',
     ]
     if r["fiches"]:
-        en = r["ecart_noeuds"]; ea = r["ecart_aretes"]
-        blocs.append('<table cellpadding="0" cellspacing="0" border="0">'
-                     + ligne("Corpus", f'{r["fiches"]} fiches, {r["neuf"]} cette semaine')
-                     + ligne("Graphe", f'{r["noeuds"]} nœuds{f" ({en})" if en else ""}, '
-                                       f'{r["aretes"]} arêtes{f" ({ea})" if ea else ""}')
-                     + "</table>")
+        en = r["ecart_noeuds"]
+        ea = r["ecart_aretes"]
+        blocs.append(
+            '<table cellpadding="0" cellspacing="0" border="0">'
+            + ligne("Corpus", f"{r['fiches']} fiches, {r['neuf']} cette semaine")
+            + ligne(
+                "Graphe",
+                f"{r['noeuds']} nœuds{f' ({en})' if en else ''}, {r['aretes']} arêtes{f' ({ea})' if ea else ''}",
+            )
+            + "</table>"
+        )
     if r["autres_graphes"]:
-        blocs.append('<table cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;">'
-                     + "".join(ligne(g.split(" : ", 1)[0], g.split(" : ", 1)[1] if " : " in g else "")
-                               for g in r["autres_graphes"]) + "</table>")
+        blocs.append(
+            '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;">'
+            + "".join(
+                ligne(g.split(" : ", 1)[0], g.split(" : ", 1)[1] if " : " in g else "") for g in r["autres_graphes"]
+            )
+            + "</table>"
+        )
     if r["notions"]:
         compte = f" ({r['notions_neuves']})" if r.get("notions_neuves") is not None else ""
         blocs.append(titre(f"Nouvelles notions au graphe, par thème{compte}") + liste(r["notions"]))
@@ -254,38 +294,54 @@ def composer_html(rapport: str) -> str:
     if r["total_neuves"] is not None:
         blocs.append(titre(f"Nouvelles fiches ({r['total_neuves']})"))
         if not r["groupes"]:
-            blocs.append(f'<p style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0;">Aucune cette semaine.</p>')
+            blocs.append(
+                f'<p style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0;">Aucune cette semaine.</p>'
+            )
         for g in r["groupes"]:
-            blocs.append(f'<p style="{_POLICE} color:{_TEXTE}; font-weight:bold; margin:12px 0 4px 0;">'
-                         f'{_echapper(g["nom"])} <span style="font-weight:normal; color:{_TEXTE_DOUX};">({g["n"]})</span></p>')
+            blocs.append(
+                f'<p style="{_POLICE} color:{_TEXTE}; font-weight:bold; margin:12px 0 4px 0;">'
+                f'{_echapper(g["nom"])} <span style="font-weight:normal; color:{_TEXTE_DOUX};">({g["n"]})</span></p>'
+            )
             lis = []
             for f in g["fiches"]:
                 t = _echapper(f["titre"])
                 if f["url"]:
                     t = f'<a href="{_echapper(f["url"])}" style="color:{_TEXTE}; text-decoration:underline;">{t}</a>'
-                lis.append(f'<li style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0 0 3px 0;">'
-                           f'<span style="color:{_TEXTE_DOUX};">{_echapper(f["date"])}</span>&nbsp; {t}</li>')
+                lis.append(
+                    f'<li style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:0 0 3px 0;">'
+                    f'<span style="color:{_TEXTE_DOUX};">{_echapper(f["date"])}</span>&nbsp; {t}</li>'
+                )
             if g.get("reste"):
-                lis.append(f'<li style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; list-style:none; margin-left:-20px;">{_echapper(g["reste"])}</li>')
+                lis.append(
+                    f'<li style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; list-style:none; margin-left:-20px;">{_echapper(g["reste"])}</li>'
+                )
             blocs.append(f'<ul style="margin:0; padding-left:20px;">{"".join(lis)}</ul>')
         if r["modifiees"]:
-            blocs.append(f'<p style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; margin:10px 0 0 0;">{_echapper(r["modifiees"])}</p>')
+            blocs.append(
+                f'<p style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; margin:10px 0 0 0;">{_echapper(r["modifiees"])}</p>'
+            )
     if r["assistes"]:
         blocs.append(titre("À faire à la main") + liste(r["assistes"]))
     if not r["echecs"] and not r["assistes"]:
-        blocs.append(f'<p style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:16px 0 0 0;">Rien à faire à la main.</p>')
+        blocs.append(
+            f'<p style="{_POLICE} color:{_TEXTE}; font-weight:normal; margin:16px 0 0 0;">Rien à faire à la main.</p>'
+        )
     if r["deroule"]:
         # Le déroulé complet, en bas, en monospace : même taille, même fond gris
         # que la page, pour qui veut vérifier une étape sans ouvrir le dépôt.
         blocs.append(titre("Déroulé complet"))
-        blocs.append(f'<pre style="font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; '
-                     f'line-height: 1.45; color:{_TEXTE}; background:{_GRIS_FOND}; border:1px solid {_FILET}; '
-                     f'border-radius:4px; padding:12px; margin:0; white-space:pre-wrap; word-break:break-word;">'
-                     f'{_echapper(r["deroule"])}</pre>')
+        blocs.append(
+            f'<pre style="font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; '
+            f"line-height: 1.45; color:{_TEXTE}; background:{_GRIS_FOND}; border:1px solid {_FILET}; "
+            f'border-radius:4px; padding:12px; margin:0; white-space:pre-wrap; word-break:break-word;">'
+            f"{_echapper(r['deroule'])}</pre>"
+        )
     if cfg.edition()["depot"]:
-        blocs.append(f'<p style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; margin:24px 0 0 0; '
-                     f'padding-top:12px; border-top:1px solid {_FILET};">Rapport : ROUTINE.md du dépôt '
-                     f'{_echapper(cfg.edition()["depot"])}.</p>')
+        blocs.append(
+            f'<p style="{_POLICE} color:{_TEXTE_DOUX}; font-weight:normal; margin:24px 0 0 0; '
+            f'padding-top:12px; border-top:1px solid {_FILET};">Rapport : ROUTINE.md du dépôt '
+            f"{_echapper(cfg.edition()['depot'])}.</p>"
+        )
 
     return f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -301,9 +357,9 @@ def composer_html(rapport: str) -> str:
 """
 
 
-SECRET_FICHIER = Path.home() / ".secrets" / "courriel.env"      # une ligne : SMTP_MOT_DE_PASSE=…
-COMPTE_LETTRE = "lettre"   # le compte d'envoi de la lettre (credences.lettre, 06.11.2026)
-DOSSIER_SECRETS = Path.home() / ".secrets"                       # le fichier d'un compte qui en déclare un (`secret:`)
+SECRET_FICHIER = Path.home() / ".secrets" / "courriel.env"  # une ligne : SMTP_MOT_DE_PASSE=…
+COMPTE_LETTRE = "lettre"  # le compte d'envoi de la lettre (credences.lettre, 06.11.2026)
+DOSSIER_SECRETS = Path.home() / ".secrets"  # le fichier d'un compte qui en déclare un (`secret:`)
 
 
 def mot_de_passe_fichier(fichier: Path | None = None) -> str:
@@ -323,8 +379,11 @@ def mot_de_passe_fichier(fichier: Path | None = None) -> str:
 # par erreur. on ne voudrait pas être hackés et faire partir une lettre empoisonnée »). Trois gardes : l'envoi demandé
 # en toutes lettres (--envoyer), un destinataire connu (le registre ou la liste des abonnés), un HTML sans code actif.
 OPTIONS = {"--graphe": 1, "--essai": 1, "--wip": 0, "--montrer": 0, "--envoyer": 0}
-RE_ACTIF = re.compile(r"<\s*(?:script|iframe|form|object|embed|link|base)\b|<\s*meta[^>]*http-equiv|\son\w+\s*=|javascript:|vbscript:|"
-                      r"data:text/html|expression\s*\(", re.I)
+RE_ACTIF = re.compile(
+    r"<\s*(?:script|iframe|form|object|embed|link|base)\b|<\s*meta[^>]*http-equiv|\son\w+\s*=|javascript:|vbscript:|"
+    r"data:text/html|expression\s*\(",
+    re.I,
+)
 RE_ADRESSE = re.compile(r"""\b(href|src)\s*=\s*["']([^"']*)["']""", re.I)
 
 
@@ -348,9 +407,13 @@ def destinataire_admis(vers: str, registre: str, admis=()) -> bool:
     la diffusion a lues sur le serveur : abonnés du site, demandes à confirmer) ; aucune autre."""
     from newskit import diffusion  # noqa: PLC0415
     from email.utils import parseaddr  # noqa: PLC0415
+
     a = parseaddr(vers)[1].lower()
-    return bool(a) and (a == parseaddr(registre)[1].lower() or a in {x["adresse"].lower() for x in diffusion.lire()}
-                        or a in {str(x).lower() for x in admis})
+    return bool(a) and (
+        a == parseaddr(registre)[1].lower()
+        or a in {x["adresse"].lower() for x in diffusion.lire()}
+        or a in {str(x).lower() for x in admis}
+    )
 
 
 def contenu_refuse(html: str, site: str | list[str]) -> str:
@@ -360,8 +423,14 @@ def contenu_refuse(html: str, site: str | list[str]) -> str:
     m = RE_ACTIF.search(html or "")
     if m:
         return f"code actif dans la lettre : {m.group(0)[:40]}"
-    hotes = [h for h in (re.sub(r"^https?://", "", (s or "").rstrip("/")).split("/")[0].lower()
-                         for s in ([site] if isinstance(site, str) else site or [])) if h]
+    hotes = [
+        h
+        for h in (
+            re.sub(r"^https?://", "", (s or "").rstrip("/")).split("/")[0].lower()
+            for s in ([site] if isinstance(site, str) else site or [])
+        )
+        if h
+    ]
     for attr, url in RE_ADRESSE.findall(html or ""):
         u = url.strip().lower()
         if attr.lower() == "src" and not any(u.startswith(f"https://{h}/") for h in hotes):
@@ -378,9 +447,23 @@ def par_le_serveur(msg: EmailMessage) -> str:
     if v is None:
         return "accès ssh au serveur absent"
     try:
-        r = subprocess.run(["ssh", "-i", v["VPS_CLE"], "-o", "BatchMode=yes", "-o", "ConnectTimeout=20",
-                            f"{v['VPS_UTILISATEUR']}@{v['VPS_HOTE']}", "sudo -n /usr/local/sbin/kg-abonnement lettre"],
-                           input=msg.as_bytes(), capture_output=True, timeout=120, check=False)
+        r = subprocess.run(
+            [
+                "ssh",
+                "-i",
+                v["VPS_CLE"],
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=20",
+                f"{v['VPS_UTILISATEUR']}@{v['VPS_HOTE']}",
+                "sudo -n /usr/local/sbin/kg-abonnement lettre",
+            ],
+            input=msg.as_bytes(),
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
     except (OSError, subprocess.TimeoutExpired) as e:
         return f"ssh : {type(e).__name__}"
     try:
@@ -390,17 +473,24 @@ def par_le_serveur(msg: EmailMessage) -> str:
     return "" if r.returncode == 0 and issue == "envoye" else f"serveur : {issue or 'ssh ' + str(r.returncode)}"
 
 
-def envoyer(objet: str, corps: str, html: str = "", vers: str | None = None, admis=(), desinscription: str = "",
-            compte: str = "courriel") -> int:
+def envoyer(
+    objet: str,
+    corps: str,
+    html: str = "",
+    vers: str | None = None,
+    admis=(),
+    desinscription: str = "",
+    compte: str = "courriel",
+) -> int:
     """`compte` : un autre compte d'envoi du registre (`credences.<compte>` : de, smtp, port, secret), par exemple
     celui des inscriptions ; il garde le destinataire par défaut du compte « courriel ». Un compte non déclaré laisse
     le compte « courriel » envoyer. Un compte déclaré sans mot de passe n'envoie rien : aucun autre compte ne prend
     sa place, l'expéditeur est celui que le registre nomme."""
     credences = cfg.charger()["credences"]
-    c = (credences.get("courriel") or {})
+    c = credences.get("courriel") or {}
     propre = (credences.get(compte) or {}) if compte != "courriel" else {}
     c = {**c, **propre}
-    serveur = propre.get("par") == "serveur"      # le serveur envoie (la lettre, 06.11.2026) : ni SMTP ni mot de passe ici
+    serveur = propre.get("par") == "serveur"  # le serveur envoie (la lettre, 06.11.2026) : ni SMTP ni mot de passe ici
     for champ in ("vers", "de") if serveur else ("vers", "de", "smtp", "session"):
         if not c.get(champ):
             print(f"  registre : credences.courriel.{champ} manquant, pas d'envoi", file=sys.stderr)
@@ -414,31 +504,39 @@ def envoyer(objet: str, corps: str, html: str = "", vers: str | None = None, adm
         return 1
     if serveur:
         mdp = ""
-    elif propre.get("secret"):     # un mot de passe d'appareil dans un fichier du poste, lisible par un daemon
+    elif propre.get("secret"):  # un mot de passe d'appareil dans un fichier du poste, lisible par un daemon
         fichier = DOSSIER_SECRETS / str(propre["secret"])
         mdp = mot_de_passe_fichier(fichier)
         if not mdp:
-            print(f"  compte « {compte} » : pas de SMTP_MOT_DE_PASSE dans {commun.masquer_chemins(str(fichier))} ; pas d'envoi",
-                  file=sys.stderr)
+            print(
+                f"  compte « {compte} » : pas de SMTP_MOT_DE_PASSE dans {commun.masquer_chemins(str(fichier))} ; pas d'envoi",
+                file=sys.stderr,
+            )
             return 1
     else:
         etat = cfg.etat_session(c["session"])
         mdp = (cfg.session(c["session"]) or "") if etat == "deposee" else mot_de_passe_fichier()
     if not mdp and not serveur:
-        print(f"  mot de passe SMTP « {c['session']} » : {etat} au trousseau, et pas de "
-              f"SMTP_MOT_DE_PASSE dans {SECRET_FICHIER} ; pas d'envoi", file=sys.stderr)
+        print(
+            f"  mot de passe SMTP « {c['session']} » : {etat} au trousseau, et pas de "
+            f"SMTP_MOT_DE_PASSE dans {SECRET_FICHIER} ; pas d'envoi",
+            file=sys.stderr,
+        )
         return 1
     msg = EmailMessage()
     msg["Subject"] = objet
-    de, vers = commun.adresse(c["de"]), vers or commun.adresse(c["vers"])   # `vers` : un abonné (diffusion)
+    de, vers = commun.adresse(c["de"]), vers or commun.adresse(c["vers"])  # `vers` : un abonné (diffusion)
     msg["From"] = de
     msg["To"] = vers
     from email.utils import parseaddr  # noqa: PLC0415
-    if desinscription.startswith("https://"):   # un abonné du site : son lien, et le retrait en un clic (RFC 8058)
+
+    if desinscription.startswith("https://"):  # un abonné du site : son lien, et le retrait en un clic (RFC 8058)
         msg["List-Unsubscribe"] = f"<{desinscription}>"
         msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     else:
-        msg["List-Unsubscribe"] = f"<mailto:{parseaddr(de)[1]}?subject=Désinscription>"  # pied de la lettre (03.11.2026)
+        msg["List-Unsubscribe"] = (
+            f"<mailto:{parseaddr(de)[1]}?subject=Désinscription>"  # pied de la lettre (03.11.2026)
+        )
     msg.set_content(corps)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -479,8 +577,9 @@ def ecrire_essai(dossier: Path, objet: str, corps: str, html: str, cout: float |
     (dossier / "lettre.txt").write_text(corps, encoding="utf-8")
     (dossier / "objet.txt").write_text(objet + "\n", encoding="utf-8")
     if cout is not None:
-        (dossier / "cout.txt").write_text(f"appel au modèle de la lettre : {cout:.4f} $ (poste lettre au registre des coûts)\n",
-                                          encoding="utf-8")
+        (dossier / "cout.txt").write_text(
+            f"appel au modèle de la lettre : {cout:.4f} $ (poste lettre au registre des coûts)\n", encoding="utf-8"
+        )
 
 
 def ecrire_wip(dossier: Path, L: dict) -> Path:
@@ -488,23 +587,33 @@ def ecrire_wip(dossier: Path, L: dict) -> Path:
     lettre_<graphe>_<date>.json (numéro → fiche, url, titre, rubrique), pour pointer un élément de la lettre."""
     import json  # noqa: PLC0415
     from newskit import lettre as lt  # noqa: PLC0415
+
     dossier = Path(dossier)
     dossier.mkdir(parents=True, exist_ok=True)
     (dossier / "lettre_wip.html").write_text(lt.html(L, wip=True), encoding="utf-8")
     p = dossier / f"lettre_{L['graphe']}_{L['envoi']}.json"
-    p.write_text(json.dumps({"graphe": L["graphe"], "envoi": L["envoi"], "objet": lt.objet(L), "elements": lt.index(L)},
-                            ensure_ascii=False, indent=1), encoding="utf-8")
+    p.write_text(
+        json.dumps(
+            {"graphe": L["graphe"], "envoi": L["envoi"], "objet": lt.objet(L), "elements": lt.index(L)},
+            ensure_ascii=False,
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     return p
 
 
-PRIVES_DE_LA_LETTRE = ("expediteur",)   # champs du courriel jamais gardés sous lettres/ (dépôt public)
+PRIVES_DE_LA_LETTRE = ("expediteur",)  # champs du courriel jamais gardés sous lettres/ (dépôt public)
 
 
 def garder_lettre(L: dict) -> Path:
     """La lettre envoyée, gardée sous lettres/<graphe>/<envoi>.json : sa page web <site>/lettres/<graphe>/<envoi>,
     vers laquelle mènent les liens de la lettre, en est faite sur le VPS (deploiement/lettres.py, lot 2, 03.11.2026)."""
     import json  # noqa: PLC0415
-    p = LETTRES / L["graphe"] / f"{L['envoi']}{'-weekly' if L.get('periode') == 'semaine' else ''}.json"   # la weekly du dimanche à côté de sa daily
+
+    p = (
+        LETTRES / L["graphe"] / f"{L['envoi']}{'-weekly' if L.get('periode') == 'semaine' else ''}.json"
+    )  # la weekly du dimanche à côté de sa daily
     p.parent.mkdir(parents=True, exist_ok=True)
     # Sans l'adresse d'expédition : le pre-push refuse un secret dans un fichier suivi (mainteneur, 04.11.2026).
     garde = {k: v for k, v in L.items() if k not in PRIVES_DE_LA_LETTRE}
@@ -530,7 +639,10 @@ def main() -> int:
     lettre_ = None
     try:
         from newskit import lettre as lt  # noqa: PLC0415
-        lettre_ = lt.lettre_du_graphe(graphe or cfg.GRAPHE_PRINCIPAL, texte, nom=nom_lisible(graphe or cfg.GRAPHE_PRINCIPAL))
+
+        lettre_ = lt.lettre_du_graphe(
+            graphe or cfg.GRAPHE_PRINCIPAL, texte, nom=nom_lisible(graphe or cfg.GRAPHE_PRINCIPAL)
+        )
     except Exception as e:  # noqa: BLE001
         print(f"  lettre non composée ({type(e).__name__} {str(e)[:120]}) : le résumé part à sa place", file=sys.stderr)
     if lettre_ is not None and lettre_.get("redige") is False:
@@ -538,7 +650,7 @@ def main() -> int:
         print("ALERTE : lettre non rédigée (limite d'usage ou plafond du modèle) : rien n'est envoyé", file=sys.stderr)
         return 0
     if lettre_ is not None:
-        c_ = (cfg.charger()["credences"].get(COMPTE_LETTRE) or {})
+        c_ = cfg.charger()["credences"].get(COMPTE_LETTRE) or {}
         lettre_.setdefault("expediteur", commun.adresse(c_["de"]) if c_.get("de") else "")
         # La daily est la même pour tous, le mainteneur compris (mainteneur, 04.11.2026) ; il reçoit en plus la WIP (wip()).
         objet, corps, html = lt.objet(lettre_), lt.texte(lettre_), lt.html(lettre_)
@@ -574,6 +686,7 @@ def selection(L: dict, graphe: str) -> list[dict]:
     bloquant : une panne laisse partir la WIP sans eux."""
     try:
         from newskit import selectionneur  # noqa: PLC0415
+
         return selectionneur.proposer(L, graphe)
     except Exception as e:  # noqa: BLE001
         print(f"  sélection non faite ({type(e).__name__} {str(e)[:120]})", file=sys.stderr)
@@ -585,6 +698,7 @@ def wip(L: dict) -> tuple[str, str, str]:
     désigner en approfondissement, et les Coulisses (le passage, les chiffres du graphe, la santé) en bas de page
     (mainteneur, 04.11.2026). (objet, texte, html)."""
     from newskit import lettre as lt  # noqa: PLC0415
+
     return ("[WIP] " + lt.objet(L), lt.texte(L, numeros=True, coulisses=True), lt.html(L, numeros=True, coulisses=True))
 
 

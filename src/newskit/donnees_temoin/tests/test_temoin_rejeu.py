@@ -18,14 +18,25 @@ from newskit import commun  # noqa: E402
 from newskit import temoin  # noqa: E402
 
 
-
 @pytest.fixture(scope="module")
 def passage(tmp_path_factory):
     avant = temoin.photo_du_reel()
     t = temoin.preparer(tmp_path_factory.mktemp("rejeu") / "t")
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r, avant
 
 
@@ -51,7 +62,7 @@ def test_le_rejeu_ne_touche_pas_au_reel(passage):
 # Anticorps 2 (CHANTIER_GENERIQUE.md § 4.3) : `claude -p` a un point de passage unique et un contexte borné.
 # Incidents : 75 259 jetons de contexte pour « ok » quand un plugin de la machine se chargeait (recueil, Consommation,
 # 6 bis, 22.10.2026) ; des appels hors du registre des coûts. Le faux claude du témoin journalise chaque appel.
-CONSIGNE_MAX = 20_000        # caractères ; l'extraction de la couche 2 en prend environ 4 000 par fiche
+CONSIGNE_MAX = 20_000  # caractères ; l'extraction de la couche 2 en prend environ 4 000 par fiche
 
 
 def _appels(t):
@@ -65,11 +76,11 @@ def test_claude_p_point_unique_et_contexte_borne(passage):
     assert appels, "le faux claude n'a rien journalisé"
     for a in appels:
         argv = a["argv"]
-        assert argv[:2] == ["-p", "--settings"], argv[:2]                      # couts.CLAUDE_P en tête
+        assert argv[:2] == ["-p", "--settings"], argv[:2]  # couts.CLAUDE_P en tête
         reglages = json.loads(argv[2])
         assert reglages["enabledPlugins"] == {"cortexdb@cortexdb": False, "thalamus@thalamus": False}
         assert "--tools" in argv and "--model" in argv and "--no-session-persistence" in argv
         assert a["taille"] < CONSIGNE_MAX, (a["cle"], a["taille"])
     registre = t.donnees / "cache" / "couts.jsonl"
     lignes = [json.loads(l) for l in registre.read_text(encoding="utf-8").splitlines()] if registre.exists() else []
-    assert len(lignes) == len(appels) and all(l.get("poste") for l in lignes)   # une ligne au registre par appel
+    assert len(lignes) == len(appels) and all(l.get("poste") for l in lignes)  # une ligne au registre par appel

@@ -10,6 +10,7 @@ reproches, jusqu'à ESSAIS essais (mainteneur, 07.11.2026 : « au moins 3 essais
 champ `fiche` du billet : {texte, tenu: vrai}, ou {tenu: faux, reproches, essais}. Un texte resté sans verdict (appel
 échoué) reste à écrire.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,15 +23,16 @@ from newskit import lettre as lt
 from newskit import publier_fil
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
+
 MOTS_MIN, MOTS_MAX = 80, 150
-PAR_PASSAGE = 15             # textes de fiche écrits par passage, au plus
-ESSAIS = 3                   # essais d'un texte refusé, ses reproches donnés au suivant (mainteneur, 07.11.2026)
+PAR_PASSAGE = 15  # textes de fiche écrits par passage, au plus
+ESSAIS = 3  # essais d'un texte refusé, ses reproches donnés au suivant (mainteneur, 07.11.2026)
 # 30 mots par phrase pour le texte long, 25 ailleurs (mainteneur, 07.11.2026 : 136 phrases de 26 à 31 mots refusées)
 MOTS_PAR_PHRASE = 30
 # Les textes de fiche ont leur plafond du jour, pris dans celui du fil : les billets neufs passent d'abord (mainteneur,
 # 07.11.2026 ; le matin, les réécritures de textes longs avaient vidé le budget du fil sans un billet). F["depense_fiche"].
 FICHE_USD_JOUR = 3.0
-SOURCE_MAX = 3000            # caractères de la source : ceux que lit aussi le relecteur (fil.juger)
+SOURCE_MAX = 3000  # caractères de la source : ceux que lit aussi le relecteur (fil.juger)
 
 REDACTION = """Tu écris le texte de la fiche des billets d'un fil d'actualité sur {nom}, en français. Le lecteur a lu
 le titre et le chapeau ; il ouvre la fiche pour en savoir plus, et peut la partager. Pour chaque billet tu reçois le
@@ -49,8 +51,20 @@ Les règles de la lettre d'information :
 
 Billets :
 {billets}"""
-SCHEMA = {"type": "object", "required": ["billets"], "properties": {"billets": {"type": "array", "items": {
-    "type": "object", "required": ["n", "texte"], "properties": {"n": {"type": "integer"}, "texte": {"type": "string"}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["billets"],
+    "properties": {
+        "billets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["n", "texte"],
+                "properties": {"n": {"type": "integer"}, "texte": {"type": "string"}},
+            },
+        }
+    },
+}
 
 
 def existe(chemin: str) -> bool:
@@ -65,7 +79,7 @@ def a_ecrire(F: dict) -> list[dict]:
     """Les billets qui attendent le texte de leur fiche : la pile d'abord, puis les billets de la copie publique ; ni
     refusés par la relecture, ni déjà écrits, et dont la fiche se lit."""
     vus, out = set(), []
-    for b in (F.get("pile") or []) + (F.get("billets") or [])[:publier_fil.MAX]:
+    for b in (F.get("pile") or []) + (F.get("billets") or [])[: publier_fil.MAX]:
         f = b.get("fiche")
         fini = f is not None and (f.get("tenu") is not False or f.get("essais", 1) >= ESSAIS)
         if b.get("tenu") is False or fini or b["chemin"] in vus or not existe(b["chemin"]):
@@ -91,8 +105,11 @@ def forme(texte: str, f: dict) -> list[str]:
         phrases = lt.phrases(p)
         if len(phrases) > lt.PHRASES_PAR_PARAGRAPHE:
             ec.append(f"paragraphe de {len(phrases)} phrases, {lt.PHRASES_PAR_PARAGRAPHE} au plus")
-        ec += [f"phrase de {len(ph.split())} mots, {MOTS_PAR_PHRASE} au plus" for ph in phrases
-               if len(ph.split()) > MOTS_PAR_PHRASE]
+        ec += [
+            f"phrase de {len(ph.split())} mots, {MOTS_PAR_PHRASE} au plus"
+            for ph in phrases
+            if len(ph.split()) > MOTS_PAR_PHRASE
+        ]
     generique = lt.formule_generique(texte, _source_de(f))
     if generique:
         ec.append(generique)
@@ -101,7 +118,11 @@ def forme(texte: str, f: dict) -> list[str]:
 
 def refus(b: dict, reproches: list[str]) -> dict:
     """Le refus d'un texte, compté : un refus d'avant les essais (07.11.2026) compte pour un."""
-    return {"tenu": False, "reproches": reproches, "essais": (b.get("fiche") or {}).get("essais", 0 if "fiche" not in b else 1) + 1}
+    return {
+        "tenu": False,
+        "reproches": reproches,
+        "essais": (b.get("fiche") or {}).get("essais", 0 if "fiche" not in b else 1) + 1,
+    }
 
 
 def etoffer(F: dict, graphe: str, reste: float) -> float:
@@ -123,10 +144,30 @@ def _etoffer(F: dict, graphe: str) -> float:
     if not lot:
         return 0.0
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
-    r, cout = fil.demander(REDACTION.format(nom=nom, mini=MOTS_MIN, maxi=MOTS_MAX, regles=lt.REGLES, billets="\n".join(
-        json.dumps({"n": n, "titre": b["titre"], "chapeau": b.get("descriptif") or "", "source": fil.extrait(b, SOURCE_MAX),
-                    **({"a_corriger": b["fiche"]["reproches"]} if (b.get("fiche") or {}).get("reproches") else {})},
-                   ensure_ascii=False) for n, (b, _) in enumerate(lot))), SCHEMA, graphe, "fiche")
+    r, cout = fil.demander(
+        REDACTION.format(
+            nom=nom,
+            mini=MOTS_MIN,
+            maxi=MOTS_MAX,
+            regles=lt.REGLES,
+            billets="\n".join(
+                json.dumps(
+                    {
+                        "n": n,
+                        "titre": b["titre"],
+                        "chapeau": b.get("descriptif") or "",
+                        "source": fil.extrait(b, SOURCE_MAX),
+                        **({"a_corriger": b["fiche"]["reproches"]} if (b.get("fiche") or {}).get("reproches") else {}),
+                    },
+                    ensure_ascii=False,
+                )
+                for n, (b, _) in enumerate(lot)
+            ),
+        ),
+        SCHEMA,
+        graphe,
+        "fiche",
+    )
     textes = {}
     for x in r.get("billets") or []:
         t = _net(x.get("texte"))
@@ -146,7 +187,10 @@ def _etoffer(F: dict, graphe: str) -> float:
     for k, n in enumerate(a_juger):
         v = verdicts.get(k)
         if v is None:
-            continue                                     # sans verdict : reste à écrire
-        reproches = [*(f"absent de la source : {a}" for a in v["absents"]), *([v["motif"] or "pas clair"] if not v["clair"] else [])]
+            continue  # sans verdict : reste à écrire
+        reproches = [
+            *(f"absent de la source : {a}" for a in v["absents"]),
+            *([v["motif"] or "pas clair"] if not v["clair"] else []),
+        ]
         lot[n][0]["fiche"] = refus(lot[n][0], reproches) if reproches else {"texte": textes[n], "tenu": True}
     return cout

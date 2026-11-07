@@ -36,12 +36,14 @@ def test_aucun_appel_ne_part_avant_l_ecriture_du_lot_precedent(tmp_path, monkeyp
     def appeler(invite):
         vus.append(len(list(lots.glob("*.json"))) if lots.exists() else 0)
         return {"nodes": [{"id": "n"}], "edges": []}, ""
+
     monkeypatch.setattr(ec, "appeler_claude", appeler)
     monkeypatch.setattr(ec, "normaliser_extraction", lambda ext, f, champs: (ext, []))
 
     def valider(ext):
-        time.sleep(0.2)                       # le fil principal lent, comme en CI
+        time.sleep(0.2)  # le fil principal lent, comme en CI
         return []
+
     monkeypatch.setattr(ec, "valider", valider)
     monkeypatch.setattr(ec, "identifiant_de_fiche", lambda f, champs=None: f.stem)
     monkeypatch.setattr(ec.cfg, "graphe_declare", lambda nom: {"domaine": "ruchers"})

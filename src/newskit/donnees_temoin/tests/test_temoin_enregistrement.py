@@ -18,19 +18,27 @@ import pytest
 from newskit import couts  # noqa: E402
 from newskit import temoin  # noqa: E402
 
-ENVELOPPE = {"type": "result", "is_error": False, "result": "ok", "total_cost_usd": 0.01,
-             "usage": {"input_tokens": 10, "output_tokens": 5}}
+ENVELOPPE = {
+    "type": "result",
+    "is_error": False,
+    "result": "ok",
+    "total_cost_usd": 0.01,
+    "usage": {"input_tokens": 10, "output_tokens": 5},
+}
 
 
 def _vrai_faux(tmp_path, reponse=ENVELOPPE, code=0):
     """Un « vrai claude » de test : écrit ce qu'il reçoit dans recus.jsonl et rend `reponse`."""
     f = tmp_path / "vrai_claude"
-    f.write_text(f"""#!{sys.executable}
+    f.write_text(
+        f"""#!{sys.executable}
 import json, sys
-open({str(tmp_path / 'recus.jsonl')!r}, "a").write(json.dumps({{"argv": sys.argv[1:], "consigne": sys.stdin.read()}}) + "\\n")
+open({str(tmp_path / "recus.jsonl")!r}, "a").write(json.dumps({{"argv": sys.argv[1:], "consigne": sys.stdin.read()}}) + "\\n")
 sys.stdout.write({json.dumps(json.dumps(reponse))})
 sys.exit({code})
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     f.chmod(0o755)
     return f
 
@@ -38,8 +46,9 @@ sys.exit({code})
 def _manquante(t, modele, schema, consigne, argv):
     t.manquantes.mkdir(exist_ok=True)
     cle = temoin.empreinte(modele, schema, consigne)
-    (t.manquantes / f"{cle}.json").write_text(json.dumps({"modele": modele, "schema": schema, "consigne": consigne,
-                                                          "argv": argv}), encoding="utf-8")
+    (t.manquantes / f"{cle}.json").write_text(
+        json.dumps({"modele": modele, "schema": schema, "consigne": consigne, "argv": argv}), encoding="utf-8"
+    )
     return cle
 
 
@@ -50,17 +59,31 @@ def t(tmp_path):
 
 def test_une_manquante_payee_devient_une_reponse_rejouable(tmp_path, t):
     vrai = _vrai_faux(tmp_path)
-    cle = _manquante(t, "claude-opus-5-5", '{"type": "object"}', "Une consigne",
-                     ["-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'])
+    cle = _manquante(
+        t,
+        "claude-opus-5-5",
+        '{"type": "object"}',
+        "Une consigne",
+        ["-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'],
+    )
     bilan = temoin.reenregistrer(t, plafond=5, claude=vrai)
     assert bilan == {"payes": 1, "erreurs": 0, "restantes": 0, "cout_usd": 0.01}
     (recu,) = [json.loads(l) for l in (tmp_path / "recus.jsonl").read_text().splitlines()]
-    assert recu == {"argv": ["-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'], "consigne": "Une consigne"}
+    assert recu == {
+        "argv": ["-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'],
+        "consigne": "Une consigne",
+    }
     assert json.loads((t.reponses / f"{cle}.json").read_text()) == ENVELOPPE and not list(t.manquantes.iterdir())
     import subprocess
-    r = subprocess.run(["claude", "-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'],
-                       input="Une consigne", env=temoin.environnement(t), capture_output=True, text=True)
-    assert (r.returncode, json.loads(r.stdout)) == (0, ENVELOPPE)              # le témoin la rejoue
+
+    r = subprocess.run(
+        ["claude", "-p", "--model", "claude-opus-5-5", "--json-schema", '{"type": "object"}'],
+        input="Une consigne",
+        env=temoin.environnement(t),
+        capture_output=True,
+        text=True,
+    )
+    assert (r.returncode, json.loads(r.stdout)) == (0, ENVELOPPE)  # le témoin la rejoue
 
 
 def test_le_plafond_borne_les_appels_payes(tmp_path, t):
@@ -75,7 +98,7 @@ def test_chaque_appel_entre_au_registre_des_couts_sous_le_poste_temoin(tmp_path,
     vrai = _vrai_faux(tmp_path)
     _manquante(t, "m", "", "c", ["-p"])
     temoin.reenregistrer(t, plafond=1, claude=vrai)
-    (l,) = [json.loads(x) for x in couts.REGISTRE.read_text().splitlines()]       # le registre du conftest
+    (l,) = [json.loads(x) for x in couts.REGISTRE.read_text().splitlines()]  # le registre du conftest
     assert (l["poste"], l["graphe"], l["cout_usd"]) == ("temoin", temoin.GRAPHE, 0.01)
 
 
@@ -83,8 +106,12 @@ def test_chaque_appel_entre_au_registre_des_couts_sous_le_poste_temoin(tmp_path,
 def test_une_reponse_en_erreur_ne_s_enregistre_pas(tmp_path, t, reponse, code):
     vrai = _vrai_faux(tmp_path, reponse, code)
     _manquante(t, "m", "", "c", ["-p"])
-    assert temoin.reenregistrer(t, plafond=1, claude=vrai) == {"payes": 0, "erreurs": 1, "restantes": 1,
-                                                              "cout_usd": 0.01}
+    assert temoin.reenregistrer(t, plafond=1, claude=vrai) == {
+        "payes": 0,
+        "erreurs": 1,
+        "restantes": 1,
+        "cout_usd": 0.01,
+    }
     assert not t.reponses.exists() or not list(t.reponses.glob("*.json"))
 
 

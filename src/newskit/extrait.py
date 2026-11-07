@@ -9,14 +9,14 @@ from __future__ import annotations
 import re
 import unicodedata
 
-MOTS_EXTRAIT = 3     # un extrait plus court s'atteste par hasard (« AI Act »)
+MOTS_EXTRAIT = 3  # un extrait plus court s'atteste par hasard (« AI Act »)
 
 
 def _a_plat(texte: str) -> str:
     """Le texte comparé : formes Unicode unifiées, liens Markdown réduits à leur texte, apostrophes, guillemets
     et tirets ramenés à un seul signe, marques de mise en forme retirées, espaces fondus, casse ignorée."""
     t = unicodedata.normalize("NFKC", texte)
-    t = re.sub(r"\[([^\]]*)\]\([^)\s]*\)", r"\1", t)        # un lien Markdown : son texte, sans l'adresse
+    t = re.sub(r"\[([^\]]*)\]\([^)\s]*\)", r"\1", t)  # un lien Markdown : son texte, sans l'adresse
     t = re.sub(r"[\u2018\u2019\u02bc\u0060\u00b4]", "'", t)
     t = re.sub(r"[\u201c\u201d\u00ab\u00bb\u201e]", '"', t)
     t = re.sub(r"[\u2010-\u2015\u2212]", "-", t)

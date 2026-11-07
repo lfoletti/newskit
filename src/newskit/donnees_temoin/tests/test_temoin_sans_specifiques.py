@@ -30,9 +30,21 @@ def passage(tmp_path_factory):
     t = temoin.preparer(tmp_path_factory.mktemp("sans") / "t")
     for m in SPECIFIQUES:
         (t.code / "newskit" / f"{m}.py").unlink()
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r
 
 
@@ -59,5 +71,7 @@ def test_rien_d_ecrit_ne_nomme_le_reel(passage):
         for p in racine.rglob("*"):
             if p.is_file() and "cortexdb" not in p.parts:
                 b = gzip.open(p).read() if p.suffix == ".gz" else p.read_bytes()
-                trouves += [(str(p.relative_to(t.dossier)), m.group()) for m in motif.finditer(b.decode("utf-8", "ignore"))]
+                trouves += [
+                    (str(p.relative_to(t.dossier)), m.group()) for m in motif.finditer(b.decode("utf-8", "ignore"))
+                ]
     assert trouves == []

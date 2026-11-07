@@ -37,15 +37,23 @@ def bloc_de(texte: str, cle: str) -> tuple[int, int]:
     m = re.search(rf"^  - cle: {re.escape(cle)}[ \t]*$", texte, flags=re.M)
     if not m:
         raise SystemExit(f"source introuvable au registre : {cle}")
-    suite = re.search(r"^(  - cle: |\S)", texte[m.end():], flags=re.M)
+    suite = re.search(r"^(  - cle: |\S)", texte[m.end() :], flags=re.M)
     return m.start(), (m.end() + suite.start()) if suite else len(texte)
 
 
 def deplacer(de: str, vers: str, cles: list[str], appliquer: bool) -> int:
     sources = {s.cle: s for s in cfg.toutes()}
     c_de, c_vers = cfg.chemins_du_graphe(de)["couche2"], cfg.chemins_du_graphe(vers)["couche2"]
-    emp_de = json.loads((c_de / "empreintes.json").read_text(encoding="utf-8")) if (c_de / "empreintes.json").exists() else {}
-    emp_vers = json.loads((c_vers / "empreintes.json").read_text(encoding="utf-8")) if (c_vers / "empreintes.json").exists() else {}
+    emp_de = (
+        json.loads((c_de / "empreintes.json").read_text(encoding="utf-8"))
+        if (c_de / "empreintes.json").exists()
+        else {}
+    )
+    emp_vers = (
+        json.loads((c_vers / "empreintes.json").read_text(encoding="utf-8"))
+        if (c_vers / "empreintes.json").exists()
+        else {}
+    )
     registre = cfg.FICHIER.read_text(encoding="utf-8")
     total_f = total_l = 0
     for cle in cles:
@@ -80,14 +88,18 @@ def deplacer(de: str, vers: str, cles: list[str], appliquer: bool) -> int:
         registre = registre[:debut] + neuf + registre[fin:]
         print(f"  {cle:30} {len(fiches):5} fiche(s), {lots:5} lot(s) de couche 2 recopiés → {vers}")
         total_f, total_l = total_f + len(fiches), total_l + lots
-    print(f"  {de} → {vers} : {len(cles)} source(s), {total_f} fiche(s), {total_l} lot(s) de couche 2"
-          + ("" if appliquer else " — à blanc, rien n'est écrit (--appliquer)"))
+    print(
+        f"  {de} → {vers} : {len(cles)} source(s), {total_f} fiche(s), {total_l} lot(s) de couche 2"
+        + ("" if appliquer else " — à blanc, rien n'est écrit (--appliquer)")
+    )
     if appliquer:
         cfg.FICHIER.write_text(registre, encoding="utf-8")
         c_vers.mkdir(parents=True, exist_ok=True)
-        (c_vers / "empreintes.json").write_text(json.dumps(emp_vers, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+        (c_vers / "empreintes.json").write_text(
+            json.dumps(emp_vers, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
+        )
         cfg.charger.cache_clear() if hasattr(cfg.charger, "cache_clear") else None
-        cfg.toutes()                                       # le registre modifié doit rester valide
+        cfg.toutes()  # le registre modifié doit rester valide
     return 0
 
 
@@ -98,8 +110,12 @@ def main() -> int:
     ap.add_argument("--sources", required=True, help="clés des sources, séparées par des virgules")
     ap.add_argument("--appliquer", action="store_true")
     a = ap.parse_args()
-    return deplacer(cfg.nom_actuel(a.de), cfg.nom_actuel(a.vers), [c.strip() for c in a.sources.split(",") if c.strip()],
-                    a.appliquer)
+    return deplacer(
+        cfg.nom_actuel(a.de),
+        cfg.nom_actuel(a.vers),
+        [c.strip() for c in a.sources.split(",") if c.strip()],
+        a.appliquer,
+    )
 
 
 if __name__ == "__main__":

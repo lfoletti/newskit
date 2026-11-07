@@ -59,9 +59,10 @@ from newskit import fiche  # noqa: E402
 from newskit.extraire_squelette import canon_arxiv, est_exclu, liens_du_texte, nettoyer  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 _VEILLE = cfg.veille_arxiv()
-OUT = RACINE / "sources" / (_VEILLE.get("dossier") or "arxiv")   # papiers cités, même sans veille
-DELAI = 3.0          # secondes entre deux requêtes, demandé par arXiv
+OUT = RACINE / "sources" / (_VEILLE.get("dossier") or "arxiv")  # papiers cités, même sans veille
+DELAI = 3.0  # secondes entre deux requêtes, demandé par arXiv
 from newskit.commun import agent_robot  # noqa: E402
 
 # Catégories et thèmes viennent du registre (sources.yaml, section
@@ -106,7 +107,7 @@ def _proxy_annonce() -> str:
     # `proxy`, déposée au trousseau. Elle est lue ici et posée dans
     # l'environnement du seul processus courant — elle n'est écrite nulle part.
     try:
-        if "proxy" in ((cfg.charger()["credences"].get("sessions") or {})):
+        if "proxy" in (cfg.charger()["credences"].get("sessions") or {}):
             v = cfg.session("proxy")
             if v:
                 os.environ["http_proxy"] = os.environ["https_proxy"] = v
@@ -117,14 +118,10 @@ def _proxy_annonce() -> str:
     return ""
 
 
-
-
-
 # --- Client OAI-PMH ---------------------------------------------------------
 
 OAI = "http://export.arxiv.org/oai2"
-NS_OAI = {"oai": "http://www.openarchives.org/OAI/2.0/",
-          "ar": "http://arxiv.org/OAI/arXiv/"}
+NS_OAI = {"oai": "http://www.openarchives.org/OAI/2.0/", "ar": "http://arxiv.org/OAI/arXiv/"}
 
 
 def _oai_requete(params: dict, essais: int = 4, delai: int = 180) -> ET.Element | None:
@@ -157,8 +154,9 @@ def _oai_requete(params: dict, essais: int = 4, delai: int = 180) -> ET.Element 
 
 def _oai_notice(aid: str) -> dict | None:
     """Une notice par son identifiant (GetRecord). Même forme que la moisson."""
-    racine = _oai_requete({"verb": "GetRecord", "metadataPrefix": "arXiv",
-                           "identifier": f"oai:arXiv.org:{aid}"}, delai=60)
+    racine = _oai_requete(
+        {"verb": "GetRecord", "metadataPrefix": "arXiv", "identifier": f"oai:arXiv.org:{aid}"}, delai=60
+    )
     if racine is None:
         return None
     meta = racine.find(".//ar:arXiv", NS_OAI)
@@ -223,8 +221,7 @@ def _notice_oai(meta) -> dict | None:
 CACHE_MOISSON = RACINE / "cache" / "moisson"
 
 
-def moisson_oai(depuis: str, archives: tuple[str, ...] = ("cs", "eess", "stat"),
-                fraicheur_h: int = 24) -> list[dict]:
+def moisson_oai(depuis: str, archives: tuple[str, ...] = ("cs", "eess", "stat"), fraicheur_h: int = 24) -> list[dict]:
     """Moissonne les notices déposées depuis une date, par archive.
 
     OAI-PMH ne sait pas chercher par mots : il moissonne par archive et par
@@ -245,13 +242,11 @@ def moisson_oai(depuis: str, archives: tuple[str, ...] = ("cs", "eess", "stat"),
     cache = CACHE_MOISSON / f"{depuis}_{'-'.join(archives)}.json"
     if cache.exists() and (time.time() - cache.stat().st_mtime) < fraicheur_h * 3600:
         notices = json.loads(cache.read_text(encoding="utf-8"))
-        print(f"  récolte relue depuis {cache.relative_to(RACINE)} "
-              f"({len(notices)} notices, moins de {fraicheur_h} h)")
+        print(f"  récolte relue depuis {cache.relative_to(RACINE)} ({len(notices)} notices, moins de {fraicheur_h} h)")
         return notices
     notices: list[dict] = []
     for archive in archives:
-        params = {"verb": "ListRecords", "metadataPrefix": "arXiv",
-                  "set": archive, "from": depuis}
+        params = {"verb": "ListRecords", "metadataPrefix": "arXiv", "set": archive, "from": depuis}
         pages = 0
         while True:
             racine = _oai_requete(params)
@@ -262,8 +257,7 @@ def moisson_oai(depuis: str, archives: tuple[str, ...] = ("cs", "eess", "stat"),
                 if n:
                     notices.append(n)
             pages += 1
-            print(f"    moisson {archive} : {pages} page(s), {len(notices)} notice(s)",
-                  end="\r", file=sys.stderr)
+            print(f"    moisson {archive} : {pages} page(s), {len(notices)} notice(s)", end="\r", file=sys.stderr)
             jeton = racine.find(".//oai:resumptionToken", NS_OAI)
             if jeton is None or not (jeton.text or "").strip():
                 break
@@ -296,8 +290,6 @@ def par_identifiants(ids: list[str]) -> tuple[list[dict], list[str]]:
     return resultats, echoues
 
 
-
-
 # --- Écriture --------------------------------------------------------------
 
 
@@ -323,7 +315,7 @@ def ecrire(meta: dict, *, motif: str, dossier: Path | None = None) -> Path:
         "url": f"https://arxiv.org/abs/{aid}",
         "plateforme": "arXiv",
         "publication": "arXiv",
-        "complet": False,          # résumé seul, le texte intégral n'est pas collecté
+        "complet": False,  # résumé seul, le texte intégral n'est pas collecté
         "collected": time.strftime("%Y-%m-%d"),
         "source": f"arXiv ({motif})",
         "arxiv_id": aid,
@@ -332,10 +324,12 @@ def ecrire(meta: dict, *, motif: str, dossier: Path | None = None) -> Path:
         "comment": meta["comment"],
         "origine_date": "identifiant arXiv (mois de dépôt)",
     }
-    corps = f"# {meta['title']}\n\n*{meta['primaire']} · {', '.join(meta['authors'])}*\n\n## Résumé\n\n{meta['summary']}\n"
+    corps = (
+        f"# {meta['title']}\n\n*{meta['primaire']} · {', '.join(meta['authors'])}*\n\n## Résumé\n\n{meta['summary']}\n"
+    )
     try:
         fiche.ecrire(chemin, champs, corps)
-    except fiche.IdentiteDejaVue as deja:              # le papier est déjà dans le graphe par une autre voie
+    except fiche.IdentiteDejaVue as deja:  # le papier est déjà dans le graphe par une autre voie
         print(f"  déjà vue : {deja}")
         return deja.existante
     return chemin
@@ -402,10 +396,11 @@ def mode_citations(limite: int | None) -> int:
     cites = identifiants_cites()
     # Un papier peut avoir sa fiche hors de la veille : l'éclaireur garde la page d'un papier
     # qu'il trouve. La récupérer ici en ferait une seconde fiche sous le même nœud.
-    connus = identifiants_connus().union(*(identifiants_connus(RACINE / d)
-                                           for d in cfg.dossiers_du_graphe(cfg.GRAPHE_PRINCIPAL)))
+    connus = identifiants_connus().union(
+        *(identifiants_connus(RACINE / d) for d in cfg.dossiers_du_graphe(cfg.GRAPHE_PRINCIPAL))
+    )
     manquants = [a for a in cites if a not in connus]
-    manquants.sort(key=lambda a: (-cites[a], a))      # les plus cités d'abord
+    manquants.sort(key=lambda a: (-cites[a], a))  # les plus cités d'abord
     if limite:
         manquants = manquants[:limite]
 
@@ -422,12 +417,14 @@ def mode_citations(limite: int | None) -> int:
     introuvables = [a for a in manquants if a not in obtenus and a not in echoues]
     print(f"  {len(metas)} fiches écrites dans {OUT.relative_to(RACINE)}")
     if echoues:
-        print(f"  ALERTE : {len(echoues)} identifiant(s) non demandés, la requête ayant "
-              f"échoué (arXiv bride, ou réseau). Ce ne sont pas des papiers introuvables : "
-              f"relancer plus tard.", file=sys.stderr)
+        print(
+            f"  ALERTE : {len(echoues)} identifiant(s) non demandés, la requête ayant "
+            f"échoué (arXiv bride, ou réseau). Ce ne sont pas des papiers introuvables : "
+            f"relancer plus tard.",
+            file=sys.stderr,
+        )
     if introuvables:
-        print(f"  {len(introuvables)} identifiant(s) qu'arXiv ne connaît pas "
-              f"(retiré, ou mal formé) :")
+        print(f"  {len(introuvables)} identifiant(s) qu'arXiv ne connaît pas (retiré, ou mal formé) :")
         for a in introuvables[:10]:
             print(f"    - {a}")
     # Une collecte incomplète rend un code non nul : le contrôle de fraîcheur
@@ -436,8 +433,9 @@ def mode_citations(limite: int | None) -> int:
     return 1 if echoues else 0
 
 
-def filtrer_recolte(recolte: list[dict], themes: list[str], categories: set[str],
-                    depuis: str, connus: set[str]) -> tuple[dict, list[str], dict]:
+def filtrer_recolte(
+    recolte: list[dict], themes: list[str], categories: set[str], depuis: str, connus: set[str]
+) -> tuple[dict, list[str], dict]:
     """Applique les thèmes à une récolte. Rend (retenus, thèmes muets, vus par thème).
 
     Une notice est retenue si elle est dans une catégorie suivie, porte le
@@ -473,11 +471,16 @@ def filtrer_recolte(recolte: list[dict], themes: list[str], categories: set[str]
 
 
 MUETS = RACINE / "sources" / "arxiv" / "_muets.json"
-FENETRES_AVANT_RETRAIT = 2   # un thème muet sur deux fenêtres distantes d'au moins six jours sort du registre
+FENETRES_AVANT_RETRAIT = 2  # un thème muet sur deux fenêtres distantes d'au moins six jours sort du registre
 
 
-def retirer_themes_muets(muets: list[str], aujourd_hui: str, registre: Path = cfg.FICHIER,
-                         etat: Path = MUETS, evalues: set[str] | None = None) -> list[str]:
+def retirer_themes_muets(
+    muets: list[str],
+    aujourd_hui: str,
+    registre: Path = cfg.FICHIER,
+    etat: Path = MUETS,
+    evalues: set[str] | None = None,
+) -> list[str]:
     """Retire du registre les thèmes muets sur deux fenêtres, et rend leur liste.
 
     La note de reprise disait « à retirer s'ils le restent sur une seconde
@@ -510,7 +513,9 @@ def retirer_themes_muets(muets: list[str], aujourd_hui: str, registre: Path = cf
         for t in retires:
             for i, l in enumerate(lignes):
                 if l.strip() == f"- {t}" and l.startswith("    "):
-                    lignes[i] = f"    # retiré le {aujourd_hui} par collecte_arxiv.py : muet sur {len(histo[t])} fenêtres ({histo[t][0]} → {histo[t][-1]})"
+                    lignes[i] = (
+                        f"    # retiré le {aujourd_hui} par collecte_arxiv.py : muet sur {len(histo[t])} fenêtres ({histo[t][0]} → {histo[t][-1]})"
+                    )
                     break
             del histo[t]
         registre.write_text("\n".join(lignes), encoding="utf-8")
@@ -526,30 +531,49 @@ def mode_veille(jours: int, themes: list[str] | None = None, graphe: str | None 
     moisson et range ses papiers dans son dossier. Avec (--requete), un essai
     sur le seul graphe principal.
     """
-    veilles = ([{"graphe": cfg.GRAPHE_PRINCIPAL, "dossier": _VEILLE.get("dossier") or "arxiv", "themes": themes,
-                 "categories": CATEGORIES}]
-               if themes else [v for v in VEILLES if not graphe or v["graphe"] == graphe])
+    veilles = (
+        [
+            {
+                "graphe": cfg.GRAPHE_PRINCIPAL,
+                "dossier": _VEILLE.get("dossier") or "arxiv",
+                "themes": themes,
+                "categories": CATEGORIES,
+            }
+        ]
+        if themes
+        else [v for v in VEILLES if not graphe or v["graphe"] == graphe]
+    )
     if not veilles:
         print(f"  le graphe {graphe} n'a pas de veille arXiv au registre")
         return 0
     depuis = time.strftime("%Y-%m-%d", time.gmtime(time.time() - jours * 86400))
     print(f"  veille sur {sum(len(v['themes']) for v in veilles)} thème(s), papiers déposés depuis {depuis}")
-    print(f"  {sum(len(identifiants_connus(RACINE / 'sources' / v['dossier'])) for v in veilles)} papiers déjà en fiche\n")
+    print(
+        f"  {sum(len(identifiants_connus(RACINE / 'sources' / v['dossier'])) for v in veilles)} papiers déjà en fiche\n"
+    )
 
     recolte = moisson_oai(depuis)
     if not recolte:
         # Un refus n'est pas une absence : une moisson vide est une panne, pas
         # une semaine sans publication.
-        print("  ALERTE : moisson vide ; arXiv n'a rien rendu, ce ne sont pas des thèmes "
-              "sans résultat. Relancer plus tard.", file=sys.stderr)
+        print(
+            "  ALERTE : moisson vide ; arXiv n'a rien rendu, ce ne sont pas des thèmes "
+            "sans résultat. Relancer plus tard.",
+            file=sys.stderr,
+        )
         return 1
     print(f"  {len(recolte)} notice(s) moissonnées depuis {depuis}\n")
     ecrites, muets = 0, []
     for v in veilles:
         dossier = RACINE / "sources" / v["dossier"]
         dossier.mkdir(parents=True, exist_ok=True)
-        retenus, muets_v, vus = filtrer_recolte(recolte, v["themes"], set(v.get("categories") or CATEGORIES), depuis,
-                                                identifiants_connus(dossier) | identifiants_du_graphe(v["graphe"]))
+        retenus, muets_v, vus = filtrer_recolte(
+            recolte,
+            v["themes"],
+            set(v.get("categories") or CATEGORIES),
+            depuis,
+            identifiants_connus(dossier) | identifiants_du_graphe(v["graphe"]),
+        )
         if len(veilles) > 1:
             print(f"  graphe {v['graphe']} → {dossier.relative_to(RACINE)} : {len(retenus)} nouveau(x)")
         for theme in v["themes"]:
@@ -557,19 +581,22 @@ def mode_veille(jours: int, themes: list[str] | None = None, graphe: str | None 
             print(f"    {theme:<34} {vus[theme]:>4} vus, {neufs:>4} nouveaux")
         for n in retenus.values():
             ecrire(n, motif=f"veille par moisson, thème « {n['_theme']} »", dossier=dossier)
-        ecrites += len(retenus); muets += muets_v
+        ecrites += len(retenus)
+        muets += muets_v
     # Une seule ligne de total : la routine la lit (routine_hebdo.lire_veille).
-    print(f"\n  {ecrites} fiche(s) écrite(s) dans "
-          + ", ".join(str((RACINE / 'sources' / v['dossier']).relative_to(RACINE)) for v in veilles))
-    retires = retirer_themes_muets(muets, time.strftime("%Y-%m-%d"),
-                                   evalues={t for v in veilles for t in v["themes"]})
+    print(
+        f"\n  {ecrites} fiche(s) écrite(s) dans "
+        + ", ".join(str((RACINE / "sources" / v["dossier"]).relative_to(RACINE)) for v in veilles)
+    )
+    retires = retirer_themes_muets(muets, time.strftime("%Y-%m-%d"), evalues={t for v in veilles for t in v["themes"]})
     if retires:
-        print(f"  {len(retires)} thème(s) retiré(s) de sources.yaml, muets sur deux fenêtres : "
-              f"{', '.join(retires)}")
+        print(f"  {len(retires)} thème(s) retiré(s) de sources.yaml, muets sur deux fenêtres : {', '.join(retires)}")
     encore = [t for t in muets if t not in retires]
     if encore:
-        print(f"  {len(encore)} thème(s) muet(s) sur cette fenêtre, retirés d'eux-mêmes s'ils le restent "
-              f"à la prochaine : {', '.join(encore)}")
+        print(
+            f"  {len(encore)} thème(s) muet(s) sur cette fenêtre, retirés d'eux-mêmes s'ils le restent "
+            f"à la prochaine : {', '.join(encore)}"
+        )
     return 0
 
 
@@ -592,10 +619,10 @@ def mode_redater() -> int:
             continue
         ecart = (int(date[:4]) - int(depot[:4])) * 12 + int(date[5:7]) - int(depot[5:7])
         if ecart <= 1:
-            continue                    # dans le mois du dépôt ou le suivant : plausible
+            continue  # dans le mois du dépôt ou le suivant : plausible
         champs["date"], champs["origine_date"] = depot, "identifiant arXiv (mois de dépôt)"
         nouveau = f.with_name(f"{depot}_{f.name.split('_', 1)[1]}")
-        fiche.ecrire(nouveau, champs, corps, remplace=f)      # un déplacement : la fiche garde son identité
+        fiche.ecrire(nouveau, champs, corps, remplace=f)  # un déplacement : la fiche garde son identité
         if nouveau != f:
             f.unlink()
         redatees += 1
@@ -617,6 +644,7 @@ def mode_repartir(controle: bool) -> int:
     coquille jusqu'à la prochaine collecte des citations.
     """
     import shutil  # noqa: PLC0415
+
     par_theme = {t: RACINE / "sources" / v["dossier"] for v in VEILLES for t in v["themes"]}
     cites = identifiants_cites()
     deplacees: Counter = Counter()
@@ -648,12 +676,14 @@ def mode_repartir(controle: bool) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = ap.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--repartir", action="store_true",
-                      help="ranger chaque fiche de veille dans le dossier du graphe de son thème")
+    mode.add_argument(
+        "--repartir", action="store_true", help="ranger chaque fiche de veille dans le dossier du graphe de son thème"
+    )
     mode.add_argument("--citations", action="store_true", help="papiers déjà cités par le corpus")
     mode.add_argument("--veille", action="store_true", help="papiers récents du domaine")
-    mode.add_argument("--redater", action="store_true",
-                      help="réparer les fiches datées par une révision et non par le dépôt")
+    mode.add_argument(
+        "--redater", action="store_true", help="réparer les fiches datées par une révision et non par le dépôt"
+    )
     ap.add_argument("--limite", type=int, help="citations : nombre maximum de papiers à récupérer")
     ap.add_argument("--jours", type=int, default=8, help="veille : fenêtre en jours (défaut 8)")
     ap.add_argument("--requete", action="append", help="veille : thème à interroger (répétable)")

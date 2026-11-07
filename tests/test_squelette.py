@@ -15,6 +15,7 @@ from newskit import extraire_squelette as sq
 
 def test_normalize_id_est_idempotent_et_reproduit_graphify():
     from graphify.ids import normalize_id
+
     for s in ("Hello World", "é_à--x", "  Déjà vu!  ", "a__b"):
         assert sq.normalize_id(s) == normalize_id(s)
         assert sq.normalize_id(sq.normalize_id(s)) == sq.normalize_id(s)
@@ -48,16 +49,19 @@ def test_nettoyer_deballe_les_redirections():
     assert sq.nettoyer("https://www.google.com/url?q=https://cible.org/q&sa=D") == "https://cible.org/q"
 
 
-@pytest.mark.parametrize("url, exclu", [
-    ("https://substackcdn.com/image/x", True),
-    ("https://linktr.ee/qui", True),
-    ("https://exemple.org/photo.PNG?x=1", True),
-    ("https://exemple.org/subscribe", True),
-    ("https://exemple.org/api/v1/posts", True),
-    ("https://exemple.org/api/v1", True),
-    ("https://exemple.org/subscribe/plus", False),
-    ("https://exemple.org/article", False),
-])
+@pytest.mark.parametrize(
+    "url, exclu",
+    [
+        ("https://substackcdn.com/image/x", True),
+        ("https://linktr.ee/qui", True),
+        ("https://exemple.org/photo.PNG?x=1", True),
+        ("https://exemple.org/subscribe", True),
+        ("https://exemple.org/api/v1/posts", True),
+        ("https://exemple.org/api/v1", True),
+        ("https://exemple.org/subscribe/plus", False),
+        ("https://exemple.org/article", False),
+    ],
+)
 def test_est_exclu(url, exclu):
     assert sq.est_exclu(url) is exclu
 
@@ -65,15 +69,18 @@ def test_est_exclu(url, exclu):
 # --- arXiv et GitHub -------------------------------------------------------
 
 
-@pytest.mark.parametrize("url, attendu", [
-    ("https://arxiv.org/abs/1706.03762", "1706.03762"),
-    ("https://arxiv.org/abs/1706.03762v7", "1706.03762"),
-    ("https://arxiv.org/pdf/2401.12070.pdf", "2401.12070"),
-    ("https://arxiv.org/html/2401.12070v2", "2401.12070"),
-    ("https://arxiv.org/abs/physics/0408067", "physics/0408067"),
-    ("https://arxiv.org/abs/math.GT/0309136", "math.gt/0309136"),
-    ("https://exemple.org/1706.03762", None),
-])
+@pytest.mark.parametrize(
+    "url, attendu",
+    [
+        ("https://arxiv.org/abs/1706.03762", "1706.03762"),
+        ("https://arxiv.org/abs/1706.03762v7", "1706.03762"),
+        ("https://arxiv.org/pdf/2401.12070.pdf", "2401.12070"),
+        ("https://arxiv.org/html/2401.12070v2", "2401.12070"),
+        ("https://arxiv.org/abs/physics/0408067", "physics/0408067"),
+        ("https://arxiv.org/abs/math.GT/0309136", "math.gt/0309136"),
+        ("https://exemple.org/1706.03762", None),
+    ],
+)
 def test_canon_arxiv(url, attendu):
     assert sq.canon_arxiv(url) == attendu
 
@@ -82,24 +89,30 @@ def test_canon_arxiv_rejette_un_identifiant_tronque_apres_2015():
     """Après avril 2015 les identifiants ont cinq chiffres ; `2401.1207` est
     tronqué et on ne devine pas le chiffre manquant."""
     assert sq.canon_arxiv("https://arxiv.org/abs/2401.1207") is None
-    assert sq.canon_arxiv("https://arxiv.org/abs/1412.6980") == "1412.6980"   # quatre chiffres légitimes avant 2015
+    assert sq.canon_arxiv("https://arxiv.org/abs/1412.6980") == "1412.6980"  # quatre chiffres légitimes avant 2015
 
 
-@pytest.mark.parametrize("url, attendu", [
-    ("https://github.com/rasbt/LLMs-from-scratch", "rasbt/LLMs-from-scratch"),
-    ("https://github.com/rasbt/LLMs-from-scratch/blob/main/x.py", "rasbt/LLMs-from-scratch"),
-    ("https://github.com/rasbt/repo.", "rasbt/repo"),
-    ("https://github.com/orgs/truc/x", None),
-    ("https://github.com/qui/depot.git", None),
-    ("https://gitlab.com/qui/depot", None),
-])
+@pytest.mark.parametrize(
+    "url, attendu",
+    [
+        ("https://github.com/rasbt/LLMs-from-scratch", "rasbt/LLMs-from-scratch"),
+        ("https://github.com/rasbt/LLMs-from-scratch/blob/main/x.py", "rasbt/LLMs-from-scratch"),
+        ("https://github.com/rasbt/repo.", "rasbt/repo"),
+        ("https://github.com/orgs/truc/x", None),
+        ("https://github.com/qui/depot.git", None),
+        ("https://gitlab.com/qui/depot", None),
+    ],
+)
 def test_canon_github(url, attendu):
     assert sq.canon_github(url) == attendu
 
 
 def test_slug_article_reconnait_substack_et_pulse():
     assert sq.slug_article("https://x.substack.com/p/Mon-Billet?x=1") == "mon-billet"
-    assert sq.slug_article("https://www.linkedin.com/pulse/titre-andr%C3%A9-lindenberg-abc") == "titre-andré-lindenberg-abc"
+    assert (
+        sq.slug_article("https://www.linkedin.com/pulse/titre-andr%C3%A9-lindenberg-abc")
+        == "titre-andré-lindenberg-abc"
+    )
     assert sq.slug_article("https://exemple.org/autre") is None
 
 
@@ -110,7 +123,7 @@ def test_normaliser_auteurs_scinde_et_retire_les_titres():
     assert sq.normaliser_auteurs("Tivadar Danka, Alejandro Piad Morffis") == ["Tivadar Danka", "Alejandro Piad Morffis"]
     assert sq.normaliser_auteurs("Sebastian Raschka, PhD") == ["Sebastian Raschka"]
     assert sq.normaliser_auteurs("Ada et Bob and Cléo & Dan; Eve") == ["Ada", "Bob", "Cléo", "Dan", "Eve"]
-    assert sq.normaliser_auteurs("A, B") == []            # une lettre n'est pas un nom
+    assert sq.normaliser_auteurs("A, B") == []  # une lettre n'est pas un nom
     assert sq.normaliser_auteurs("") == []
 
 
@@ -126,12 +139,13 @@ def test_triplets_who_is_who_traduit_la_certitude_sans_la_promouvoir(tmp_path):
         "- Bob -> cofonde -> Startup\n"
         "## Autre\n"
         "- pas -> un -> triplet [A]\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     triplets = list(sq.triplets_who_is_who(f, "id"))
     assert triplets == [
         ("EPFL", "dirige", "Laboratoire X", "EXTRACTED", 2),
-        ("Alice", "travaille_chez", "EPFL", "INFERRED", 3),    # A/B : le pire l'emporte
-        ("Bob", "cofonde", "Startup", "AMBIGUOUS", 4),         # sans niveau : C
+        ("Alice", "travaille_chez", "EPFL", "INFERRED", 3),  # A/B : le pire l'emporte
+        ("Bob", "cofonde", "Startup", "AMBIGUOUS", 4),  # sans niveau : C
     ]
 
 

@@ -93,6 +93,7 @@ def registre_des_couts_isole(tmp_path_factory, monkeypatch):
     limites repart de zéro à chaque test : un test ne doit jamais écrire `cache/couts.jsonl` ni poser
     `cache/limite_atteinte`, qui arrêterait toutes les boucles de la nuit trois heures (audit du 22.10.2026)."""
     from newskit import couts
+
     d = tmp_path_factory.mktemp("couts")
     monkeypatch.setattr(couts, "REGISTRE", d / "couts.jsonl")
     monkeypatch.setattr(couts, "MARQUE", d / "limite_atteinte")
@@ -112,7 +113,7 @@ def fixtures() -> Path:
 def fiche_texte() -> str:
     """Une fiche minimale, conforme au contrat, telle qu'on la trouve sur disque."""
     return (
-        '---\n'
+        "---\n"
         'title: "Un titre"\n'
         'subtitle: "Un sous-titre"\n'
         'author: "Ada Lovelace, Charles Babbage"\n'
@@ -120,14 +121,14 @@ def fiche_texte() -> str:
         'url: "https://example.org/p/un-titre"\n'
         'plateforme: "Substack"\n'
         'publication: "Une lettre"\n'
-        'words: 7\n'
-        'complet: true\n'
+        "words: 7\n"
+        "complet: true\n"
         'collected: "2026-01-03"\n'
-        '---\n'
-        '\n'
-        '# Un titre\n'
-        '\n'
-        'Sept mots dans ce corps de fiche.\n'
+        "---\n"
+        "\n"
+        "# Un titre\n"
+        "\n"
+        "Sept mots dans ce corps de fiche.\n"
     )
 
 
@@ -136,6 +137,7 @@ def selection_sans_modele(monkeypatch):
     """La WIP envoyée par un test n'appelle jamais le Sélectionneur réel (un appel au modèle) ; ses tests
     (test_selectionneur.py) remettent la vraie fonction."""
     from newskit import notifier_courriel
+
     monkeypatch.setattr(notifier_courriel, "selection", lambda L, graphe: [])
 
 
@@ -154,7 +156,7 @@ def corrections_isolees(tmp_path_factory, monkeypatch):
 def journal_des_types_isole(tmp_path_factory, monkeypatch):
     """Le journal des types de correction du relecteur n'est jamais écrit par un test."""
     from newskit import reporter
-    monkeypatch.setattr(reporter, "JOURNAL_TYPES", tmp_path_factory.mktemp("types") / "relecture_types.jsonl",
-                        raising=False)
 
-
+    monkeypatch.setattr(
+        reporter, "JOURNAL_TYPES", tmp_path_factory.mktemp("types") / "relecture_types.jsonl", raising=False
+    )

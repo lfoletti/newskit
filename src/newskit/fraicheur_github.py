@@ -16,6 +16,7 @@ Une source disparue (404, 410, 451) n'efface jamais sa fiche (règle du maintene
 marque `source_manquante: "<code>, <date>"` et garde son corps. Le rafraîchissement garde l'en-tête de la fiche ; sa date devient celle de la dernière modification, sa date de
 collecte celle du jour. La fiche réécrite repasse à l'extraction comme toute fiche modifiée.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,9 +33,34 @@ from newskit import fiche  # noqa: E402
 API = "https://api.github.com/repos"
 BRUT = "https://raw.githubusercontent.com"
 # Premiers segments d'une adresse github.com qui ne sont pas un propriétaire de dépôt.
-RESERVES = {"orgs", "topics", "collections", "marketplace", "sponsors", "settings", "features", "about", "pricing",
-            "search", "explore", "trending", "login", "join", "apps", "enterprise", "security", "customer-stories",
-            "readme", "events", "site", "notifications", "issues", "pulls", "codespaces", "users"}
+RESERVES = {
+    "orgs",
+    "topics",
+    "collections",
+    "marketplace",
+    "sponsors",
+    "settings",
+    "features",
+    "about",
+    "pricing",
+    "search",
+    "explore",
+    "trending",
+    "login",
+    "join",
+    "apps",
+    "enterprise",
+    "security",
+    "customer-stories",
+    "readme",
+    "events",
+    "site",
+    "notifications",
+    "issues",
+    "pulls",
+    "codespaces",
+    "users",
+}
 
 
 class Refus(Exception):
@@ -43,7 +69,10 @@ class Refus(Exception):
 
 def adresse_github(url: str) -> tuple[str, str, str | None] | None:
     """(propriétaire, dépôt, chemin) d'une adresse de dépôt GitHub ; chemin None pour la page du dépôt."""
-    m = re.match(r"^https?://(?:www\.)?github\.com/([^/?#]+)/([^/?#]+)(?:/(?:blob|tree)/[^/?#]+/([^?#]*))?/?(?:[?#].*)?$", url or "")
+    m = re.match(
+        r"^https?://(?:www\.)?github\.com/([^/?#]+)/([^/?#]+)(?:/(?:blob|tree)/[^/?#]+/([^?#]*))?/?(?:[?#].*)?$",
+        url or "",
+    )
     if not m or m[1].lower() in RESERVES:
         return None
     depot = m[2][:-4] if m[2].endswith(".git") else m[2]
@@ -89,8 +118,11 @@ def perimees(fiches: list[dict], lire: Callable[[str], str]) -> list[dict]:
 
 def fichiers_markdown(o: str, r: str, dossier: str, lire: Callable[[str], str]) -> list[str]:
     """Les chemins des fichiers Markdown d'un dossier du dépôt (sans descendre dans les sous-dossiers)."""
-    return [e["path"] for e in json.loads(lire(f"{API}/{o}/{r}/contents/{dossier}"))
-            if e.get("type") == "file" and e.get("name", "").lower().endswith(".md")]
+    return [
+        e["path"]
+        for e in json.loads(lire(f"{API}/{o}/{r}/contents/{dossier}"))
+        if e.get("type") == "file" and e.get("name", "").lower().endswith(".md")
+    ]
 
 
 def _slug(texte: str) -> str:
@@ -102,19 +134,39 @@ def _titre(corps: str, chemin: str) -> str:
     return m[1].strip() if m else Path(chemin).stem
 
 
-def collecter_fichier(o: str, r: str, chemin: str, sortie: Path, lire: Callable[[str], str], lire_brut: Callable[[str], str],
-                      aujourdhui: str | None = None) -> Path:
+def collecter_fichier(
+    o: str,
+    r: str,
+    chemin: str,
+    sortie: Path,
+    lire: Callable[[str], str],
+    lire_brut: Callable[[str], str],
+    aujourdhui: str | None = None,
+) -> Path:
     """Une fiche pour un fichier du dépôt : son texte brut, daté de sa dernière modification."""
     aujourdhui = aujourdhui or time.strftime("%Y-%m-%d")
     date = derniere_modif(o, r, chemin, lire)
     corps = lire_brut(f"{BRUT}/{o}/{r}/HEAD/{chemin}")
     p = Path(sortie) / f"{date}_github-{_slug(o)}-{_slug(r)}-{_slug(str(Path(chemin).with_suffix('')))}.md"
     try:
-        fiche.ecrire(p, {"title": f"{o}/{r} : {_titre(corps, chemin)}", "subtitle": "", "author": "", "date": date,
-                         "url": f"https://github.com/{o}/{r}/blob/HEAD/{chemin}", "plateforme": "GitHub",
-                         "publication": "github.com", "words": len(corps.split()), "complet": True,
-                         "collected": aujourdhui, "source": f"fichier du dépôt {o}/{r}"}, corps)
-    except fiche.IdentiteDejaVue as deja:              # le fichier est déjà une fiche du graphe
+        fiche.ecrire(
+            p,
+            {
+                "title": f"{o}/{r} : {_titre(corps, chemin)}",
+                "subtitle": "",
+                "author": "",
+                "date": date,
+                "url": f"https://github.com/{o}/{r}/blob/HEAD/{chemin}",
+                "plateforme": "GitHub",
+                "publication": "github.com",
+                "words": len(corps.split()),
+                "complet": True,
+                "collected": aujourdhui,
+                "source": f"fichier du dépôt {o}/{r}",
+            },
+            corps,
+        )
+    except fiche.IdentiteDejaVue as deja:  # le fichier est déjà une fiche du graphe
         return deja.existante
     return p
 
@@ -155,8 +207,13 @@ def _readme(o: str, r: str, lire: Callable[[str], str]) -> str:
     return json.loads(lire(f"{API}/{o}/{r}/readme"))["path"]
 
 
-def rafraichir(p: Path, lire: Callable[[str], str], lire_brut: Callable[[str], str], aujourdhui: str | None = None,
-               readme: Callable | None = None) -> None:
+def rafraichir(
+    p: Path,
+    lire: Callable[[str], str],
+    lire_brut: Callable[[str], str],
+    aujourdhui: str | None = None,
+    readme: Callable | None = None,
+) -> None:
     """Réécrit le corps d'une fiche GitHub avec le texte actuel (le README pour la page d'un dépôt), en gardant son
     en-tête ; date = dernière modification, collecte = aujourd'hui."""
     aujourdhui = aujourdhui or time.strftime("%Y-%m-%d")
@@ -164,8 +221,12 @@ def rafraichir(p: Path, lire: Callable[[str], str], lire_brut: Callable[[str], s
     o, r, chemin = adresse_github(str(entete.get("url") or ""))
     date = derniere_modif(o, r, chemin, lire)
     corps = lire_brut(f"{BRUT}/{o}/{r}/HEAD/{chemin or (readme or (lambda o, r, l: _readme(o, r, l)))(o, r, lire)}")
-    fiche.ecrire(Path(p), {**entete, "date": date, "collected": aujourdhui, "words": len(corps.split()), "complet": True},
-                 corps, strict=False)
+    fiche.ecrire(
+        Path(p),
+        {**entete, "date": date, "collected": aujourdhui, "words": len(corps.split()), "complet": True},
+        corps,
+        strict=False,
+    )
 
 
 def _fiches_github() -> list[dict]:
@@ -181,7 +242,13 @@ def _fiches_github() -> list[dict]:
             continue
         e, _ = fiche.lire(tete if tete.count("---") >= 2 else tete + "\n---\n")
         if adresse_github(str(e.get("url") or "")):
-            out.append({"chemin": str(p.relative_to(RACINE)), "url": str(e.get("url")), "collected": str(e.get("collected") or "")})
+            out.append(
+                {
+                    "chemin": str(p.relative_to(RACINE)),
+                    "url": str(e.get("url")),
+                    "collected": str(e.get("collected") or ""),
+                }
+            )
     return out
 
 
@@ -199,6 +266,7 @@ def _lecteurs() -> tuple[Callable[[str], str], Callable[[str], str]]:
             return cc.lire_url(url, accept="text/plain")
         except cc.Refus as e:
             raise Refus(str(e)) from e
+
     return lire, lire_brut
 
 
@@ -214,7 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     if a.ajouter_dossier:
         cible = adresse_github(a.ajouter_dossier)
         if not cible or not cible[2] or not a.vers:
-            print("  --ajouter-dossier attend l'adresse d'un dossier de dépôt (…/tree/<branche>/<dossier>) et --vers", file=sys.stderr)
+            print(
+                "  --ajouter-dossier attend l'adresse d'un dossier de dépôt (…/tree/<branche>/<dossier>) et --vers",
+                file=sys.stderr,
+            )
             return 1
         o, r, dossier = cible
         for chemin in fichiers_markdown(o, r, dossier, lire):
@@ -222,9 +293,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     fiches = _fiches_github()
     p = perimees(fiches, lire)
-    print(f"  {len(fiches)} fiche(s) GitHub ; {sum(1 for x in p if 'modifie' in x)} périmée(s), "
-          f"{sum(1 for x in p if x.get('manquante'))} source(s) manquante(s), "
-          f"{sum(1 for x in p if 'erreur' in x and not x.get('manquante'))} injoignable(s)")
+    print(
+        f"  {len(fiches)} fiche(s) GitHub ; {sum(1 for x in p if 'modifie' in x)} périmée(s), "
+        f"{sum(1 for x in p if x.get('manquante'))} source(s) manquante(s), "
+        f"{sum(1 for x in p if 'erreur' in x and not x.get('manquante'))} injoignable(s)"
+    )
     for x in p:
         print(ligne_rapport(x, time.strftime("%Y-%m-%d")))
     if a.rafraichir:

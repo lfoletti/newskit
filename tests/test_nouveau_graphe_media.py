@@ -39,13 +39,20 @@ def test_sans_installateur_la_tache_est_prete_a_poser(media):
     assert "__" not in texte
     d = plistlib.loads(texte.encode("utf-8"))
     assert d["Label"] == "com.exemple.apiculture-ruchers"
-    assert d["ProgramArguments"] == [sys.executable, "-u", "-m", "newskit.routine_hebdo", "--graphe", "ruchers",
-                                     "--planifie"]
+    assert d["ProgramArguments"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "newskit.routine_hebdo",
+        "--graphe",
+        "ruchers",
+        "--planifie",
+    ]
     assert d["WorkingDirectory"] == str(media)
     assert d["EnvironmentVariables"]["NEWSKIT_DONNEES"] == str(media)
     assert d["EnvironmentVariables"]["HOME"] == str(Path.home())
     assert d["StartCalendarInterval"] == [{"Hour": 5, "Minute": 30}]
-    assert Path(d["StandardOutPath"]).parent.is_dir()            # launchd n'y crée pas le dossier du journal
+    assert Path(d["StandardOutPath"]).parent.is_dir()  # launchd n'y crée pas le dossier du journal
 
 
 def test_avec_installateur_la_tache_garde_ses_champs_sous_scripts(media):
@@ -56,7 +63,9 @@ def test_avec_installateur_la_tache_garde_ses_champs_sous_scripts(media):
     texte = p.read_text(encoding="utf-8")
     assert "__DEPOT__" in texte and "__MAISON__" in texte
     assert f"<string>{sys.executable}</string>" in texte and "<string>newskit.routine_hebdo</string>" in texte
-    assert "scripts/routine_hebdo.py" not in texte and "/opt/miniconda3/bin/python3</string>\n    <string>-u" not in texte
+    assert (
+        "scripts/routine_hebdo.py" not in texte and "/opt/miniconda3/bin/python3</string>\n    <string>-u" not in texte
+    )
 
 
 def test_le_modele_ne_nomme_ni_un_interpreteur_ni_un_chemin_du_depot():

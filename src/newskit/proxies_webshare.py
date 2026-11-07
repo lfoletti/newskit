@@ -58,9 +58,11 @@ def telecharger() -> list[str]:
             "  URL de liste absente du trousseau. La déposer, valeur demandée à l'écran :\n"
             f"    {cfg.commande_de_depot(CREDENCE)}\n"
             "  ou, l'URL étant dans le presse-papiers :\n"
-            f"    {cfg.commande_de_depot(CREDENCE, presse_papier=True)}")
-    with urllib.request.urlopen(urllib.request.Request(
-            url, headers={"User-Agent": "veille-data-science/1.0"}), timeout=60) as r:
+            f"    {cfg.commande_de_depot(CREDENCE, presse_papier=True)}"
+        )
+    with urllib.request.urlopen(
+        urllib.request.Request(url, headers={"User-Agent": "veille-data-science/1.0"}), timeout=60
+    ) as r:
         brut = r.read().decode("utf-8", "replace")
 
     proxys = []
@@ -81,11 +83,11 @@ def telecharger() -> list[str]:
 
 def eprouver(url_proxy: str, delai: int = 25) -> tuple[bool, str]:
     """Une requête réelle à l'API d'arXiv à travers le proxy. Sinon on ne sait rien."""
-    op = urllib.request.build_opener(urllib.request.ProxyHandler(
-        {"http": url_proxy, "https": url_proxy}))
+    op = urllib.request.build_opener(urllib.request.ProxyHandler({"http": url_proxy, "https": url_proxy}))
     try:
-        with op.open(urllib.request.Request(
-                SONDE, headers={"User-Agent": "veille-data-science/1.0"}), timeout=delai) as r:
+        with op.open(
+            urllib.request.Request(SONDE, headers={"User-Agent": "veille-data-science/1.0"}), timeout=delai
+        ) as r:
             return (b"Attention Is All You Need" in r.read()), "réponse attendue"
     except urllib.error.HTTPError as e:
         return False, f"HTTP {e.code}"
@@ -94,12 +96,11 @@ def eprouver(url_proxy: str, delai: int = 25) -> tuple[bool, str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--une-url", action="store_true",
-                    help="écrit une URL de proxy sur la sortie standard, et rien d'autre")
-    ap.add_argument("--eprouver", type=int, metavar="N",
-                    help="éprouve N proxys tirés au hasard contre l'API d'arXiv")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument(
+        "--une-url", action="store_true", help="écrit une URL de proxy sur la sortie standard, et rien d'autre"
+    )
+    ap.add_argument("--eprouver", type=int, metavar="N", help="éprouve N proxys tirés au hasard contre l'API d'arXiv")
     args = ap.parse_args()
 
     proxys = telecharger()
@@ -125,8 +126,7 @@ def main() -> int:
         for p in echantillon:
             ok, detail = eprouver(p)
             bons += ok
-            print(f"    {'ok   ' if ok else 'échec'}  {_masque(urllib.parse.urlsplit(p).hostname or '?')}"
-                  f"  {detail}")
+            print(f"    {'ok   ' if ok else 'échec'}  {_masque(urllib.parse.urlsplit(p).hostname or '?')}  {detail}")
         print(f"  {bons}/{len(echantillon)} utilisable(s).")
         return 0 if bons else 1
     return 0

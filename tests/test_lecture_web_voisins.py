@@ -28,14 +28,18 @@ def test_la_fiche_de_reimerswaal_porte_son_nom_en_tete(monkeypatch):
 
 
 def test_un_bloc_voisin_ne_ramene_pas_l_ancre_en_tete():
-    html = (f"<html><body><main><h1>Titre</h1><p>{CORPS}</p><ul><li><a href='/autre'><h2>Titre</h2></a>"
-            "<h2>Voisin de liste</h2></li></ul></main></body></html>")
+    html = (
+        f"<html><body><main><h1>Titre</h1><p>{CORPS}</p><ul><li><a href='/autre'><h2>Titre</h2></a>"
+        "<h2>Voisin de liste</h2></li></ul></main></body></html>"
+    )
     texte, n = lw.rattraper(html, f"Titre\n{CORPS}")
     assert n == 1 and texte.split("\n") == ["Titre", CORPS, "Voisin de liste"]
 
 
 def test_une_adresse_de_courriel_ne_vaut_pas_le_nom_lu():
-    html = ("<html><body><main><h1>SafeGPT</h1><h2>Gemeente Reimerswaal</h2>"
-            f"<p>{CORPS}</p><p>Contact gemeente@reimerswaal.nl</p></main></body></html>")
+    html = (
+        "<html><body><main><h1>SafeGPT</h1><h2>Gemeente Reimerswaal</h2>"
+        f"<p>{CORPS}</p><p>Contact gemeente@reimerswaal.nl</p></main></body></html>"
+    )
     texte, _ = lw.rattraper(html, f"SafeGPT\n{CORPS}\nContact gemeente@reimerswaal.nl")
     assert texte.split("\n")[:2] == ["SafeGPT", "Gemeente Reimerswaal"]

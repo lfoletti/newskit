@@ -32,8 +32,16 @@ def racine(tmp_path, monkeypatch):
 
 
 def _poser(racine: Path, rel: str, **champs) -> Path:
-    c = {"title": "T", "subtitle": "", "author": "", "date": "2024-01-01", "url": "", "publication": "p",
-         "collected": "2026-11-06", **champs}
+    c = {
+        "title": "T",
+        "subtitle": "",
+        "author": "",
+        "date": "2024-01-01",
+        "url": "",
+        "publication": "p",
+        "collected": "2026-11-06",
+        **champs,
+    }
     p = racine / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(fiche.rendre(fiche.normaliser(c, "# T\n\ncorps"), "# T\n\ncorps"), encoding="utf-8")
@@ -69,8 +77,11 @@ def test_la_gardee_couvre_tous_les_graphes(racine):
 
 def test_un_groupe_sans_fiche_qui_couvre_tout_est_a_trancher(racine, monkeypatch):
     r, _ = racine
-    monkeypatch.setattr(fiche, "dossiers_des_graphes", lambda: {"a": ["sources/a"], "b": ["sources/b"],
-                                                               "ab": ["sources/a", "sources/b"]})
+    monkeypatch.setattr(
+        fiche,
+        "dossiers_des_graphes",
+        lambda: {"a": ["sources/a"], "b": ["sources/b"], "ab": ["sources/a", "sources/b"]},
+    )
     fiche.oublier_index()
     _poser(r, "sources/a/x.md", url="https://e.org/1")
     _poser(r, "sources/b/y.md", url="https://e.org/1")
@@ -119,7 +130,8 @@ def test_aval_aucun_graphe_reel_n_a_deux_fiches_d_un_meme_document():
     fiche.oublier_index()
     groupes = dd.etat()
     assert not groupes, f"{len(groupes)} groupe(s) de doublons, dont : " + "; ".join(
-        f"{g.garde or 'à trancher'} = {', '.join(g.retirees or g.fiches)}" for g in groupes[:3])
+        f"{g.garde or 'à trancher'} = {', '.join(g.retirees or g.fiches)}" for g in groupes[:3]
+    )
 
 
 def test_deux_versions_de_langue_gardent_la_francaise_sinon_l_anglaise(racine):
@@ -156,32 +168,47 @@ def test_un_texte_de_reference_dans_deux_langues_n_est_pas_un_doublon(racine):
 def test_le_manifeste_d_un_flux_perd_les_entrees_dont_la_fiche_porte_un_autre_article(racine):
     # 07.11.2026 : trois articles anglais du même jour s'écrivaient dans 2026-11-07_en.md, chacun écrasant le précédent.
     import json
+
     r, _ = racine
     d = r / "sources" / "a" / "rss" / "blog"
     _poser(r, "sources/a/rss/blog/2026-11-07_en.md", url="https://blog.x/blog/ramp/en/")
-    man = {"https://blog.x/blog/frontier/en/": {"file": "2026-11-07_en.md"},
-           "https://blog.x/blog/ramp/en/": {"file": "2026-11-07_en.md"},
-           "https://blog.x/blog/parti/en/": {"file": "2026-11-06_en.md"},
-           "https://blog.x/blog/parti-aussi/en/": {"file": "2026-11-06_en.md"},     # fiche partie, partagée : restent
-           "https://blog.x/vieux-nom": {"file": "2026-11-05_renomme.md"},         # seule sur sa fiche : une redirection
-           "http://blog.x//blog/double/": {"file": "2026-11-04_double.md"},         # la même adresse, autrement écrite
-           "https://blog.x/blog/double-bis": {"file": "2026-11-04_double.md"},
-           "https://noyb.x/en/plan-ue": {"file": "2026-09-21_plan-ue.md"},              # /index.php/en/… : la même page
-           "https://ancien.x/posts/rwa": {"file": "2026-09-21_plan-ue.md"},             # domaine changé : un autre article ici
-           "https://noyb.x/de/plan-ue": {"file": "2026-09-21_plan-ue.md"}}              # une autre langue : version
+    man = {
+        "https://blog.x/blog/frontier/en/": {"file": "2026-11-07_en.md"},
+        "https://blog.x/blog/ramp/en/": {"file": "2026-11-07_en.md"},
+        "https://blog.x/blog/parti/en/": {"file": "2026-11-06_en.md"},
+        "https://blog.x/blog/parti-aussi/en/": {"file": "2026-11-06_en.md"},  # fiche partie, partagée : restent
+        "https://blog.x/vieux-nom": {"file": "2026-11-05_renomme.md"},  # seule sur sa fiche : une redirection
+        "http://blog.x//blog/double/": {"file": "2026-11-04_double.md"},  # la même adresse, autrement écrite
+        "https://blog.x/blog/double-bis": {"file": "2026-11-04_double.md"},
+        "https://noyb.x/en/plan-ue": {"file": "2026-09-21_plan-ue.md"},  # /index.php/en/… : la même page
+        "https://ancien.x/posts/rwa": {"file": "2026-09-21_plan-ue.md"},  # domaine changé : un autre article ici
+        "https://noyb.x/de/plan-ue": {"file": "2026-09-21_plan-ue.md"},
+    }  # une autre langue : version
     _poser(r, "sources/a/rss/blog/2026-11-05_renomme.md", url="https://blog.x/nouveau-nom")
     _poser(r, "sources/a/rss/blog/2026-11-04_double.md", url="https://blog.x/blog/double")
     _poser(r, "sources/a/rss/blog/2026-09-21_plan-ue.md", url="https://noyb.x/index.php/en/plan-ue")
     (d / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
-    _poser(r, "sources/a/bibliotheque/module.md", url="https://cours.x/module")     # hors flux : un fichier, plusieurs adresses
-    (r / "sources/a/bibliotheque/_manifest.json").write_text(json.dumps({"https://cours.x/module/p2": {"file": "module.md"},
-                                                                         "https://cours.x/module/p3": {"file": "module.md"}}),
-                                                             encoding="utf-8")
+    _poser(
+        r, "sources/a/bibliotheque/module.md", url="https://cours.x/module"
+    )  # hors flux : un fichier, plusieurs adresses
+    (r / "sources/a/bibliotheque/_manifest.json").write_text(
+        json.dumps(
+            {"https://cours.x/module/p2": {"file": "module.md"}, "https://cours.x/module/p3": {"file": "module.md"}}
+        ),
+        encoding="utf-8",
+    )
     assert dd.reparer_manifestes(r / "sources", plan=True) == 4
-    assert len(json.loads((d / "_manifest.json").read_text(encoding="utf-8"))) == 10           # le plan ne change rien
+    assert len(json.loads((d / "_manifest.json").read_text(encoding="utf-8"))) == 10  # le plan ne change rien
     assert dd.reparer_manifestes(r / "sources") == 4
     assert sorted(json.loads((d / "_manifest.json").read_text(encoding="utf-8"))) == [
-        "http://blog.x//blog/double/", "https://blog.x/blog/parti-aussi/en/", "https://blog.x/blog/parti/en/", "https://blog.x/blog/ramp/en/",
-        "https://blog.x/vieux-nom", "https://noyb.x/en/plan-ue"]                  # une fiche partie n'est pas recollectée
+        "http://blog.x//blog/double/",
+        "https://blog.x/blog/parti-aussi/en/",
+        "https://blog.x/blog/parti/en/",
+        "https://blog.x/blog/ramp/en/",
+        "https://blog.x/vieux-nom",
+        "https://noyb.x/en/plan-ue",
+    ]  # une fiche partie n'est pas recollectée
     assert list(json.loads((r / "sources/a/bibliotheque/_manifest.json").read_text(encoding="utf-8"))) == [
-        "https://cours.x/module/p2", "https://cours.x/module/p3"]
+        "https://cours.x/module/p2",
+        "https://cours.x/module/p3",
+    ]

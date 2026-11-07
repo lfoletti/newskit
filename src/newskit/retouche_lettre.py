@@ -7,6 +7,7 @@ registre des coûts (poste lettre, note « retouche »).
 Usage :
     python3 -m newskit.retouche_lettre <dossier contenant lettre.json>
 """
+
 from __future__ import annotations
 
 import json
@@ -38,13 +39,37 @@ Rends l'objet {"billets": [...]}, un objet par billet.
 
 """
 
-SCHEMA = {"type": "object", "required": ["billets"], "properties": {"billets": {"type": "array", "items": {
-    "type": "object", "required": ["n", "titre", "texte", "angle", "doublon_de"], "properties": {
-        "n": {"type": "integer"}, "titre": {"type": "string"}, "texte": {"type": "string"},
-        "angle": {"type": "string"}, "doublon_de": {"type": "integer"},
-        "importance": {"type": "integer"}, "publicite": {"type": "boolean"}, "lieu": {"type": "string"},
-        "liens": {"type": "array", "items": {"type": "object", "required": ["fragment", "url"],
-                                             "properties": {"fragment": {"type": "string"}, "url": {"type": "string"}}}}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["billets"],
+    "properties": {
+        "billets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["n", "titre", "texte", "angle", "doublon_de"],
+                "properties": {
+                    "n": {"type": "integer"},
+                    "titre": {"type": "string"},
+                    "texte": {"type": "string"},
+                    "angle": {"type": "string"},
+                    "doublon_de": {"type": "integer"},
+                    "importance": {"type": "integer"},
+                    "publicite": {"type": "boolean"},
+                    "lieu": {"type": "string"},
+                    "liens": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["fragment", "url"],
+                            "properties": {"fragment": {"type": "string"}, "url": {"type": "string"}},
+                        },
+                    },
+                },
+            },
+        }
+    },
+}
 
 LIEN_MD = re.compile(r"\[([^\]]{3,80})\]\((https?://[^)]+)\)")
 CLOTURE = re.compile(r"^`{3}(?:json)?\s*|\s*`{3}$")
@@ -71,18 +96,43 @@ def retoucher(L: dict, graphe: str) -> float:
     lignes = []
     for i, x in enumerate(items):
         src, brut = _texte_source(x)
-        lignes.append(json.dumps({"n": i, "titre": x.get("titre"),
-                                  "texte": x.get("paragraphe") or x.get("descriptif") or "",
-                                  "angle": lt.sans_libelle(x.get("lecture") or ""),
-                                  "liens_de_la_source": LIEN_MD.findall(brut)[:40],
-                                  "preuves_de_l_angle": (x.get("preuves") or [])[:4], "source": src},
-                                 ensure_ascii=False))
-    args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json", "--model",
-            lt.MODELE, "--json-schema", json.dumps(SCHEMA)]
+        lignes.append(
+            json.dumps(
+                {
+                    "n": i,
+                    "titre": x.get("titre"),
+                    "texte": x.get("paragraphe") or x.get("descriptif") or "",
+                    "angle": lt.sans_libelle(x.get("lecture") or ""),
+                    "liens_de_la_source": LIEN_MD.findall(brut)[:40],
+                    "preuves_de_l_angle": (x.get("preuves") or [])[:4],
+                    "source": src,
+                },
+                ensure_ascii=False,
+            )
+        )
+    args = [
+        *couts.CLAUDE_P,
+        "--no-session-persistence",
+        "--tools",
+        "",
+        "--output-format",
+        "json",
+        "--model",
+        lt.MODELE,
+        "--json-schema",
+        json.dumps(SCHEMA),
+    ]
     t0 = time.time()
     try:
-        r = subprocess.run(args, input=CONSIGNE + "\n" + "\n".join(lignes), capture_output=True, text=True,
-                           timeout=900, cwd=lt.RACINE, check=False)
+        r = subprocess.run(
+            args,
+            input=CONSIGNE + "\n" + "\n".join(lignes),
+            capture_output=True,
+            text=True,
+            timeout=900,
+            cwd=lt.RACINE,
+            check=False,
+        )
     except subprocess.TimeoutExpired:
         couts.enregistrer(lt.POSTE, graphe, lt.MODELE, None, time.time() - t0, note="retouche : délai")
         return 0.0
@@ -110,7 +160,8 @@ def retoucher(L: dict, graphe: str) -> float:
         if 0 <= k < i < len(items):
             d = items[i]
             items[k].setdefault("sources_plus", []).append(
-                d.get("source") or {"url": d.get("url"), "editeur": "", "date": "", "titre": d["titre"]})
+                d.get("source") or {"url": d.get("url"), "editeur": "", "date": "", "titre": d["titre"]}
+            )
             sortants.add(id(d))
     for i, b in rep.items():
         if b.get("publicite") and i < len(items):
@@ -129,9 +180,20 @@ def _editeur(x: dict) -> str:
     return lt.plier(str((x.get("source") or {}).get("editeur") or ""))
 
 
-SCHEMA_LIEUX = {"type": "object", "required": ["lieux"], "properties": {"lieux": {"type": "array", "items": {
-    "type": "object", "required": ["n", "lieu", "titre"], "properties": {"n": {"type": "integer"}, "lieu": {"type": "string"},
-    "titre": {"type": "string"}}}}}}
+SCHEMA_LIEUX = {
+    "type": "object",
+    "required": ["lieux"],
+    "properties": {
+        "lieux": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["n", "lieu", "titre"],
+                "properties": {"n": {"type": "integer"}, "lieu": {"type": "string"}, "titre": {"type": "string"}},
+            },
+        }
+    },
+}
 
 
 def attribuer_lieux(lettres: list[dict], graphe: str) -> float:
@@ -139,18 +201,47 @@ def attribuer_lieux(lettres: list[dict], graphe: str) -> float:
     items = [x for L in lettres for x in L["faits"]]
     if not items:
         return 0.0
-    consigne = ("Pour chaque billet, donne le pays ou la zone où le fait se passe, en nom court (« USA », « UE », "
-                "« Suisse », « Allemagne », « Royaume-Uni », « Chine », « Japon »), ou une chaîne vide si le fait n'a "
-                "pas de lieu ; et le titre réécrit sans ce lieu (ni « au Japon », ni « La Suisse » en sujet quand le lieu "
-                "le dit déjà : « Suisse » + « Mesures sectorielles et codes de conduite pour l'IA »), même sens, 70 "
-                'caractères au plus, sans deux-points. Rends {"lieux": [{"n": numéro, "lieu": ..., "titre": ...}]}.\n\n')
-    lignes = [json.dumps({"n": i, "titre": x["titre"], "texte": x.get("paragraphe", "")[:400],
-                          "editeur": (x.get("source") or {}).get("editeur", "")}, ensure_ascii=False) for i, x in enumerate(items)]
-    args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json", "--model",
-            lt.MODELE, "--json-schema", json.dumps(SCHEMA_LIEUX)]
+    consigne = (
+        "Pour chaque billet, donne le pays ou la zone où le fait se passe, en nom court (« USA », « UE », "
+        "« Suisse », « Allemagne », « Royaume-Uni », « Chine », « Japon »), ou une chaîne vide si le fait n'a "
+        "pas de lieu ; et le titre réécrit sans ce lieu (ni « au Japon », ni « La Suisse » en sujet quand le lieu "
+        "le dit déjà : « Suisse » + « Mesures sectorielles et codes de conduite pour l'IA »), même sens, 70 "
+        'caractères au plus, sans deux-points. Rends {"lieux": [{"n": numéro, "lieu": ..., "titre": ...}]}.\n\n'
+    )
+    lignes = [
+        json.dumps(
+            {
+                "n": i,
+                "titre": x["titre"],
+                "texte": x.get("paragraphe", "")[:400],
+                "editeur": (x.get("source") or {}).get("editeur", ""),
+            },
+            ensure_ascii=False,
+        )
+        for i, x in enumerate(items)
+    ]
+    args = [
+        *couts.CLAUDE_P,
+        "--no-session-persistence",
+        "--tools",
+        "",
+        "--output-format",
+        "json",
+        "--model",
+        lt.MODELE,
+        "--json-schema",
+        json.dumps(SCHEMA_LIEUX),
+    ]
     t0 = time.time()
-    r = subprocess.run(args, input=consigne + "\n".join(lignes), capture_output=True, text=True, timeout=600,
-                       cwd=lt.RACINE, check=False)
+    r = subprocess.run(
+        args,
+        input=consigne + "\n".join(lignes),
+        capture_output=True,
+        text=True,
+        timeout=600,
+        cwd=lt.RACINE,
+        check=False,
+    )
     env = couts.enregistrer(lt.POSTE, graphe, lt.MODELE, r, time.time() - t0, note="lieux de la une")
     sortie = env.get("structured_output") or json.loads(CLOTURE.sub("", str(env.get("result") or "").strip()))
     for o in sortie["lieux"]:
@@ -161,8 +252,8 @@ def attribuer_lieux(lettres: list[dict], graphe: str) -> float:
     return float(env.get("total_cost_usd") or 0)
 
 
-UNE_MAX = 5          # la une : de 1 à 5 faits, selon ce que les contenus justifient (mainteneur, 03.11.2026)
-UNE_SEUIL = 4        # importance qu'il faut pour la une au-delà du premier fait
+UNE_MAX = 5  # la une : de 1 à 5 faits, selon ce que les contenus justifient (mainteneur, 03.11.2026)
+UNE_SEUIL = 4  # importance qu'il faut pour la une au-delà du premier fait
 PAR_RUBRIQUE_UNE = 2
 
 
@@ -173,7 +264,7 @@ def reordonner_une(L: dict, maximum: int = UNE_MAX, seuil: int = UNE_SEUIL) -> N
     qui quittent la une passent dans leur rubrique, et l'inverse."""
     pool = [*L["faits"], *(x for v in L["aussi"].values() for x in v)]
     brefs = [(g, x) for g, v in L["bref"].items() for x in v if x.get("descriptif") and x.get("chemin")]
-    for g, x in brefs:                     # une brève notée plus haut peut monter : elle prend sa source et sa rubrique
+    for g, x in brefs:  # une brève notée plus haut peut monter : elle prend sa source et sa rubrique
         x.setdefault("groupe", g)
         if "source" not in x:
             f = lt.charger_fiches([x["chemin"]]).get(x["chemin"])

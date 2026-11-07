@@ -6,14 +6,18 @@ from __future__ import annotations
 from newskit import collecte_substack as cs
 
 PAGES = {
-    "https://x.substack.com/api/v1/archive?sort=new&limit=25":
-        {"posts": [{"post_date": "2026-11-02T12:00:00Z", "id": 1}, {"post_date": "2026-06-01T12:00:00Z", "id": 2}],
-         "nextCursor": "c=1"},
-    "https://x.substack.com/api/v1/archive?sort=new&limit=25&cursor=c%3D1":
-        {"posts": [{"post_date": "2026-03-01T12:00:00Z", "id": 3}, {"post_date": "2025-10-01T12:00:00Z", "id": 4}],
-         "nextCursor": "c=2"},
-    "https://x.substack.com/api/v1/archive?sort=new&limit=25&cursor=c%3D2":
-        {"posts": [{"post_date": "2025-01-01T12:00:00Z", "id": 5}], "nextCursor": None},
+    "https://x.substack.com/api/v1/archive?sort=new&limit=25": {
+        "posts": [{"post_date": "2026-11-02T12:00:00Z", "id": 1}, {"post_date": "2026-06-01T12:00:00Z", "id": 2}],
+        "nextCursor": "c=1",
+    },
+    "https://x.substack.com/api/v1/archive?sort=new&limit=25&cursor=c%3D1": {
+        "posts": [{"post_date": "2026-03-01T12:00:00Z", "id": 3}, {"post_date": "2025-10-01T12:00:00Z", "id": 4}],
+        "nextCursor": "c=2",
+    },
+    "https://x.substack.com/api/v1/archive?sort=new&limit=25&cursor=c%3D2": {
+        "posts": [{"post_date": "2025-01-01T12:00:00Z", "id": 5}],
+        "nextCursor": None,
+    },
 }
 
 

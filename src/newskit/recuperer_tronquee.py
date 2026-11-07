@@ -62,8 +62,9 @@ def localiser_fiche(url: str, slug: str) -> Path | None:
             champs, _ = fiche.lire_fichier(f)
             if champs.get("url", "").rstrip("/") == url.rstrip("/"):
                 return f
-    candidats = [f for d in ("sources/substack", "sources/medium")
-                 for f in (RACINE / d).rglob("*.md") if slug and slug in f.name]
+    candidats = [
+        f for d in ("sources/substack", "sources/medium") for f in (RACINE / d).rglob("*.md") if slug and slug in f.name
+    ]
     return candidats[0] if len(candidats) == 1 else None
 
 
@@ -93,17 +94,20 @@ def main() -> int:
 
         champs, _ = fiche.lire_fichier(cible)
         mots_avant = champs.get("words", 0)
-        champs.update({
-            "title": titre or champs["title"],
-            "subtitle": sous or champs.get("subtitle", ""),
-            "author": ", ".join(d.get("bylines") or []) or champs.get("author", ""),
-            "words": len(corps.split()),
-            "complet": True,
-            "wordcount_annonce": d.get("wordcount") or champs.get("wordcount_annonce", 0),
-            "source": (champs.get("source", "") or "").replace(
-                "texte de page navigateur", "texte de page navigateur, capture complète"),
-        })
-        champs.pop("comment", None)      # le constat de troncature n'a plus lieu d'être
+        champs.update(
+            {
+                "title": titre or champs["title"],
+                "subtitle": sous or champs.get("subtitle", ""),
+                "author": ", ".join(d.get("bylines") or []) or champs.get("author", ""),
+                "words": len(corps.split()),
+                "complet": True,
+                "wordcount_annonce": d.get("wordcount") or champs.get("wordcount_annonce", 0),
+                "source": (champs.get("source", "") or "").replace(
+                    "texte de page navigateur", "texte de page navigateur, capture complète"
+                ),
+            }
+        )
+        champs.pop("comment", None)  # le constat de troncature n'a plus lieu d'être
         fiche.ecrire(cible, champs, corps)
         gain = champs["words"] - mots_avant
         print(f"  {cible.relative_to(RACINE)}")

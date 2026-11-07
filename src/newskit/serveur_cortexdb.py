@@ -17,6 +17,7 @@ Si cortexdb meurt, le gardien sort en erreur et son service (launchd, systemd) l
     python3 -m newskit.serveur_cortexdb --graphe <graphe>
     KG_CORTEXDB_BINAIRE=/chemin/cortexdb-grpc python3 -m newskit.serveur_cortexdb --graphe <graphe>
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,7 +33,7 @@ from pathlib import Path
 from newskit import cerveau_cortexdb as cc  # noqa: E402
 from newskit import lecture_cortexdb as lc  # noqa: E402
 
-TOUR = 10   # secondes entre deux regards du gardien
+TOUR = 10  # secondes entre deux regards du gardien
 
 
 def pret(cerveau: Path) -> Path:
@@ -56,6 +57,7 @@ def assurer_cle(cles: Path, graphe: str) -> str:
     except FileNotFoundError:
         d = {"keys": []}
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     ident = f"{cfg.edition()['nom']}/{graphe}"
     for k in d.get("keys") or []:
         if k.get("id") == ident:
@@ -72,9 +74,15 @@ def assurer_cle(cles: Path, graphe: str) -> str:
 
 def environnement(cerveau: Path, port: int, jeton: str, encodeur_url: str, dim: int, cles: Path | None = None) -> dict:
     """Avec un fichier de clés (Thalamus), cortexdb le prend pour toute sa politique : le jeton ne sert plus."""
-    env = {**os.environ, "CORTEXDB_PATH": str(cerveau), "CORTEXDB_GRPC_ADDR": f"127.0.0.1:{port}",
-           "OPENAI_BASE_URL": encodeur_url, "OPENAI_API_KEY": "local", "CORTEXDB_EMBED_MODEL": "local",
-           "CORTEXDB_EMBED_DIM": str(dim)}
+    env = {
+        **os.environ,
+        "CORTEXDB_PATH": str(cerveau),
+        "CORTEXDB_GRPC_ADDR": f"127.0.0.1:{port}",
+        "OPENAI_BASE_URL": encodeur_url,
+        "OPENAI_API_KEY": "local",
+        "CORTEXDB_EMBED_MODEL": "local",
+        "CORTEXDB_EMBED_DIM": str(dim),
+    }
     env.pop("CORTEXDB_GRPC_TOKEN", None)
     if cles:
         env["CORTEXDB_KEY_FILE"] = str(cles)
@@ -131,9 +139,15 @@ class Gardien:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
-    ap.add_argument("--port", type=int, default=0, help="port de cortexdb-grpc (défaut : cortexdb_port du registre, sinon libre)")
-    ap.add_argument("--cles", type=Path, default=os.environ.get("KG_CORTEXDB_CLES") or None,
-                    help="fichier de clés de Thalamus ; l’édition y reçoit sa clé de lecture (défaut : KG_CORTEXDB_CLES)")
+    ap.add_argument(
+        "--port", type=int, default=0, help="port de cortexdb-grpc (défaut : cortexdb_port du registre, sinon libre)"
+    )
+    ap.add_argument(
+        "--cles",
+        type=Path,
+        default=os.environ.get("KG_CORTEXDB_CLES") or None,
+        help="fichier de clés de Thalamus ; l’édition y reçoit sa clé de lecture (défaut : KG_CORTEXDB_CLES)",
+    )
     a = ap.parse_args()
     cerveau = cc.chemin_cerveau(a.graphe)
     binaire = os.environ.get("KG_CORTEXDB_BINAIRE") or str(cc.BINAIRE)
@@ -143,31 +157,41 @@ def main() -> int:
     journal = cc.DOSSIER / f"{a.graphe}.serveur.log"
     adresse_p = lc.fichier_adresse(a.graphe)
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     port = a.port or cfg.port_cortexdb(a.graphe) or cc.port_libre()
     jeton = secrets.token_hex(16)
     with cc.Encodeur(a.graphe, cc.DOSSIER / f"{a.graphe}.encodeur.log") as e:
+
         def lancer():
             nonlocal jeton
             t0 = time.time()
             if a.cles:
                 jeton = assurer_cle(a.cles, a.graphe)
-            p = subprocess.Popen([binaire], env=environnement(cerveau, port, jeton, e.url, e.dim, a.cles),
-                                 stdout=journal.open("a"), stderr=subprocess.STDOUT)
+            p = subprocess.Popen(
+                [binaire],
+                env=environnement(cerveau, port, jeton, e.url, e.dim, a.cles),
+                stdout=journal.open("a"),
+                stderr=subprocess.STDOUT,
+            )
             cc.attendre_port(port, cc.CHAUFFE)
-            print(f"cortexdb {a.graphe} : 127.0.0.1:{port}, {cerveau.stat().st_size / 1e6:.0f} Mo, ouvert en "
-                  f"{time.time() - t0:.1f} s", flush=True)
+            print(
+                f"cortexdb {a.graphe} : 127.0.0.1:{port}, {cerveau.stat().st_size / 1e6:.0f} Mo, ouvert en "
+                f"{time.time() - t0:.1f} s",
+                flush=True,
+            )
             return p
+
         g = Gardien(cerveau, lancer, surveille=a.cles)
         fini = []
         signal.signal(signal.SIGTERM, lambda *_: fini.append(0))
         signal.signal(signal.SIGINT, lambda *_: fini.append(0))
         g.demarrer()
-        g.vu = g._etat()                         # la clé de l'édition écrite au lancement n'est pas un changement
+        g.vu = g._etat()  # la clé de l'édition écrite au lancement n'est pas un changement
         ecrire_adresse(adresse_p, f"127.0.0.1:{port}", jeton)
         code = None
         try:
             while not fini and code is None:
-                for _ in range(TOUR * 2):          # un signal se voit dans la demi-seconde (le sommeil reprend après lui)
+                for _ in range(TOUR * 2):  # un signal se voit dans la demi-seconde (le sommeil reprend après lui)
                     if fini:
                         break
                     time.sleep(0.5)

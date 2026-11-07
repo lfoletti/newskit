@@ -18,6 +18,7 @@ demandé au modèle (avance_canon.json), puis l'encodeur local et les mots. La c
 synthèses de ses notions change ; au plus `--plafond` cartes par passage ; chaque appel au registre des coûts
 (poste « cartes »).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,31 +38,82 @@ from newskit import interroger_graphe as ig  # noqa: E402
 from newskit import synthese as sy  # noqa: E402
 from newskit import themes_emergents as te  # noqa: E402
 
-MODELE = sy.MODELE               # Sonnet : dresser une carte d'après des synthèses, c'est lire d'après des preuves
+MODELE = sy.MODELE  # Sonnet : dresser une carte d'après des synthèses, c'est lire d'après des preuves
 POSTE = "cartes"
-NOTIONS_PAR_CARTE = 70           # synthèses données au rédacteur (≈ 360 caractères chacune : ≈ 8 000 tokens)
-PLAFOND = 20                     # cartes rédigées par passage (14 sujets pour un graphe de conformité)
-COUVERTURE_LISTE = 0.6           # part des mots d'un élément de liste qui doivent être dans les synthèses citées
+NOTIONS_PAR_CARTE = 70  # synthèses données au rédacteur (≈ 360 caractères chacune : ≈ 8 000 tokens)
+PLAFOND = 20  # cartes rédigées par passage (14 sujets pour un graphe de conformité)
+COUVERTURE_LISTE = 0.6  # part des mots d'un élément de liste qui doivent être dans les synthèses citées
 REFERENCES_PAR_QUESTION = 8
 # Routage mesuré le 09.10.2026 sur 165 questions des bancs d'un graphe de conformité (faits de la réponse attendue retrouvés dans les
 # notions rendues) : lexicales seules 0,51 ; carte seule à leur place 0,38-0,44 (elle remplace mal) ; lexicales + 3 notions
 # de la carte 0,59 au seuil 0,48 (134 routées, 29 gagnées, 0 perdue), 0,60 au seuil 0,40. Un score par le contenu des
 # notions (vecteurs stockés) n'ajoutait que +0,01 : le score reste celui de la sous-question seule, plus simple.
-SEUIL_ROUTAGE = 0.48             # score (encodeur + mots) au-dessous duquel la question n'est pas routée ; voir mesurer-routage
-POIDS_MOTS = 0.3                 # part des mots communs dans le score de routage, à côté du cosinus de l'encodeur
+SEUIL_ROUTAGE = 0.48  # score (encodeur + mots) au-dessous duquel la question n'est pas routée ; voir mesurer-routage
+POIDS_MOTS = 0.3  # part des mots communs dans le score de routage, à côté du cosinus de l'encodeur
 
-MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
-MOIS_EN = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+MOIS_FR = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+MOIS_EN = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+]
 
-SCHEMA = {"type": "object", "required": ["questions", "chronologie"], "properties": {
-    "questions": {"type": "array", "items": {"type": "object", "required": ["q", "notions"], "properties": {
-        "q": {"type": "string"}, "notions": {"type": "array", "items": {"type": "string"}},
-        "liste": {"type": "array", "items": {"type": "string"}}}}},
-    "chronologie": {"type": "array", "items": {"type": "object", "required": ["date", "fait", "notions"], "properties": {
-        "date": {"type": "string"}, "fait": {"type": "string"}, "notions": {"type": "array", "items": {"type": "string"}}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["questions", "chronologie"],
+    "properties": {
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["q", "notions"],
+                "properties": {
+                    "q": {"type": "string"},
+                    "notions": {"type": "array", "items": {"type": "string"}},
+                    "liste": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "chronologie": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["date", "fait", "notions"],
+                "properties": {
+                    "date": {"type": "string"},
+                    "fait": {"type": "string"},
+                    "notions": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+}
 
 
 # --- Lire et écrire ---------------------------------------------------------------------------------------------
+
 
 def chemin(graphe: str) -> Path:
     return cfg.chemins_du_graphe(graphe)["base"] / "synthese" / "cartes.json"
@@ -95,6 +147,7 @@ def texte_notion(v: dict) -> str:
 
 
 # --- Choisir les notions d'un sujet, sans appel ---------------------------------------------------------------------
+
 
 def canon_du_sujet(graphe: str, i: int) -> list[str]:
     """Les libellés que le modèle a dits canoniques pour ce sujet (avance_canon.json, déjà payé), canon et critique."""
@@ -138,6 +191,7 @@ def vecteurs_des_notions(graphe: str, notions: dict):
     if enc is None:
         return None
     import numpy as np  # noqa: PLC0415
+
     nom = getattr(enc, "nom", sy.ENCODEUR)
     p = RACINE / "cache" / "cartes" / f"{graphe}.npz"
     anciens: dict[str, tuple[str, object]] = {}
@@ -159,8 +213,13 @@ def vecteurs_des_notions(graphe: str, notions: dict):
             anciens[n] = (notions[n].get("empreinte", ""), v.astype(np.float16))
         p.parent.mkdir(parents=True, exist_ok=True)
         gard = [n for n in ids]
-        np.savez(p, ids=np.array(gard), empreintes=np.array([anciens[n][0] for n in gard]),
-                 E=np.array([anciens[n][1] for n in gard], dtype=np.float16), encodeur=np.array(nom))
+        np.savez(
+            p,
+            ids=np.array(gard),
+            empreintes=np.array([anciens[n][0] for n in gard]),
+            E=np.array([anciens[n][1] for n in gard], dtype=np.float16),
+            encodeur=np.array(nom),
+        )
         print(f"  encodeur : {len(a_faire)} synthèse(s) vectorisée(s) en {time.time() - t0:.0f} s", flush=True)
     return {n: np.asarray(anciens[n][1], dtype=np.float32) for n in ids if n in anciens}
 
@@ -171,16 +230,21 @@ def vecteur(texte: str, graphe: str | None = None):
     if enc is None:
         return None
     import numpy as np  # noqa: PLC0415
+
     v = np.array(list(enc.embed([texte]))[0], dtype=np.float32)
     return v / (np.linalg.norm(v) or 1.0)
 
 
-def notions_du_sujet(graphe: str, G, notions: dict, i: int, sujet: str, vecteurs, combien: int = NOTIONS_PAR_CARTE) -> list[str]:
+def notions_du_sujet(
+    graphe: str, G, notions: dict, i: int, sujet: str, vecteurs, combien: int = NOTIONS_PAR_CARTE
+) -> list[str]:
     """Les notions synthétisées qui relèvent du sujet : d'abord celles du canon du sujet présentes dans la pyramide,
     puis les plus proches par l'encodeur (cosinus) et par les mots du sujet, jusqu'à `combien`."""
     # Une notion de la pyramide peut manquer au graphe (graphe reconstruit après elle) : elle garde son seul libellé.
-    formes = {n: [ig._plier(v["label"]), *(ig._plier(a) for a in ((G.nodes[n].get("aussi") or []) if n in G else []))]
-              for n, v in notions.items()}
+    formes = {
+        n: [ig._plier(v["label"]), *(ig._plier(a) for a in ((G.nodes[n].get("aussi") or []) if n in G else []))]
+        for n, v in notions.items()
+    }
     canon: list[str] = []
     for lib in canon_du_sujet(graphe, i):
         n = resoudre_libelle(lib, formes)
@@ -200,6 +264,7 @@ def notions_du_sujet(graphe: str, G, notions: dict, i: int, sujet: str, vecteurs
 
 # --- Le contrôle mécanique : une liste se recopie, une date se retrouve ---------------------------------------------
 
+
 def formes_date(date: str) -> list[str]:
     """Les écritures d'une date qu'une synthèse peut porter : 2026-07-27, 27.07.2026, 27 juillet 2026, July 27, 2026…"""
     m = re.fullmatch(r"(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?", date.strip())
@@ -214,8 +279,19 @@ def formes_date(date: str) -> list[str]:
     if not j:
         return [f"{a}-{mo}", f"{MOIS_FR[k]} {a}", f"{MOIS_EN[k]} {a}", f"{mo}.{a}", f"{mo}/{a}"]
     jj, j1 = j, str(int(j))
-    return [f"{a}-{mo}-{jj}", f"{jj}.{mo}.{a}", f"{j1}.{mo}.{a}", f"{j1}.{int(mo)}.{a}", f"{jj}/{mo}/{a}", f"{j1}/{int(mo)}/{a}",
-            f"{j1} {MOIS_FR[k]} {a}", f"{j1}er {MOIS_FR[k]} {a}", f"{j1} {MOIS_EN[k]} {a}", f"{MOIS_EN[k]} {j1}, {a}", f"{MOIS_EN[k]} {jj}, {a}"]
+    return [
+        f"{a}-{mo}-{jj}",
+        f"{jj}.{mo}.{a}",
+        f"{j1}.{mo}.{a}",
+        f"{j1}.{int(mo)}.{a}",
+        f"{jj}/{mo}/{a}",
+        f"{j1}/{int(mo)}/{a}",
+        f"{j1} {MOIS_FR[k]} {a}",
+        f"{j1}er {MOIS_FR[k]} {a}",
+        f"{j1} {MOIS_EN[k]} {a}",
+        f"{MOIS_EN[k]} {j1}, {a}",
+        f"{MOIS_EN[k]} {jj}, {a}",
+    ]
 
 
 def couverture(texte: str, sources_pliees: str) -> float:
@@ -233,9 +309,11 @@ def references_de(G, notions: dict, ids: list[str]) -> list[str]:
         for ph in notions[n]["phrases"]:
             for r in ph["refs"]:
                 compte[r["fiche"]] = compte.get(r["fiche"], 0) + 1
+
     def cle(f: str):
         d = sy._fiche_de(G, f)
         return (0 if d.get("statut") == diachronie.EN_VIGUEUR else 1, -compte[f], f)
+
     fs = [f for f in compte if sy._fiche_de(G, f).get("statut") != diachronie.REMPLACEE]
     return sorted(fs, key=cle)[:REFERENCES_PAR_QUESTION]
 
@@ -294,6 +372,7 @@ def controler(rep: dict, ids: list[str], notions: dict, G) -> tuple[list[dict], 
 
 # --- Rédiger ---------------------------------------------------------------------------------------------------------
 
+
 def empreinte_de(sujet: str, ids: list[str], notions: dict) -> str:
     corps = json.dumps([sujet, sorted((n, notions[n].get("empreinte", "")) for n in ids)], ensure_ascii=False)
     return hashlib.sha1(corps.encode()).hexdigest()[:16]
@@ -306,27 +385,32 @@ def prompt_de(decl: dict, sujet: str, G, notions: dict, ids: list[str]) -> str:
         a = v.get("actualite") or {}
         note = " (NOTION QUI ÉVOLUE entre deux versions du texte)" if a.get("evolue") else ""
         blocs.append(f"[{n}] « {v['label']} »{note} : " + " ".join(p["texte"] for p in v["phrases"]))
-    return (f"Domaine : « {decl['libelle']} ». Sujet : « {sujet} ».\n"
-            "Voici les synthèses des notions du graphe qui relèvent de ce sujet, chacune sous son identifiant [entre crochets]. "
-            "Dresse la CARTE du sujet — sans rédiger de prose :\n"
-            "1. `questions` : les 6 à 12 sous-questions qu'un juriste, un auditeur ou un responsable de conformité pose sur ce "
-            "sujet ET auxquelles ces synthèses répondent — précises, en français, une par point distinct (classification, "
-            "obligations, délais, sanctions, exceptions, autorités, décisions, évolutions). Chacune porte `notions` : les "
-            "identifiants exacts (2 à 6) des notions où la réponse est. Ne pose pas de sous-question à laquelle les synthèses "
-            "ne répondent pas.\n"
-            "2. `liste` (facultatif) : quand les notions citées portent une ÉNUMÉRATION (pratiques interdites, rubriques, "
-            "conditions, obligations, fonctions, catégories, étapes, délais, montants), recopie-la, un élément par entrée, "
-            "avec les mots mêmes des synthèses, noms, chiffres et dates à l'identique, sans rien ajouter de ta mémoire ; "
-            "sans énumération dans les synthèses, pas de liste.\n"
-            "3. `chronologie` : les faits datés que ces synthèses portent (entrée en vigueur, échéance, publication, décision, "
-            "version remplacée, délai reporté) — `date` au format AAAA-MM-JJ, ou AAAA-MM, ou AAAA quand la synthèse n'en dit "
-            "pas plus ; `fait` en une ligne avec les mots de la synthèse ; `notions` : les identifiants qui le portent. "
-            "Rien que ce que les synthèses disent.\n\n" + "\n".join(blocs)
-            + '\n\nRéponds en JSON : {"questions": [{"q": "…", "notions": ["<id>", …], "liste": ["…", …]}], '
-              '"chronologie": [{"date": "AAAA-MM-JJ", "fait": "…", "notions": ["<id>", …]}]}.')
+    return (
+        f"Domaine : « {decl['libelle']} ». Sujet : « {sujet} ».\n"
+        "Voici les synthèses des notions du graphe qui relèvent de ce sujet, chacune sous son identifiant [entre crochets]. "
+        "Dresse la CARTE du sujet — sans rédiger de prose :\n"
+        "1. `questions` : les 6 à 12 sous-questions qu'un juriste, un auditeur ou un responsable de conformité pose sur ce "
+        "sujet ET auxquelles ces synthèses répondent — précises, en français, une par point distinct (classification, "
+        "obligations, délais, sanctions, exceptions, autorités, décisions, évolutions). Chacune porte `notions` : les "
+        "identifiants exacts (2 à 6) des notions où la réponse est. Ne pose pas de sous-question à laquelle les synthèses "
+        "ne répondent pas.\n"
+        "2. `liste` (facultatif) : quand les notions citées portent une ÉNUMÉRATION (pratiques interdites, rubriques, "
+        "conditions, obligations, fonctions, catégories, étapes, délais, montants), recopie-la, un élément par entrée, "
+        "avec les mots mêmes des synthèses, noms, chiffres et dates à l'identique, sans rien ajouter de ta mémoire ; "
+        "sans énumération dans les synthèses, pas de liste.\n"
+        "3. `chronologie` : les faits datés que ces synthèses portent (entrée en vigueur, échéance, publication, décision, "
+        "version remplacée, délai reporté) — `date` au format AAAA-MM-JJ, ou AAAA-MM, ou AAAA quand la synthèse n'en dit "
+        "pas plus ; `fait` en une ligne avec les mots de la synthèse ; `notions` : les identifiants qui le portent. "
+        "Rien que ce que les synthèses disent.\n\n"
+        + "\n".join(blocs)
+        + '\n\nRéponds en JSON : {"questions": [{"q": "…", "notions": ["<id>", …], "liste": ["…", …]}], '
+        '"chronologie": [{"date": "AAAA-MM-JJ", "fait": "…", "notions": ["<id>", …]}]}.'
+    )
 
 
-def rediger(graphe: str, plafond: int = PLAFOND, modele: str = MODELE, seulement: str | None = None, forcer: bool = False) -> int:
+def rediger(
+    graphe: str, plafond: int = PLAFOND, modele: str = MODELE, seulement: str | None = None, forcer: bool = False
+) -> int:
     """Une carte par sujet déclaré dont l'empreinte a changé (ou absente), au plus `plafond` ; écrite dès qu'elle existe.
     Code 2 si la limite d'usage a interrompu le passage."""
     sujets = te.sujets_declares(graphe)
@@ -347,12 +431,18 @@ def rediger(graphe: str, plafond: int = PLAFOND, modele: str = MODELE, seulement
         if not forcer and cartes.get(s, {}).get("empreinte") == emp:
             continue
         a_faire.append((i, s, ids, emp))
-    print(f"  {graphe} : {len(sujets)} sujet(s), {len(cartes)} carte(s) en place, {len(a_faire)} à dresser"
-          + (f" (plafond {plafond})" if plafond and len(a_faire) > plafond else ""), flush=True)
+    print(
+        f"  {graphe} : {len(sujets)} sujet(s), {len(cartes)} carte(s) en place, {len(a_faire)} à dresser"
+        + (f" (plafond {plafond})" if plafond and len(a_faire) > plafond else ""),
+        flush=True,
+    )
     t0, faites, code = time.time(), 0, 0
     for i, s, ids, emp in a_faire[:plafond] if plafond else a_faire:
         if couts.en_limite():
-            print(f"  ARRÊT : limite d'usage atteinte ({couts.marque_en_cours()}) ; les cartes restantes attendent", file=sys.stderr)
+            print(
+                f"  ARRÊT : limite d'usage atteinte ({couts.marque_en_cours()}) ; les cartes restantes attendent",
+                file=sys.stderr,
+            )
             code = 2
             break
         rep = te.appeler_claude(prompt_de(decl, s, G, notions, ids), SCHEMA, modele, poste=POSTE, graphe=graphe)
@@ -363,14 +453,26 @@ def rediger(graphe: str, plafond: int = PLAFOND, modele: str = MODELE, seulement
         if not questions:
             print(f"  carte {i} « {s[:50]} » : aucune sous-question gardée ({retraits})", file=sys.stderr)
             continue
-        cartes[s] = {"sujet": s, "indice": i, "notions": ids, "questions": questions, "chronologie": chrono,
-                     "empreinte": emp, "redigee": time.strftime("%Y-%m-%d %H:%M"), "modele": modele, "retraits": retraits}
+        cartes[s] = {
+            "sujet": s,
+            "indice": i,
+            "notions": ids,
+            "questions": questions,
+            "chronologie": chrono,
+            "empreinte": emp,
+            "redigee": time.strftime("%Y-%m-%d %H:%M"),
+            "modele": modele,
+            "retraits": retraits,
+        }
         ecrire(graphe, cartes)
         faites += 1
         n_l = sum(1 for q in questions if q.get("liste"))
         n_el = sum(len(q.get("liste", [])) for q in questions)
-        print(f"  carte {i} « {s[:50]} » : {len(questions)} sous-questions, {n_l} liste(s) ({n_el} éléments, "
-              f"{retraits['elements']} retiré(s)), {len(chrono)} date(s) ({retraits['dates']} retirée(s))", flush=True)
+        print(
+            f"  carte {i} « {s[:50]} » : {len(questions)} sous-questions, {n_l} liste(s) ({n_el} éléments, "
+            f"{retraits['elements']} retiré(s)), {len(chrono)} date(s) ({retraits['dates']} retirée(s))",
+            flush=True,
+        )
     # Un sujet retiré du registre emporte sa carte.
     for s in [s for s in cartes if s not in sujets]:
         del cartes[s]
@@ -388,14 +490,18 @@ def etat(graphe: str) -> None:
     n_q = sum(len(c["questions"]) for c in cartes.values())
     n_l = sum(1 for c in cartes.values() for q in c["questions"] if q.get("liste"))
     n_d = sum(len(c["chronologie"]) for c in cartes.values())
-    print(f"  {graphe} : {len(cartes)} carte(s) sur {len(sujets)} sujet(s) — {n_q} sous-questions, {n_l} listes, {n_d} dates")
+    print(
+        f"  {graphe} : {len(cartes)} carte(s) sur {len(sujets)} sujet(s) — {n_q} sous-questions, {n_l} listes, {n_d} dates"
+    )
     for s in sujets:
         c = cartes.get(s)
         if not c:
             print(f"    —  {s[:70]} : pas de carte")
             continue
-        print(f"    {c['indice']:2d} {s[:70]:70} {len(c['questions']):2d} q. {sum(1 for q in c['questions'] if q.get('liste')):2d} l. "
-              f"{len(c['chronologie']):2d} d.  ({c.get('redigee', '')[:10]})")
+        print(
+            f"    {c['indice']:2d} {s[:70]:70} {len(c['questions']):2d} q. {sum(1 for q in c['questions'] if q.get('liste')):2d} l. "
+            f"{len(c['chronologie']):2d} d.  ({c.get('redigee', '')[:10]})"
+        )
 
 
 # --- Router une question -------------------------------------------------------------------------------------------
@@ -416,6 +522,7 @@ def _sous_questions(graphe: str):
         enc = sy.encodeur(graphe) if sqs else None
         if enc is not None:
             import numpy as np  # noqa: PLC0415
+
             E = np.array(list(enc.embed([q["q"] for _, _, q in sqs])), dtype=np.float32)
             E /= np.linalg.norm(E, axis=1, keepdims=True)
         _ROUTAGE[graphe] = (cle, sqs, E)
@@ -498,8 +605,14 @@ def router(graphe: str, question: str, seuil: float | None = None) -> dict | Non
     q = c["questions"][k]
     ns = set(q["notions"])
     chrono = [e for e in c["chronologie"] if ns & set(e["notions"])][:6]
-    return {"sujet": s, "indice": c["indice"], "score": round(score, 3), "q": q, "chronologie": chrono,
-            "peu_couverts": c.get("peu_couverts") or []}
+    return {
+        "sujet": s,
+        "indice": c["indice"],
+        "score": round(score, 3),
+        "q": q,
+        "chronologie": chrono,
+        "peu_couverts": c.get("peu_couverts") or [],
+    }
 
 
 def questions_au_sujet_connu(graphe: str) -> list[tuple[str, str]]:
@@ -526,14 +639,20 @@ def mesurer_routage(graphe: str) -> None:
     for q, s in qs:
         sc = scores_de(graphe, q)
         res.append((sc[0][0], sc[0][1] == s, sc[0][1], s) if sc else (0.0, False, "", s))
-    print(f"  {len(qs)} questions au sujet connu ; score moyen quand la carte est la bonne "
-          f"{sum(r[0] for r in res if r[1]) / max(1, sum(1 for r in res if r[1])):.3f}, "
-          f"sinon {sum(r[0] for r in res if not r[1]) / max(1, sum(1 for r in res if not r[1])):.3f}")
+    print(
+        f"  {len(qs)} questions au sujet connu ; score moyen quand la carte est la bonne "
+        f"{sum(r[0] for r in res if r[1]) / max(1, sum(1 for r in res if r[1])):.3f}, "
+        f"sinon {sum(r[0] for r in res if not r[1]) / max(1, sum(1 for r in res if not r[1])):.3f}"
+    )
     print("  seuil   routées   bon sujet   précision")
     for seuil in [x / 100 for x in range(40, 86, 4)]:
         rt = [r for r in res if r[0] >= seuil]
         bons = sum(1 for r in rt if r[1])
-        print(f"  {seuil:.2f}   {len(rt):4d}/{len(res)}   {bons:4d}        {bons / len(rt):.0%}" if rt else f"  {seuil:.2f}      0/{len(res)}")
+        print(
+            f"  {seuil:.2f}   {len(rt):4d}/{len(res)}   {bons:4d}        {bons / len(rt):.0%}"
+            if rt
+            else f"  {seuil:.2f}      0/{len(res)}"
+        )
     seuil = seuil_routage(graphe)
     mal = [(r[0], r[2], r[3]) for r in res if not r[1] and r[0] >= seuil]
     if mal:
@@ -552,13 +671,19 @@ def afficher_routage(graphe: str, question: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("rediger"); p.add_argument("--graphe", required=True)
-    p.add_argument("--plafond", type=int, default=PLAFOND); p.add_argument("--modele", default=MODELE)
+    p = sub.add_parser("rediger")
+    p.add_argument("--graphe", required=True)
+    p.add_argument("--plafond", type=int, default=PLAFOND)
+    p.add_argument("--modele", default=MODELE)
     p.add_argument("--seulement", help="regex sur le libellé du sujet")
     p.add_argument("--forcer", action="store_true", help="réécrire même si l'empreinte n'a pas changé")
-    p = sub.add_parser("etat"); p.add_argument("--graphe", required=True)
-    p = sub.add_parser("router"); p.add_argument("--graphe", required=True); p.add_argument("question", nargs="+")
-    p = sub.add_parser("mesurer-routage"); p.add_argument("--graphe", required=True)
+    p = sub.add_parser("etat")
+    p.add_argument("--graphe", required=True)
+    p = sub.add_parser("router")
+    p.add_argument("--graphe", required=True)
+    p.add_argument("question", nargs="+")
+    p = sub.add_parser("mesurer-routage")
+    p.add_argument("--graphe", required=True)
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
     if a.cmd == "rediger":

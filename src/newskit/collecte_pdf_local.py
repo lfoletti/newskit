@@ -56,7 +56,9 @@ LIGNES_NON_TITRE = re.compile(
     r"^(sustainability|applied sciences|sensors|energies|buildings|automation in construction"
     r"|article|review|editorial|received|accepted|published|abstract|keywords|introduction"
     r"|www\.|doi|https?:|copyright|licen[sc]e|open access|creative commons|preprint"
-    r"|proceedings|conference|journal of|international journal)\b", re.I)
+    r"|proceedings|conference|journal of|international journal)\b",
+    re.I,
+)
 # Caractères par page en dessous desquels le PDF est réputé numérisé. 60 laissait passer un
 # scan muni d'une page de garde en texte (JSTOR) : Moor 1979, huit pages, 90 mots, entré comme
 # une fiche complète le 02.10.2026. Une page de texte en porte deux à trois mille.
@@ -66,6 +68,7 @@ CAR_MINIMUM = 250
 def lire_pdf(chemin: Path) -> tuple[str, int, dict]:
     """Rend (texte, pages, métadonnées). Sans modèle, donc rejouable à l'identique."""
     from pypdf import PdfReader  # noqa: PLC0415
+
     r = PdfReader(str(chemin))
     pages = [(p.extract_text() or "") for p in r.pages]
     meta = {}
@@ -77,8 +80,7 @@ def lire_pdf(chemin: Path) -> tuple[str, int, dict]:
     return "\n\n".join(pages).strip(), len(pages), meta
 
 
-RE_REF_ARXIV = re.compile(
-    r"(?<!\]\()\b(?:arXiv\s+preprint\s+)?arXiv[:\s]?(\d{4}\.\d{4,5})(v\d+)?\b", re.I)
+RE_REF_ARXIV = re.compile(r"(?<!\]\()\b(?:arXiv\s+preprint\s+)?arXiv[:\s]?(\d{4}\.\d{4,5})(v\d+)?\b", re.I)
 
 
 def lier_references(texte: str) -> tuple[str, int]:
@@ -106,7 +108,7 @@ def lier_references(texte: str) -> tuple[str, int]:
 def nettoyer(texte: str) -> str:
     """Recoud les coupures de ligne du PDF sans réécrire le texte."""
     t = texte.replace("\r", "\n")
-    t = re.sub(r"(\w)-\n(\w)", r"\1\2", t)            # mot coupé en fin de ligne
+    t = re.sub(r"(\w)-\n(\w)", r"\1\2", t)  # mot coupé en fin de ligne
     t = re.sub(r"[ \t]+\n", "\n", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
     return t.strip()
@@ -182,8 +184,7 @@ def crossref(titre: str, annee_attendue: int | None = None, delai: float = 1.0) 
     def norm(s):
         return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
 
-    url = "https://api.crossref.org/works?" + urllib.parse.urlencode(
-        {"query.bibliographic": titre[:200], "rows": 3})
+    url = "https://api.crossref.org/works?" + urllib.parse.urlencode({"query.bibliographic": titre[:200], "rows": 3})
     try:
         req = urllib.request.Request(url, headers={"User-Agent": agent_robot()})
         with urllib.request.urlopen(req, timeout=40) as r:
@@ -202,15 +203,17 @@ def crossref(titre: str, annee_attendue: int | None = None, delai: float = 1.0) 
         parts_ctrl = ((it.get("issued") or {}).get("date-parts") or [[]])[0]
         if annee_attendue and parts_ctrl and parts_ctrl[0] and abs(parts_ctrl[0] - annee_attendue) > 1:
             continue
-        auteurs = [" ".join(x for x in (a.get("given"), a.get("family")) if x)
-                   for a in it.get("author", [])]
+        auteurs = [" ".join(x for x in (a.get("given"), a.get("family")) if x) for a in it.get("author", [])]
         parts = ((it.get("issued") or {}).get("date-parts") or [[]])[0]
         date = ""
         if parts and parts[0]:
-            date = f"{parts[0]:04d}-{(parts[1] if len(parts) > 1 else 1):02d}-" \
-                   f"{(parts[2] if len(parts) > 2 else 1):02d}"
-        return {"author": ", ".join(a for a in auteurs if a)[:300], "date": date,
-                "doi": it.get("DOI", ""), "publication_source": (it.get("container-title") or [""])[0]}
+            date = f"{parts[0]:04d}-{(parts[1] if len(parts) > 1 else 1):02d}-{(parts[2] if len(parts) > 2 else 1):02d}"
+        return {
+            "author": ", ".join(a for a in auteurs if a)[:300],
+            "date": date,
+            "doi": it.get("DOI", ""),
+            "publication_source": (it.get("container-title") or [""])[0],
+        }
     return {}
 
 
@@ -222,11 +225,10 @@ def identifiant_arxiv(chemin: Path, texte: str) -> str:
     return m.group(1) if m else ""
 
 
-TEXTES_VUS: dict[str, Path] = {}      # empreinte du texte extrait → premier fichier qui l'a porté, sur un passage
+TEXTES_VUS: dict[str, Path] = {}  # empreinte du texte extrait → premier fichier qui l'a porté, sur un passage
 
 
-def traiter(src, chemin: Path, recommencer: bool, manifeste: dict,
-            empreinte: str) -> tuple[str, str]:
+def traiter(src, chemin: Path, recommencer: bool, manifeste: dict, empreinte: str) -> tuple[str, str]:
     """Rend (état, détail). L'état vaut « écrite », « inchangée » ou « numérisée ».
 
     Le saut d'un document déjà traité se décide sur le **manifeste**, et non sur
@@ -236,16 +238,21 @@ def traiter(src, chemin: Path, recommencer: bool, manifeste: dict,
     dont un ouvrage de 739 pages.
     """
     connu = manifeste.get(str(chemin))
-    if connu and not recommencer and connu.get("empreinte") == empreinte \
-            and (src.chemin / connu.get("fiche", "")).exists():
+    if (
+        connu
+        and not recommencer
+        and connu.get("empreinte") == empreinte
+        and (src.chemin / connu.get("fiche", "")).exists()
+    ):
         return "inchangée", connu["fiche"]
 
     texte, pages, meta = lire_pdf(chemin)
     texte = nettoyer(texte)
     texte, refs = lier_references(texte)
     if pages and len(texte) / pages < CAR_MINIMUM:
-        return "numérisée", (f"{pages} pages, {len(texte) // max(1, pages)} car./page : "
-                             f"PDF numérisé, océrisation requise — non ingéré")
+        return "numérisée", (
+            f"{pages} pages, {len(texte) // max(1, pages)} car./page : PDF numérisé, océrisation requise — non ingéré"
+        )
     # Le même texte sous un autre fichier (« … - copie.pdf », réenregistré, donc d'une autre
     # empreinte d'octets) : l'empreinte du texte extrait est tout aussi exacte.
     h_texte = hashlib.sha256(texte.encode("utf-8")).hexdigest()[:16]
@@ -291,8 +298,7 @@ def traiter(src, chemin: Path, recommencer: bool, manifeste: dict,
         if cr.get("author"):
             champs["author"] = cr["author"]
             champs["origine_auteur"] = "Crossref, titre confirmé à l'identique"
-            champs["origine_date"] = origine_date = (
-                "Crossref" if cr.get("date") else origine_date)
+            champs["origine_date"] = origine_date = "Crossref" if cr.get("date") else origine_date
             if cr.get("date"):
                 champs["date"] = cr["date"]
                 sortie = src.chemin / f"{cr['date']}_{nom}.md"
@@ -302,25 +308,32 @@ def traiter(src, chemin: Path, recommencer: bool, manifeste: dict,
                 champs["source"] = f"{cr['publication_source']} (tirage local)"
     try:
         fiche.ecrire(sortie, champs, "\n".join(entete) + texte)
-    except fiche.IdentiteDejaVue as deja:              # le même papier (DOI), déjà dans le graphe par une autre voie
+    except fiche.IdentiteDejaVue as deja:  # le même papier (DOI), déjà dans le graphe par une autre voie
         return "doublon", f"{sortie.name} : déjà vue ({deja.cle}, {deja.existante.name})"
-    manifeste[str(chemin)] = {"fiche": sortie.name, "empreinte": empreinte, "pages": pages,
-                              "titre": titre, "date": champs["date"],
-                              "origine_date": champs["origine_date"], "texte": h_texte}
-    return "écrite", (f"{sortie.name}  ({pages} p., {len(texte.split())} mots"
-                      + (f", {refs} réf. arXiv liées" if refs else "") + ")")
+    manifeste[str(chemin)] = {
+        "fiche": sortie.name,
+        "empreinte": empreinte,
+        "pages": pages,
+        "titre": titre,
+        "date": champs["date"],
+        "origine_date": champs["origine_date"],
+        "texte": h_texte,
+    }
+    return "écrite", (
+        f"{sortie.name}  ({pages} p., {len(texte.split())} mots" + (f", {refs} réf. arXiv liées" if refs else "") + ")"
+    )
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", help="ne traiter qu'une source du registre")
     ap.add_argument("--recommencer", action="store_true", help="réécrire les fiches existantes")
     ap.add_argument("--graphe", help="ne traiter que les sources d'un graphe")
     args = ap.parse_args()
 
-    sources = [s for s in cfg.toutes("Bibliothèque locale", graphe=args.graphe)
-               if not args.source or s.cle == args.source]
+    sources = [
+        s for s in cfg.toutes("Bibliothèque locale", graphe=args.graphe) if not args.source or s.cle == args.source
+    ]
     if not sources:
         print("  aucune source « Bibliothèque locale » au registre.", file=sys.stderr)
         return 1
@@ -331,8 +344,7 @@ def main() -> int:
     illisibles: list[str] = []
     for src in sources:
         src.chemin.mkdir(parents=True, exist_ok=True)
-        manifeste = (json.loads(src.manifeste.read_text(encoding="utf-8"))
-                     if src.manifeste.exists() else {})
+        manifeste = json.loads(src.manifeste.read_text(encoding="utf-8")) if src.manifeste.exists() else {}
         # Un manifeste de la version précédente portait un chemin par nom de
         # fichier : il est simplement remplacé, rien n'en dépend.
         if manifeste and not isinstance(next(iter(manifeste.values())), dict):
@@ -389,11 +401,12 @@ def main() -> int:
         # retiré des dossiers ne doit pas y survivre comme un état fantôme.
         vivants = {str(p) for p in pdfs}
         manifeste = {k: v for k, v in manifeste.items() if k in vivants}
-        src.manifeste.write_text(json.dumps(manifeste, indent=1, ensure_ascii=False),
-                                 encoding="utf-8")
-    print(f"\n  {total['écrite']} fiche(s) écrite(s), {total['inchangée']} inchangée(s), "
-          f"{total['numérisée']} document(s) numérisé(s) non ingéré(s), "
-          f"{len(doublons)} doublon(s) ignoré(s)")
+        src.manifeste.write_text(json.dumps(manifeste, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(
+        f"\n  {total['écrite']} fiche(s) écrite(s), {total['inchangée']} inchangée(s), "
+        f"{total['numérisée']} document(s) numérisé(s) non ingéré(s), "
+        f"{len(doublons)} doublon(s) ignoré(s)"
+    )
     for d in doublons:
         print(f"    doublon : {d}")
     if numerisees:
@@ -401,8 +414,9 @@ def main() -> int:
         for n in numerisees:
             print(f"    {n}")
     if illisibles:
-        print("  ALERTE : documents que pypdf n'a pas pu ouvrir ; ce ne sont pas des "
-              "documents absents :", file=sys.stderr)
+        print(
+            "  ALERTE : documents que pypdf n'a pas pu ouvrir ; ce ne sont pas des documents absents :", file=sys.stderr
+        )
         for i in illisibles:
             print(f"    {i}", file=sys.stderr)
     return 1 if (numerisees or illisibles) else 0

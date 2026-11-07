@@ -48,7 +48,8 @@ from newskit import fiche  # noqa: E402
 
 API = "https://api.crossref.org/journals/{issn}/works"
 from newskit.commun import agent_robot  # noqa: E402
-PAUSE = 1.0          # Crossref demande d'être joignable et raisonnable
+
+PAUSE = 1.0  # Crossref demande d'être joignable et raisonnable
 PAR_PAGE = 100
 
 
@@ -83,7 +84,7 @@ def date_de(it: dict) -> str:
             a = int(parts[0])
             m = int(parts[1]) if len(parts) > 1 else 1
             j = int(parts[2]) if len(parts) > 2 else 1
-            return f"{a:04d}-{min(max(m,1),12):02d}-{min(max(j,1),28):02d}"
+            return f"{a:04d}-{min(max(m, 1), 12):02d}-{min(max(j, 1), 28):02d}"
     return ""
 
 
@@ -95,8 +96,7 @@ def retenu(titre: str, mots_cles: list[str]) -> bool:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", help="ne traiter qu'une source du registre")
     ap.add_argument("--depuis", type=int, help="année de départ (défaut : celle du registre)")
     ap.add_argument("--max", type=int, default=0, help="plafond de fiches écrites (0 = sans plafond)")
@@ -117,9 +117,12 @@ def main() -> int:
         depuis = args.depuis or int(getattr(src, "depuis", 0) or 0)
         mots_cles = list(getattr(src, "mots_cles", []) or [])
 
-        params = {"rows": PAR_PAGE, "cursor": "*",
-                  "select": "DOI,title,author,abstract,issued,published-print,"
-                            "published-online,created,container-title,type,URL"}
+        params = {
+            "rows": PAR_PAGE,
+            "cursor": "*",
+            "select": "DOI,title,author,abstract,issued,published-print,"
+            "published-online,created,container-title,type,URL",
+        }
         if depuis:
             params["filter"] = f"from-pub-date:{depuis}-01-01"
 
@@ -146,34 +149,46 @@ def main() -> int:
                     continue
                 res = resume(it.get("abstract", ""))
                 auteurs = ", ".join(
-                    " ".join(x for x in (a.get("given"), a.get("family")) if x)
-                    for a in it.get("author", []))
+                    " ".join(x for x in (a.get("given"), a.get("family")) if x) for a in it.get("author", [])
+                )
                 plat = re.sub(r"[^a-z0-9]+", "-", doi.lower()).strip("-")[:80]
                 corps = [f"# {titre}", ""]
-                corps += [res, ""] if res else [
-                    "*Crossref ne porte pas de résumé pour cet article : la fiche est "
-                    "bibliographique. Le texte intégral s'ouvre par le DOI, avec un accès "
-                    "à la revue.*", ""]
+                corps += (
+                    [res, ""]
+                    if res
+                    else [
+                        "*Crossref ne porte pas de résumé pour cet article : la fiche est "
+                        "bibliographique. Le texte intégral s'ouvre par le DOI, avec un accès "
+                        "à la revue.*",
+                        "",
+                    ]
+                )
                 corps += [f"DOI : [{doi}](https://doi.org/{doi})", ""]
                 champs = {
-                    "title": titre, "subtitle": "", "author": auteurs, "date": date,
-                    "url": f"https://doi.org/{doi}", "plateforme": "Revue",
-                    "publication": src.nom, "complet": bool(res),
+                    "title": titre,
+                    "subtitle": "",
+                    "author": auteurs,
+                    "date": date,
+                    "url": f"https://doi.org/{doi}",
+                    "plateforme": "Revue",
+                    "publication": src.nom,
+                    "complet": bool(res),
                     "collected": time.strftime("%Y-%m-%d"),
                     "source": f"Crossref, {(it.get('container-title') or [src.nom])[0]}",
-                    "doi": doi, "issn": src.issn, "revue": src.nom,
+                    "doi": doi,
+                    "issn": src.issn,
+                    "revue": src.nom,
                     "type": it.get("type", ""),
                 }
                 try:
                     fiche.ecrire(src.chemin / f"{date}_{plat}.md", champs, "\n".join(corps))
-                except fiche.IdentiteDejaVue as deja:   # une autre fiche du graphe porte déjà ce document
+                except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
                     print(f"  déjà vue : {deja}")
                     continue
                 except ValueError as e:
                     echecs.append(f"{src.nom} : {str(e)[:90]}")
                     continue
-                manifeste[doi] = {"file": f"{date}_{plat}.md", "title": titre,
-                                  "date": date, "complet": bool(res)}
+                manifeste[doi] = {"file": f"{date}_{plat}.md", "title": titre, "date": date, "complet": bool(res)}
                 ecrits += 1
                 sans_resume += 0 if res else 1
                 if args.max and ecrits >= args.max:
@@ -187,9 +202,11 @@ def main() -> int:
             params["cursor"] = suite
             time.sleep(PAUSE)
 
-        print(f"{src.nom} : {vus} article(s) vus depuis {depuis or 'l’origine'}, "
-              f"{ecrits} retenu(s) et écrit(s), dont {sans_resume} sans résumé, "
-              f"{len(manifeste)} au total")
+        print(
+            f"{src.nom} : {vus} article(s) vus depuis {depuis or 'l’origine'}, "
+            f"{ecrits} retenu(s) et écrit(s), dont {sans_resume} sans résumé, "
+            f"{len(manifeste)} au total"
+        )
     if echecs:
         print("  ALERTE :", file=sys.stderr)
         for e in echecs:

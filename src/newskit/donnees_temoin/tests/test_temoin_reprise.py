@@ -24,9 +24,21 @@ TUER = 10
 def _passe(t, extra):
     env = temoin.environnement(t)
     env.update({"SE_PARALLELE": "1", **extra})
-    return subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                           "--sans-commit", "--sans-courriel"], env=env, cwd=t.donnees,
-                          capture_output=True, text=True, timeout=900)
+    return subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=env,
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
 
 
 def _appels(p: Path):
@@ -51,9 +63,9 @@ def test_l_etape_tuee_a_ecrit_ses_resultats_servis(deux_passes):
 
 def test_relancee_elle_ne_redemande_rien_de_servi(deux_passes):
     t, _, r2, a1, a2, _ = deux_passes
-    servis = {a["cle"] for a in a1[:TUER - 1]}
+    servis = {a["cle"] for a in a1[: TUER - 1]}
     assert [a["cle"] for a in a2 if a["cle"] in servis] == []
-    assert a1[TUER - 1]["cle"] in {a["cle"] for a in a2}          # l'appel tué, lui, est repris
+    assert a1[TUER - 1]["cle"] in {a["cle"] for a in a2}  # l'appel tué, lui, est repris
     assert "ok      couche 2 incrémentale" in r2.stdout and not t.manquantes.exists()
 
 

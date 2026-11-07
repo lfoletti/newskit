@@ -12,6 +12,7 @@ passerelle ou d'un cerveau rend « indisponible », jamais une réponse moindre 
     python3 -m newskit.interroger [--passerelle http://127.0.0.1:8787] [--cle <fichier de la clé>] "question"
 
 La clé se lit dans un fichier (installer_vps.sh la range pour le compte « site »), jamais sur la ligne de commande."""
+
 from __future__ import annotations
 
 import argparse
@@ -21,14 +22,16 @@ import sys
 import urllib.request
 from pathlib import Path
 
-SOURCES = 5                  # sources rendues, au plus
-MOTS_EXTRAIT = 60            # mots de l'extrait d'une source
-QUESTION_MAX = 500           # caractères d'une question
-DELAI = 30                   # secondes accordées à la passerelle
+SOURCES = 5  # sources rendues, au plus
+MOTS_EXTRAIT = 60  # mots de l'extrait d'une source
+QUESTION_MAX = 500  # caractères d'une question
+DELAI = 30  # secondes accordées à la passerelle
+
 
 def cerveau() -> str:
     """Le cerveau du graphe du site dans Thalamus : `<nom de l'édition>/<graphe du site>` (bloc `edition:`)."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     return f"{cfg.edition()['nom']}/{cfg.graphe_du_site()}"
 
 
@@ -46,8 +49,15 @@ def repondre(question: str, appeler) -> dict:
         r = appeler("th_recall", {"query": question, "brains": [cerveau()], "top_k": SOURCES, "syntheses": 0})
     except Exception:  # noqa: BLE001 — toute panne se dit telle
         return {"question": question, "sources": [], "erreur": "indisponible"}
-    sources = [{"titre": h.get("title", ""), "url": h.get("source_url", ""), "id": h.get("knowledge_id"),
-                "extrait": _extrait(h.get("snippet", ""))} for h in (r.get("results") or [])[:SOURCES]]
+    sources = [
+        {
+            "titre": h.get("title", ""),
+            "url": h.get("source_url", ""),
+            "id": h.get("knowledge_id"),
+            "extrait": _extrait(h.get("snippet", "")),
+        }
+        for h in (r.get("results") or [])[:SOURCES]
+    ]
     return {"question": question, "sources": sources}
 
 
@@ -65,12 +75,16 @@ class Passerelle:
         return f"Passerelle({self.url!r})"
 
     def _poster(self, message: dict):
-        entetes = {"Authorization": f"Bearer {self.cle}", "Content-Type": "application/json",
-                   "Accept": "application/json, text/event-stream"}
+        entetes = {
+            "Authorization": f"Bearer {self.cle}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         if self._session:
             entetes["Mcp-Session-Id"] = self._session
-        r = urllib.request.urlopen(urllib.request.Request(self.url + "/mcp", json.dumps(message).encode(), entetes),
-                                   timeout=self.delai)
+        r = urllib.request.urlopen(
+            urllib.request.Request(self.url + "/mcp", json.dumps(message).encode(), entetes), timeout=self.delai
+        )
         texte = r.read().decode()
         if "data:" in texte:
             lignes = [x[5:].strip() for x in texte.splitlines() if x.startswith("data:")]
@@ -78,14 +92,26 @@ class Passerelle:
         return r.headers.get("Mcp-Session-Id"), (json.loads(texte) if texte.strip() else None)
 
     def _ouvrir(self) -> None:
-        self._session, _ = self._poster({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
-            "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "interroger", "version": "1"}}})
+        self._session, _ = self._poster(
+            {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "interroger", "version": "1"},
+                },
+            }
+        )
         self._poster({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     def __call__(self, outil: str, args: dict) -> dict:
         if not self._session:
             self._ouvrir()
-        _, r = self._poster({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": outil, "arguments": args}})
+        _, r = self._poster(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": outil, "arguments": args}}
+        )
         res = (r or {}).get("result") or {}
         texte = ((res.get("content") or [{}])[0]).get("text", "")
         if res.get("isError") or "error" in (r or {}):
@@ -96,8 +122,12 @@ class Passerelle:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--passerelle", default="http://127.0.0.1:8787")
-    p.add_argument("--cle", type=Path, default=Path(os.environ.get("NEWSKIT_CLE_INTERROGER", "cle")),
-                   help="fichier de la clé de lecture (défaut : NEWSKIT_CLE_INTERROGER, sinon ./cle)")
+    p.add_argument(
+        "--cle",
+        type=Path,
+        default=Path(os.environ.get("NEWSKIT_CLE_INTERROGER", "cle")),
+        help="fichier de la clé de lecture (défaut : NEWSKIT_CLE_INTERROGER, sinon ./cle)",
+    )
     p.add_argument("question")
     a = p.parse_args(argv)
     print(json.dumps(repondre(a.question, Passerelle.du_fichier(a.passerelle, a.cle)), ensure_ascii=False, indent=1))

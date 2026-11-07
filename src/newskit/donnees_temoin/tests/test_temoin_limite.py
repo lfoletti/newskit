@@ -21,16 +21,27 @@ from newskit import commun  # noqa: E402
 from newskit import temoin  # noqa: E402
 
 
-
 @pytest.fixture(scope="module")
 def passage(tmp_path_factory):
     avant = temoin.photo_du_reel()
     t = temoin.preparer(tmp_path_factory.mktemp("limite") / "t")
     env = temoin.environnement(t)
     env["TEMOIN_LIMITE"] = "3"
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=env, cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=env,
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r, avant
 
 

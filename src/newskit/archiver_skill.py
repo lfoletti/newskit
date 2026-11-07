@@ -29,8 +29,9 @@ import sys
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 INSTALLE = Path(os.environ.get("SE_SKILL_KG", Path.home() / ".claude" / "skills" / "kg"))
-ARCHIVE = RACINE / "skill" / "kg"     # sous le dossier du média, pas sous le code (07.11.2026)
+ARCHIVE = RACINE / "skill" / "kg"  # sous le dossier du média, pas sous le code (07.11.2026)
 
 
 def contenu(f: Path) -> bytes:
@@ -49,8 +50,7 @@ def main() -> int:
         return 0
 
     ARCHIVE.mkdir(parents=True, exist_ok=True)
-    vivants = sorted(f for f in INSTALLE.iterdir()
-                     if f.is_file() and not f.name.startswith("."))
+    vivants = sorted(f for f in INSTALLE.iterdir() if f.is_file() and not f.name.startswith("."))
     changes, retires = [], []
 
     for f in vivants:
@@ -75,8 +75,10 @@ def main() -> int:
     if changes:
         print(f"  skill /kg : {len(changes)} fichier(s) {verbe} — {', '.join(changes)}")
     if retires:
-        print(f"  skill /kg : {len(retires)} fichier(s) disparu(s) de l'installation "
-              f"{'à retirer' if controle else 'retiré(s)'} — {', '.join(retires)}")
+        print(
+            f"  skill /kg : {len(retires)} fichier(s) disparu(s) de l'installation "
+            f"{'à retirer' if controle else 'retiré(s)'} — {', '.join(retires)}"
+        )
     if controle:
         print("  (--controle : rien n'a été écrit ; lancer sans l'option pour archiver)")
     return 0

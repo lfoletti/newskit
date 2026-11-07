@@ -37,7 +37,8 @@ import yaml
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import media  # noqa: E402
 from newskit import politiques  # noqa: E402
-FICHIER = politiques.registre_sources()     # nommé par deploiement/politiques.yaml (N3)
+
+FICHIER = politiques.registre_sources()  # nommé par deploiement/politiques.yaml (N3)
 SOURCES = RACINE / "sources"
 
 from newskit import commun  # noqa: E402  (clé d'un auteur)
@@ -50,11 +51,28 @@ ABONNEMENTS = {"gratuit", "payant", "interne"}
 # Champs admis pour toute source, puis champs propres à une plateforme. Un
 # champ hors de ces listes est une faute de frappe : mieux vaut le dire.
 COMMUNS_OBLIGATOIRES = {"cle", "plateforme", "nom", "dossier", "abonnement"}
-COMMUNS_FACULTATIFS = {"dense", "session", "assistee", "note", "graphe", "posture", "autorite", "masque", "nature", "muette"}
+COMMUNS_FACULTATIFS = {
+    "dense",
+    "session",
+    "assistee",
+    "note",
+    "graphe",
+    "posture",
+    "autorite",
+    "masque",
+    "nature",
+    "muette",
+}
 # La cause d'une source muette, dans un vocabulaire fermé (mainteneur, 03.11.2026 : liste publiable des sources muettes) :
 # `muette: {cause: …, le: AAAA-MM-JJ}`, et `code` (le statut HTTP) pour un refus d'accès.
-CAUSES_MUETTE = {"ne publie pas sur le sujet", "refus d'accès", "robots.txt bloque", "défi anti-robot", "flux mort",
-                 "à passer à l'OCR"}
+CAUSES_MUETTE = {
+    "ne publie pas sur le sujet",
+    "refus d'accès",
+    "robots.txt bloque",
+    "défi anti-robot",
+    "flux mort",
+    "à passer à l'OCR",
+}
 # La nature d'une source quand elle n'est pas un média : « registre », un registre ou un jeu de données régulier, dont
 # chaque fiche nouvelle est une donnée et pas une actualité (lettre.non_actualite, mainteneur, 03.11.2026).
 NATURES = {"registre"}
@@ -82,6 +100,7 @@ POSTURES = {
     "mixte": "sources de natures diverses (éclaireur, dépôts, canon)",
 }
 
+
 # Le graphe que nourrit une source. Un graphe par usage : la veille
 # scientifique et l'actualité quotidienne ne font pas le même graphe, et les
 # mélanger noierait le premier sous le second. Le graphe principal garde ses
@@ -97,7 +116,7 @@ def _brut(p: Path) -> dict:
     """Le registre tel qu'écrit, lu une fois par processus pour le registre par défaut (le graphe principal se lit à
     l'import, charger valide ensuite le même texte)."""
     st = p.stat()
-    cle = (p, st.st_mtime_ns, st.st_size)          # un registre réécrit (accords, deplacer_sources, thèmes) se relit
+    cle = (p, st.st_mtime_ns, st.st_size)  # un registre réécrit (accords, deplacer_sources, thèmes) se relit
     if p == FICHIER and cle in _brut_cache:
         return _brut_cache[cle]
     d = _compose(p, yaml.safe_load(p.read_text(encoding="utf-8")) or {})
@@ -121,8 +140,10 @@ def _compose(p: Path, d: dict) -> dict:
         return d
     doubles = sorted(k for k in blocs if k in d)
     if doubles:
-        raise ConfigInvalide(f"{p.name} et {c.name} tiennent tous deux {doubles} : un bloc, un seul fichier "
-                             f"(`media:` de {c.name} remplace `edition:`)")
+        raise ConfigInvalide(
+            f"{p.name} et {c.name} tiennent tous deux {doubles} : un bloc, un seul fichier "
+            f"(`media:` de {c.name} remplace `edition:`)"
+        )
     return {**d, **blocs}
 
 
@@ -155,26 +176,40 @@ ANCIENS_NOMS = {k: v for k, v in _bloc_a_l_import("anciens_noms").items() if isi
 
 def nom_actuel(nom: str) -> str:
     return ANCIENS_NOMS.get(nom, nom)
+
+
 PROPRES = {
     "LinkedIn": ({"newsletter", "auteur"}, set()),
-    "Substack": ({"domaine"}, {"depuis", "mots_cles"}),   # mots_cles : exigés dans le titre ou le sous-titre   # depuis : AAAA-MM-JJ, les billets antérieurs ne sont pas collectés
+    "Substack": (
+        {"domaine"},
+        {"depuis", "mots_cles"},
+    ),  # mots_cles : exigés dans le titre ou le sous-titre   # depuis : AAAA-MM-JJ, les billets antérieurs ne sont pas collectés
     "Medium": (set(), {"mots_cles"}),
     "Modèle": (set(), set()),
     "Bibliothèque locale": ({"chemins"}, set()),
-    "Flux RSS": ({"flux"}, {"site", "page", "mots_cles", "doublons_de", "exclure", "entetes", "api_page", "api_champs", "api_segment"}),
+    "Flux RSS": (
+        {"flux"},
+        {"site", "page", "mots_cles", "doublons_de", "exclure", "entetes", "api_page", "api_champs", "api_segment"},
+    ),
     # Trouvées par l'audit d'accès /sap (07.10.2026) : sur 50 sites « sans flux », 23 publiaient un plan de site vivant
     # et 11 une page de liste lisible en HTML statique. `chemins` : expression rationnelle sur l'adresse, qui ne garde
     # que les articles (les plans de site listent aussi les pages de service) ; `jours` : fenêtre sur <lastmod>.
     "Plan de site": ({"plan", "chemins"}, {"site", "mots_cles", "exclure", "entetes", "jours"}),
-    "Page de liste": ({"liste", "chemins"}, {"site", "mots_cles", "exclure", "entetes", "lien_motif", "lien_modele", "titre_motif", "corps_motif"}),   # lien_motif et lien_modele : articles ouverts par un script (06.11.2026) ; titre_motif : le titre sur la page de l'article   # exclure : regex sur adresse et titre ; entetes : « navigateur » après un audit /sap
+    "Page de liste": (
+        {"liste", "chemins"},
+        {"site", "mots_cles", "exclure", "entetes", "lien_motif", "lien_modele", "titre_motif", "corps_motif"},
+    ),  # lien_motif et lien_modele : articles ouverts par un script (06.11.2026) ; titre_motif : le titre sur la page de l'article   # exclure : regex sur adresse et titre ; entetes : « navigateur » après un audit /sap
     "Revue": ({"issn"}, {"depuis", "mots_cles"}),
     "arXiv": (set(), set()),
     "Recherche interne": (set(), set()),
-    "Recherche web": (set(), set()),    # pages trouvées par l'éclaireur (newskit.eclaireur), un dossier par graphe
-    "Référence": (set(), set()),        # pages de référence et dépôts du canon (newskit.combler_canon), un dossier par graphe
-    "Dépôt": (set(), set()),            # liens déposés depuis le navigateur (newskit.depots), un dossier par graphe
+    "Recherche web": (set(), set()),  # pages trouvées par l'éclaireur (newskit.eclaireur), un dossier par graphe
+    "Référence": (set(), set()),  # pages de référence et dépôts du canon (newskit.combler_canon), un dossier par graphe
+    "Dépôt": (set(), set()),  # liens déposés depuis le navigateur (newskit.depots), un dossier par graphe
     # Graphe financier (27.09.2026).
-    "OpenAlex": ({"requetes"}, {"jours", "par_requete", "domaines", "mots_cles", "mots_cles_faibles", "ancre_titre"}),   # domaines : liste blanche de « field » OpenAlex ; mots_cles : lexique exigé dans titre ou résumé ; mots_cles_faibles : ne comptent qu'avec ancre_titre dans le titre
+    "OpenAlex": (
+        {"requetes"},
+        {"jours", "par_requete", "domaines", "mots_cles", "mots_cles_faibles", "ancre_titre"},
+    ),  # domaines : liste blanche de « field » OpenAlex ; mots_cles : lexique exigé dans titre ou résumé ; mots_cles_faibles : ne comptent qu'avec ancre_titre dans le titre
     "GitHub": ({"requetes"}, {"jours", "par_requete", "etoiles_min"}),
     "HuggingFace": ({"requetes"}, {"jours", "par_requete", "genres", "activite_min"}),
     # Les documents d'un dossier hors dépôt, découpés par titre en fiches :
@@ -205,11 +240,11 @@ class Source:
     note: str = ""
     graphe: str = GRAPHE_PRINCIPAL
     posture: str = ""
-    autorite: str = ""          # « moindre » : ses affirmations ne fondent rien seules (synthese.py)
-    nature: str = ""            # « registre » : un registre ou un jeu de données régulier (NATURES)
+    autorite: str = ""  # « moindre » : ses affirmations ne fondent rien seules (synthese.py)
+    nature: str = ""  # « registre » : un registre ou un jeu de données régulier (NATURES)
     propres: dict = field(default_factory=dict)
-    masque: list = field(default_factory=list)     # portées dont le contenu n'est pas publié
-    muette: dict = field(default_factory=dict)     # cause déclarée d'un silence : {cause, le, code?} (CAUSES_MUETTE)
+    masque: list = field(default_factory=list)  # portées dont le contenu n'est pas publié
+    muette: dict = field(default_factory=dict)  # cause déclarée d'un silence : {cause, le, code?} (CAUSES_MUETTE)
 
     @property
     def payant(self) -> bool:
@@ -260,10 +295,14 @@ def valider_boites(brut, ou: str) -> dict:
             raise ConfigInvalide(f"{ou} : boites.{nom} doit être un bloc")
         if set(b) - set(CHAMPS_BOITE) - set(CHAMPS_UTILISATEUR):
             inconnus = sorted(set(b) - set(CHAMPS_BOITE) - set(CHAMPS_UTILISATEUR))
-            raise ConfigInvalide(f"{ou} : boites.{nom} : champs inconnus {inconnus} ; le mot "
-                                 f"de passe se dépose au trousseau, jamais au registre")
+            raise ConfigInvalide(
+                f"{ou} : boites.{nom} : champs inconnus {inconnus} ; le mot "
+                f"de passe se dépose au trousseau, jamais au registre"
+            )
         if sum(c in b for c in CHAMPS_UTILISATEUR) != 1:
-            raise ConfigInvalide(f"{ou} : boites.{nom} : utilisateur ou utilisateur_env attendu, l'un des deux seulement")
+            raise ConfigInvalide(
+                f"{ou} : boites.{nom} : utilisateur ou utilisateur_env attendu, l'un des deux seulement"
+            )
         for cle, genre in {**CHAMPS_BOITE, next(c for c in CHAMPS_UTILISATEUR if c in b): str}.items():
             v = b.get(cle)
             if not isinstance(v, genre) or isinstance(v, bool) or (genre is str and not v.strip()):
@@ -328,7 +367,7 @@ def source_du_chemin(relatif: str) -> Source | None:
     return trouve
 
 
-FICHIER_DROITS = politiques.registre_auteurs()     # nommé par deploiement/politiques.yaml (N3)
+FICHIER_DROITS = politiques.registre_auteurs()  # nommé par deploiement/politiques.yaml (N3)
 
 
 def charger_droits_auteurs(chemin: Path | None = None) -> dict[str, dict]:
@@ -355,7 +394,7 @@ _cache: dict | None = None
 # L'identité de l'édition qui se sert du moteur (bloc `edition:` du registre, NEWSKIT.md N2) : son nom (préfixe des
 # clés de lecture dans Thalamus, producteur des métadonnées, objet des courriels, agent HTTP), son site, son dépôt et
 # le clone de son serveur. Le moteur n'en écrit aucune valeur dans son code.
-EDITION = dict(media.IDENTITE)    # les champs et leurs valeurs neutres vivent dans media.py (07.11.2026)
+EDITION = dict(media.IDENTITE)  # les champs et leurs valeurs neutres vivent dans media.py (07.11.2026)
 
 
 def lire_rubriques(decl: dict, ou: str = "rubriques") -> list[dict]:
@@ -389,7 +428,9 @@ def lire_rubriques(decl: dict, ou: str = "rubriques") -> list[dict]:
             if x["fr"] in vus:
                 raise ConfigInvalide(f"{ou} : le sujet « {x['fr']} » est rangé deux fois")
             vus.add(x["fr"])
-            sujets.append({"fr": str(x["fr"]), "en": str(x.get("en") or ""), "mots": [str(m) for m in x.get("mots") or []]})
+            sujets.append(
+                {"fr": str(x["fr"]), "en": str(x.get("en") or ""), "mots": [str(m) for m in x.get("mots") or []]}
+            )
         out.append({"cle": c, "nom": str(t.get("court") or t.get("fr") or c), "sujets": sujets})
     return out
 
@@ -488,8 +529,10 @@ def _valider(d: dict, p: Path) -> dict:
 
         plat = s["plateforme"]
         if plat not in fiche.PLATEFORMES:
-            raise ConfigInvalide(f"{ou} : plateforme « {plat} » hors du contrat de fiche "
-                                 f"{sorted(fiche.PLATEFORMES)} ; l'étendre dans newskit.fiche")
+            raise ConfigInvalide(
+                f"{ou} : plateforme « {plat} » hors du contrat de fiche "
+                f"{sorted(fiche.PLATEFORMES)} ; l'étendre dans newskit.fiche"
+            )
         if plat not in PROPRES:
             raise ConfigInvalide(f"{ou} : plateforme « {plat} » sans collecteur déclaré ici")
         oblig, fac = PROPRES[plat]
@@ -528,14 +571,26 @@ def _valider(d: dict, p: Path) -> dict:
         # Depuis le 27.09.2026 (graphe financier), la couche 2 incrémentale et la
         # structure des titres sont produites par graphe : `dense` est admis partout.
 
-        sources.append(Source(
-            cle=cle, plateforme=plat, nom=s["nom"], dossier=s["dossier"],
-            abonnement=s["abonnement"], dense=bool(s.get("dense")),
-            assistee=bool(s.get("assistee")), session=s.get("session"),
-            note=s.get("note", ""), graphe=graphe, posture=str(s.get("posture") or ""), autorite=str(s.get("autorite") or ""),
-            nature=str(s.get("nature") or ""),
-            propres={k: s[k] for k in (oblig | fac) if k in s}, masque=masque, muette=muette,
-        ))
+        sources.append(
+            Source(
+                cle=cle,
+                plateforme=plat,
+                nom=s["nom"],
+                dossier=s["dossier"],
+                abonnement=s["abonnement"],
+                dense=bool(s.get("dense")),
+                assistee=bool(s.get("assistee")),
+                session=s.get("session"),
+                note=s.get("note", ""),
+                graphe=graphe,
+                posture=str(s.get("posture") or ""),
+                autorite=str(s.get("autorite") or ""),
+                nature=str(s.get("nature") or ""),
+                propres={k: s[k] for k in (oblig | fac) if k in s},
+                masque=masque,
+                muette=muette,
+            )
+        )
 
     # Deux sources d'un même périmètre (un graphe et ceux qu'il inclut) sur une même publication font deux fiches de
     # chaque article (06.11.2026 : une même lettre déclarée deux fois dans un graphe, 116 doublons). Deux graphes
@@ -549,8 +604,10 @@ def _valider(d: dict, p: Path) -> dict:
             for h in sorted(perimetres) if v else ():
                 autre = lue_par.setdefault((h, champ, v), s.cle)
                 if autre != s.cle:
-                    raise ConfigInvalide(f"{p.name}, source « {s.cle} » : même publication que « {autre} » dans le "
-                                         f"graphe {h} ({champ} « {v} ») : deux fiches de chaque article")
+                    raise ConfigInvalide(
+                        f"{p.name}, source « {s.cle} » : même publication que « {autre} » dans le "
+                        f"graphe {h} ({champ} « {v} ») : deux fiches de chaque article"
+                    )
 
     boites = valider_boites(d.get("boites"), p.name)
     for s in sources:
@@ -578,12 +635,17 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{p.name} : veille_arxiv.graphes.{nom} mal formé")
         # `themes` peut être vide : un graphe qui n'a que des papiers choisis (jalons.choisis) ne moissonne rien.
         if set(v) - {"dossier", "themes", "dense", "categories", "graphe"} or not v.get("dossier") or "themes" not in v:
-            raise ConfigInvalide(f"{p.name} : veille_arxiv.graphes.{nom} : « dossier », « themes », « dense », "
-                                 f"« categories » et « graphe », rien d'autre")
+            raise ConfigInvalide(
+                f"{p.name} : veille_arxiv.graphes.{nom} : « dossier », « themes », « dense », "
+                f"« categories » et « graphe », rien d'autre"
+            )
         # `graphe` : le graphe que la veille nourrit, s'il n'est pas sa clé (GV7, 02.11.2026 : deux veilles, un graphe fusionné).
-        if "graphe" in v and (not isinstance(v["graphe"], str) or not NOM_DE_GRAPHE.match(v["graphe"])
-                              or v["graphe"] == GRAPHE_PRINCIPAL):
-            raise ConfigInvalide(f"{p.name} : veille_arxiv.graphes.{nom}.graphe : un nom de graphe, autre que le principal")
+        if "graphe" in v and (
+            not isinstance(v["graphe"], str) or not NOM_DE_GRAPHE.match(v["graphe"]) or v["graphe"] == GRAPHE_PRINCIPAL
+        ):
+            raise ConfigInvalide(
+                f"{p.name} : veille_arxiv.graphes.{nom}.graphe : un nom de graphe, autre que le principal"
+            )
         if not (v.get("categories") or veille.get("categories")):
             raise ConfigInvalide(f"{p.name} : veille_arxiv.graphes.{nom} : categories absentes, ici et au-dessus")
         if v["dossier"] in vus_dossiers:
@@ -591,33 +653,86 @@ def _valider(d: dict, p: Path) -> dict:
         double = vus_themes & set(v["themes"] or [])
         if double:
             raise ConfigInvalide(f"{p.name} : thème(s) déclaré(s) dans deux graphes : {sorted(double)}")
-        vus_dossiers.add(v["dossier"]); vus_themes |= set(v["themes"] or [])
+        vus_dossiers.add(v["dossier"])
+        vus_themes |= set(v["themes"] or [])
 
     # Les graphes : libellé et domaine (la phrase qui oriente la couche 2), par nom.
     # Facultatif ; un graphe nommé par une source sans entrée ici prend des défauts.
     graphes_decl = d.get("graphes") or {}
     if not isinstance(graphes_decl, dict):
         raise ConfigInvalide(f"{p.name} : « graphes » doit être un dictionnaire nom → {{libelle, domaine}}")
-    ports = [v.get("cortexdb_port") for v in graphes_decl.values() if isinstance(v, dict) and v.get("cortexdb_port") is not None]
+    ports = [
+        v.get("cortexdb_port")
+        for v in graphes_decl.values()
+        if isinstance(v, dict) and v.get("cortexdb_port") is not None
+    ]
     if len(ports) != len(set(ports)):
         raise ConfigInvalide(f"{p.name} : deux graphes partagent un cortexdb_port")
     for nom, v in graphes_decl.items():
         if not NOM_DE_GRAPHE.match(str(nom)) or not isinstance(v, dict):
             raise ConfigInvalide(f"{p.name} : graphes.{nom} mal formé")
-        surplus = set(v) - {"libelle", "domaine", "plafond_couche2", "stock_couche2", "inclut", "accueil", "fiabilite", "reclasseur", "modele_pyramide", "canon_critique", "pyramide_plafond", "plafond_couche2_max", "etapes", "themes_auto", "sous_graphe_de", "seuil_routage", "cortexdb", "lecture_cortexdb", "cortexdb_port", "cortexdb_publie", "cartes_plafond", "couche1", "depots", "partage", "rubriques", "fraicheur_lettre_jours", "fraicheur_min_rubrique", "lettre_nom", "lettre_titre", "lettre_slogan", "fil"}
+        surplus = set(v) - {
+            "libelle",
+            "domaine",
+            "plafond_couche2",
+            "stock_couche2",
+            "inclut",
+            "accueil",
+            "fiabilite",
+            "reclasseur",
+            "modele_pyramide",
+            "canon_critique",
+            "pyramide_plafond",
+            "plafond_couche2_max",
+            "etapes",
+            "themes_auto",
+            "sous_graphe_de",
+            "seuil_routage",
+            "cortexdb",
+            "lecture_cortexdb",
+            "cortexdb_port",
+            "cortexdb_publie",
+            "cartes_plafond",
+            "couche1",
+            "depots",
+            "partage",
+            "rubriques",
+            "fraicheur_lettre_jours",
+            "fraicheur_min_rubrique",
+            "lettre_nom",
+            "lettre_titre",
+            "lettre_slogan",
+            "fil",
+        }
         if surplus:
             raise ConfigInvalide(f"{p.name} : graphes.{nom} : champs inconnus {sorted(surplus)}")
-        fl = v.get("fil")     # le titre et la description du flux RSS du graphe, par langue (fil.rss)
-        if fl is not None and (not isinstance(fl, dict) or not fl or set(fl) - {"fr", "en"} or not all(
-                isinstance(c, dict) and set(c) == {"titre", "description"} and all(isinstance(x, str) and x for x in c.values())
-                for c in fl.values())):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.fil : {{fr, en}} → {{titre, description}}, des textes non vides")
+        fl = v.get("fil")  # le titre et la description du flux RSS du graphe, par langue (fil.rss)
+        if fl is not None and (
+            not isinstance(fl, dict)
+            or not fl
+            or set(fl) - {"fr", "en"}
+            or not all(
+                isinstance(c, dict)
+                and set(c) == {"titre", "description"}
+                and all(isinstance(x, str) and x for x in c.values())
+                for c in fl.values()
+            )
+        ):
+            raise ConfigInvalide(
+                f"{p.name} : graphes.{nom}.fil : {{fr, en}} → {{titre, description}}, des textes non vides"
+            )
         cp = v.get("cartes_plafond")
         if cp is not None and (type(cp) is not int or cp < 0):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.cartes_plafond : un entier positif ou nul (cartes de sujets par passage)")
+            raise ConfigInvalide(
+                f"{p.name} : graphes.{nom}.cartes_plafond : un entier positif ou nul (cartes de sujets par passage)"
+            )
         sg = v.get("sous_graphe_de")
-        if sg is not None and (sg not in graphes_decl or sg == nom or (graphes_decl.get(sg) or {}).get("sous_graphe_de")):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.sous_graphe_de doit nommer un autre graphe déclaré, lui-même sans parent")
+        if sg is not None and (
+            sg not in graphes_decl or sg == nom or (graphes_decl.get(sg) or {}).get("sous_graphe_de")
+        ):
+            raise ConfigInvalide(
+                f"{p.name} : graphes.{nom}.sous_graphe_de doit nommer un autre graphe déclaré, lui-même sans parent"
+            )
         port = v.get("cortexdb_port")
         if port is not None and (type(port) is not int or not 1024 <= port <= 65535):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.cortexdb_port : un port entre 1024 et 65535")
@@ -625,8 +740,12 @@ def _valider(d: dict, p: Path) -> dict:
             if not isinstance(v.get(cle, False), bool):
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.{cle} : vrai ou faux")
         et = v.get("etapes")
-        if et is not None and (not isinstance(et, dict) or set(et) - ETAPES or not all(isinstance(b, bool) for b in et.values())):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.etapes : dictionnaire étape -> vrai/faux, étapes connues {sorted(ETAPES)}")
+        if et is not None and (
+            not isinstance(et, dict) or set(et) - ETAPES or not all(isinstance(b, bool) for b in et.values())
+        ):
+            raise ConfigInvalide(
+                f"{p.name} : graphes.{nom}.etapes : dictionnaire étape -> vrai/faux, étapes connues {sorted(ETAPES)}"
+            )
         # `inclut` : ce graphe lit aussi les dossiers et les lots de couche 2 d'autres graphes
         # (un graphe financier inclut un graphe de trading quantitatif, 04.10.2026). Un seul niveau : un graphe inclus n'inclut rien.
         inclus = v.get("inclut") or []
@@ -637,17 +756,26 @@ def _valider(d: dict, p: Path) -> dict:
         # (mainteneur, 02.11.2026, « 1 ok mixte »), le graphe a ses sources, et le partage reste son filtre sans `inclut`.
         pt = v.get("partage")
         a_ses_sources = any(isinstance(s, dict) and s.get("graphe") == nom for s in d.get("sources") or [])
-        if pt is not None and (not isinstance(pt, dict) or set(pt) != {"fichier", "garder"}
-                               or not all(isinstance(x, str) and x for x in pt.values()) or not (inclus or a_ses_sources)):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.partage : {{fichier, garder}}, deux textes, et des graphes "
-                                 "sous `inclut` ou des sources à lui")
+        if pt is not None and (
+            not isinstance(pt, dict)
+            or set(pt) != {"fichier", "garder"}
+            or not all(isinstance(x, str) and x for x in pt.values())
+            or not (inclus or a_ses_sources)
+        ):
+            raise ConfigInvalide(
+                f"{p.name} : graphes.{nom}.partage : {{fichier, garder}}, deux textes, et des graphes "
+                "sous `inclut` ou des sources à lui"
+            )
         # `rubriques` (B16, 03.11.2026) : {fichier, ordre}, la table rubrique → sujets du graphe et l'ordre de ses rubriques.
-        if v.get("fraicheur_lettre_jours") is not None and (not isinstance(v["fraicheur_lettre_jours"], int)
-                                                           or v["fraicheur_lettre_jours"] < 1):
+        if v.get("fraicheur_lettre_jours") is not None and (
+            not isinstance(v["fraicheur_lettre_jours"], int) or v["fraicheur_lettre_jours"] < 1
+        ):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.fraicheur_lettre_jours : un entier d'au moins 1")
-        if v.get("fraicheur_min_rubrique") is not None and (not isinstance(v["fraicheur_min_rubrique"], int)
-                                                           or isinstance(v["fraicheur_min_rubrique"], bool)
-                                                           or v["fraicheur_min_rubrique"] < 0):
+        if v.get("fraicheur_min_rubrique") is not None and (
+            not isinstance(v["fraicheur_min_rubrique"], int)
+            or isinstance(v["fraicheur_min_rubrique"], bool)
+            or v["fraicheur_min_rubrique"] < 0
+        ):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.fraicheur_min_rubrique : un entier positif ou nul")
         if v.get("rubriques") is not None:
             lire_rubriques(v["rubriques"], f"{p.name} : graphes.{nom}.rubriques")
@@ -665,11 +793,15 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{p.name} : eclaireur.graphes.{nom} mal formé")
         surplus = set(bornes) - set(ECLAIREUR) - ({"graphes"} if not nom else set())
         if surplus:
-            raise ConfigInvalide(f"{p.name} : eclaireur{'.graphes.' + nom if nom else ''} : bornes inconnues {sorted(surplus)} "
-                                 f"(admises : {sorted(ECLAIREUR)})")
+            raise ConfigInvalide(
+                f"{p.name} : eclaireur{'.graphes.' + nom if nom else ''} : bornes inconnues {sorted(surplus)} "
+                f"(admises : {sorted(ECLAIREUR)})"
+            )
         for k, v in bornes.items():
             if k != "graphes" and not isinstance(v, type(ECLAIREUR[k])):
-                raise ConfigInvalide(f"{p.name} : eclaireur.{k} : {v!r} n'est pas du type attendu ({type(ECLAIREUR[k]).__name__})")
+                raise ConfigInvalide(
+                    f"{p.name} : eclaireur.{k} : {v!r} n'est pas du type attendu ({type(ECLAIREUR[k]).__name__})"
+                )
 
     # Le banc de questions : ses bornes (newskit.banc). Facultatif.
     bornes_banc = d.get("banc") or {}
@@ -688,11 +820,15 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{p.name} : poseur.graphes.{nom} mal formé")
         surplus = set(bornes) - set(POSEUR) - ({"graphes"} if not nom else set())
         if surplus:
-            raise ConfigInvalide(f"{p.name} : poseur{'.graphes.' + nom if nom else ''} : bornes inconnues {sorted(surplus)} "
-                                 f"(admises : {sorted(POSEUR)})")
+            raise ConfigInvalide(
+                f"{p.name} : poseur{'.graphes.' + nom if nom else ''} : bornes inconnues {sorted(surplus)} "
+                f"(admises : {sorted(POSEUR)})"
+            )
         for k, v in bornes.items():
             if k != "graphes" and not isinstance(v, type(POSEUR[k])):
-                raise ConfigInvalide(f"{p.name} : poseur.{k} : {v!r} n'est pas du type attendu ({type(POSEUR[k]).__name__})")
+                raise ConfigInvalide(
+                    f"{p.name} : poseur.{k} : {v!r} n'est pas du type attendu ({type(POSEUR[k]).__name__})"
+                )
 
     # Le reporter (newskit.reporter, « budget ok » du mainteneur, 03.11.2026) : bornes communes puis par graphe.
     rep = d.get("reporter") or {}
@@ -703,8 +839,10 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{p.name} : reporter.graphes.{nom} mal formé")
         surplus = set(bornes) - set(REPORTER) - ({"graphes"} if not nom else set())
         if surplus:
-            raise ConfigInvalide(f"{p.name} : reporter{'.graphes.' + nom if nom else ''} : bornes inconnues "
-                                 f"{sorted(surplus)} (admises : {sorted(REPORTER)})")
+            raise ConfigInvalide(
+                f"{p.name} : reporter{'.graphes.' + nom if nom else ''} : bornes inconnues "
+                f"{sorted(surplus)} (admises : {sorted(REPORTER)})"
+            )
         for k, v in bornes.items():
             if k == "domaines_ecartes":
                 if not isinstance(v, list) or not all(isinstance(x, str) and x for x in v):
@@ -716,19 +854,35 @@ def _valider(d: dict, p: Path) -> dict:
                 raise ConfigInvalide(f"{p.name} : reporter.{k} : {v!r} n'est pas un nombre positif")
 
     dom = d.get("domaines")
-    if dom is not None and (not isinstance(dom, dict) or set(dom) - {"substack", "medium"}
-                            or not (isinstance(dom.get("substack", {}), dict) and all(
-                                isinstance(k, str) and isinstance(v, str) for k, v in dom.get("substack", {}).items()))
-                            or not (isinstance(dom.get("medium", []), list) and all(isinstance(x, str) for x in dom.get("medium", [])))):
-        raise ConfigInvalide(f"{p.name} : domaines : substack (domaine → nom de la publication) et medium (liste de domaines)")
+    if dom is not None and (
+        not isinstance(dom, dict)
+        or set(dom) - {"substack", "medium"}
+        or not (
+            isinstance(dom.get("substack", {}), dict)
+            and all(isinstance(k, str) and isinstance(v, str) for k, v in dom.get("substack", {}).items())
+        )
+        or not (isinstance(dom.get("medium", []), list) and all(isinstance(x, str) for x in dom.get("medium", [])))
+    ):
+        raise ConfigInvalide(
+            f"{p.name} : domaines : substack (domaine → nom de la publication) et medium (liste de domaines)"
+        )
     an = d.get("anciens_noms")
-    if an is not None and (not isinstance(an, dict) or not all(
+    if an is not None and (
+        not isinstance(an, dict)
+        or not all(
             isinstance(k, str) and isinstance(v, str) and NOM_DE_GRAPHE.match(k) and NOM_DE_GRAPHE.match(v) and k != v
-            for k, v in an.items())):
-        raise ConfigInvalide(f"{p.name} : anciens_noms : un dictionnaire ancien nom → nom actuel, deux noms de graphe distincts")
+            for k, v in an.items()
+        )
+    ):
+        raise ConfigInvalide(
+            f"{p.name} : anciens_noms : un dictionnaire ancien nom → nom actuel, deux noms de graphe distincts"
+        )
     rv = d.get("revendique")
-    if rv is not None and (not isinstance(rv, dict) or set(rv) - {"plateformes", "domaines"} or not all(
-            isinstance(v, list) and all(isinstance(x, str) and x for x in v) for v in rv.values())):
+    if rv is not None and (
+        not isinstance(rv, dict)
+        or set(rv) - {"plateformes", "domaines"}
+        or not all(isinstance(v, list) and all(isinstance(x, str) and x for x in v) for v in rv.values())
+    ):
         raise ConfigInvalide(f"{p.name} : revendique : plateformes et domaines, deux listes de textes")
     inc = d.get("incidents")
     if inc is not None and (not isinstance(inc, list) or not all(isinstance(x, str) and x for x in inc)):
@@ -751,16 +905,29 @@ def _valider(d: dict, p: Path) -> dict:
         for cle in ("nom", "principal"):
             if cle in ed and not NOM_DE_GRAPHE.match(ed[cle]):
                 raise ConfigInvalide(f"{p.name} : edition.{cle} : minuscules, chiffres et tirets")
-    return {"sources": sources, "veille_arxiv": veille, "credences": d.get("credences") or {}, "boites": boites,
-            "graphes": graphes_decl, "eclaireur": ecl, "banc": bornes_banc, "poseur": pos, "reporter": rep, "edition": ed or {},
-            "revendique": rv or {}, "identifiants": ids or {}, "incidents": inc or []}
+    return {
+        "sources": sources,
+        "veille_arxiv": veille,
+        "credences": d.get("credences") or {},
+        "boites": boites,
+        "graphes": graphes_decl,
+        "eclaireur": ecl,
+        "banc": bornes_banc,
+        "poseur": pos,
+        "reporter": rep,
+        "edition": ed or {},
+        "revendique": rv or {},
+        "identifiants": ids or {},
+        "incidents": inc or [],
+    }
 
 
 # --- Accès -----------------------------------------------------------------
 
 
-def toutes(plateforme: str | None = None, abonnement: str | None = None,
-           dense: bool | None = None, graphe: str | None = None) -> list[Source]:
+def toutes(
+    plateforme: str | None = None, abonnement: str | None = None, dense: bool | None = None, graphe: str | None = None
+) -> list[Source]:
     out = charger()["sources"]
     if plateforme:
         out = [s for s in out if s.plateforme == plateforme]
@@ -776,8 +943,11 @@ def toutes(plateforme: str | None = None, abonnement: str | None = None,
 def graphes() -> list[str]:
     """Les graphes déclarés, le principal en tête, puis par ordre alphabétique."""
     conf = charger()
-    noms = ({s.graphe for s in conf["sources"]} | {w.get("graphe") or n for n, w in (conf["veille_arxiv"].get("graphes") or {}).items()}
-            | {GRAPHE_PRINCIPAL})
+    noms = (
+        {s.graphe for s in conf["sources"]}
+        | {w.get("graphe") or n for n, w in (conf["veille_arxiv"].get("graphes") or {}).items()}
+        | {GRAPHE_PRINCIPAL}
+    )
     # Un graphe qui reprend d'autres graphes existe sans source à lui (avant le transfert de leurs sources).
     noms |= {g for g, v in (conf.get("graphes") or {}).items() if isinstance(v, dict) and v.get("inclut")}
     return [GRAPHE_PRINCIPAL] + sorted(noms - {GRAPHE_PRINCIPAL})
@@ -790,7 +960,11 @@ ECLAIREUR = {"actif": True, "recherches": 5, "pages": 10, "mots_min": 200, "them
 def eclaireur(nom: str) -> dict:
     """Les bornes de l'éclaireur pour un graphe : défauts, puis clé `eclaireur` du registre, puis sa surcharge."""
     ecl = charger().get("eclaireur") or {}
-    return {**ECLAIREUR, **{k: v for k, v in ecl.items() if k != "graphes"}, **((ecl.get("graphes") or {}).get(nom) or {})}
+    return {
+        **ECLAIREUR,
+        **{k: v for k, v in ecl.items() if k != "graphes"},
+        **((ecl.get("graphes") or {}).get(nom) or {}),
+    }
 
 
 # Les bornes du poseur de questions et leurs défauts (newskit.poseur).
@@ -808,13 +982,23 @@ def poseur(nom: str) -> dict:
 # comprises (« 10$ max par lettre »).
 # `domaines_ecartes` : sites de classement et agrégateurs de produits, qui ne prouvent rien sur une entreprise ; ni lus,
 # ni sources d'un éclairage (relecture de Berg en Dal, 03.11.2026).
-REPORTER = {"recherches": 12, "pages": 12, "usd_enquete": 3.0, "usd_lettre": 15.0, "domaines_ecartes": [],
-            "verser": True,   # verser au graphe les sources nouvelles et les lacunes d'une enquête finie (03.11.2026)
-            # L'angle critique de chaque billet (newskit.angle_critique, mainteneur, 03.11.2026, « ok ») : 0,40 $ par
-            # billet, 5 $ par lettre, 2 recherches et 2 pages par billet ; le plafond de la lettre passe à 15 $.
-            "angle_usd_billet": 0.40, "angle_usd_lettre": 5.0, "angle_recherches": 2, "angle_pages": 2,
-            # La pile du fil (fil.cadence) : l'heure de la routine du graphe et sa durée prévue, en minutes.
-            "fil_routine_heure": "05:00", "fil_routine_minutes": 150}
+REPORTER = {
+    "recherches": 12,
+    "pages": 12,
+    "usd_enquete": 3.0,
+    "usd_lettre": 15.0,
+    "domaines_ecartes": [],
+    "verser": True,  # verser au graphe les sources nouvelles et les lacunes d'une enquête finie (03.11.2026)
+    # L'angle critique de chaque billet (newskit.angle_critique, mainteneur, 03.11.2026, « ok ») : 0,40 $ par
+    # billet, 5 $ par lettre, 2 recherches et 2 pages par billet ; le plafond de la lettre passe à 15 $.
+    "angle_usd_billet": 0.40,
+    "angle_usd_lettre": 5.0,
+    "angle_recherches": 2,
+    "angle_pages": 2,
+    # La pile du fil (fil.cadence) : l'heure de la routine du graphe et sa durée prévue, en minutes.
+    "fil_routine_heure": "05:00",
+    "fil_routine_minutes": 150,
+}
 
 
 def revendique() -> dict[str, set[str]]:
@@ -838,15 +1022,27 @@ def identifiants() -> dict[str, str]:
 def reporter(nom: str) -> dict:
     """Les bornes du reporter pour un graphe : défauts, puis clé `reporter` du registre, puis sa surcharge."""
     rep = charger().get("reporter") or {}
-    return {**REPORTER, **{k: v for k, v in rep.items() if k != "graphes"}, **((rep.get("graphes") or {}).get(nom) or {})}
+    return {
+        **REPORTER,
+        **{k: v for k, v in rep.items() if k != "graphes"},
+        **((rep.get("graphes") or {}).get(nom) or {}),
+    }
 
 
 # Les bornes du banc de questions et leurs défauts (newskit.banc).
-BANC = {"questions": 50, "externes": 10, "fonctionnement": 30, "par_lot": 5, "delai": 900, "renouveler_jours": 0,
-        "agnostiques": 0, "restitution": 40,
-        # Lecture locale des pages (09.10.2026, décision du porteur) : le modèle cherche, nous lisons (lecture_web.py),
-        # chaque citation est vérifiée mot pour mot dans la page. false : le modèle cherche et lit lui-même (WebFetch).
-        "lecture_locale": True}
+BANC = {
+    "questions": 50,
+    "externes": 10,
+    "fonctionnement": 30,
+    "par_lot": 5,
+    "delai": 900,
+    "renouveler_jours": 0,
+    "agnostiques": 0,
+    "restitution": 40,
+    # Lecture locale des pages (09.10.2026, décision du porteur) : le modèle cherche, nous lisons (lecture_web.py),
+    # chaque citation est vérifiée mot pour mot dans la page. false : le modèle cherche et lit lui-même (WebFetch).
+    "lecture_locale": True,
+}
 
 
 def banc() -> dict:
@@ -901,11 +1097,20 @@ def dossiers_propres_au_domaine(nom: str) -> list[str]:
     for s in toutes(graphe=nom):
         posture = (getattr(s, "posture", "") or "").strip()
         plateforme = (getattr(s, "plateforme", "") or "").lower()
-        if posture == "presse" or not posture or s.dossier.split("/")[-1].startswith("auto_") or s.dossier.startswith("ai_news/") \
-                or plateforme in ("openalex", "arxiv"):          # moissons par mots-clés : le sujet n'y est pas choisi une à une
+        if (
+            posture == "presse"
+            or not posture
+            or s.dossier.split("/")[-1].startswith("auto_")
+            or s.dossier.startswith("ai_news/")
+            or plateforme in ("openalex", "arxiv")
+        ):  # moissons par mots-clés : le sujet n'y est pas choisi une à une
             exclus.add(f"sources/{s.dossier}")
     # Les dossiers sans source déclarée (veille arXiv, recherche/) sont des moissons aussi : hors de la file rare.
-    return [d for d in dossiers_du_graphe(nom) if d not in exclus and not d.startswith(("sources/ai_news/", "sources/arxiv", "recherche"))]
+    return [
+        d
+        for d in dossiers_du_graphe(nom)
+        if d not in exclus and not d.startswith(("sources/ai_news/", "sources/arxiv", "recherche"))
+    ]
 
 
 def dossiers_du_graphe(nom: str, propres: bool = False) -> list[str]:
@@ -947,19 +1152,39 @@ def chemins_du_graphe(nom: str) -> dict[str, Path]:
     """
     principal = nom == GRAPHE_PRINCIPAL
     base = RACINE / "graphe" if principal else RACINE / "graphe" / nom
-    return {"base": base, "squelette": base / "squelette.json", "graphe": base / "graphe.json",
-            "stats": base / "graphe_stats.md", "carte": base / "carte.md",
-            "couche2": base / "couche2",
-            "structure": (RACINE / "graphify-out" / ".graphify_ast.json") if principal else base / "structure.json",
-            "rapport": (RACINE / "ROUTINE.md") if principal else base / "ROUTINE.md",
-            "nouveautes": base / "nouveautes.json",
-            "muettes_md": base / "sources_muettes.md", "muettes_json": base / "sources_muettes.json"}
+    return {
+        "base": base,
+        "squelette": base / "squelette.json",
+        "graphe": base / "graphe.json",
+        "stats": base / "graphe_stats.md",
+        "carte": base / "carte.md",
+        "couche2": base / "couche2",
+        "structure": (RACINE / "graphify-out" / ".graphify_ast.json") if principal else base / "structure.json",
+        "rapport": (RACINE / "ROUTINE.md") if principal else base / "ROUTINE.md",
+        "nouveautes": base / "nouveautes.json",
+        "muettes_md": base / "sources_muettes.md",
+        "muettes_json": base / "sources_muettes.json",
+    }
 
 
 # Les étapes de la routine qu'un graphe peut arrêter ou remettre en service une à une, sans toucher au code ni aux
 # daemons (porteur, 08.10.2026 : « architecture granulaire ») : `graphes.<nom>.etapes: {poseur: false, banc: false}`.
 # Une étape absente est active. Toutes appellent le modèle, sauf la composition, qui est toujours faite.
-ETAPES = {"collecte", "canon", "eclaireur", "poseur", "couche2", "alias", "themes", "avance", "pyramide", "cartes", "banc", "repose", "index"}
+ETAPES = {
+    "collecte",
+    "canon",
+    "eclaireur",
+    "poseur",
+    "couche2",
+    "alias",
+    "themes",
+    "avance",
+    "pyramide",
+    "cartes",
+    "banc",
+    "repose",
+    "index",
+}
 
 
 def etape_active(nom: str, etape: str) -> bool:
@@ -1016,12 +1241,30 @@ def veille_arxiv() -> dict:
 def veilles_arxiv() -> list[dict]:
     """Une veille arXiv par graphe, le principal en tête : {graphe, dossier, themes, dense, categories}."""
     v = charger()["veille_arxiv"]
-    out = [{"graphe": GRAPHE_PRINCIPAL, "dossier": v["dossier"], "themes": list(v["themes"]),
-            "dense": bool(v.get("dense")), "categories": list(v["categories"])}] if v.get("dossier") else []
+    out = (
+        [
+            {
+                "graphe": GRAPHE_PRINCIPAL,
+                "dossier": v["dossier"],
+                "themes": list(v["themes"]),
+                "dense": bool(v.get("dense")),
+                "categories": list(v["categories"]),
+            }
+        ]
+        if v.get("dossier")
+        else []
+    )
     for nom, w in sorted((v.get("graphes") or {}).items()):
         # Un graphe peut suivre d'autres catégories que le principal (cs.CY pour l'éthique).
-        out.append({"graphe": w.get("graphe") or nom, "dossier": w["dossier"], "themes": list(w["themes"] or []),
-                    "dense": bool(w.get("dense")), "categories": list(w.get("categories") or v["categories"])})
+        out.append(
+            {
+                "graphe": w.get("graphe") or nom,
+                "dossier": w["dossier"],
+                "themes": list(w["themes"] or []),
+                "dense": bool(w.get("dense")),
+                "categories": list(w.get("categories") or v["categories"]),
+            }
+        )
     return out
 
 
@@ -1119,11 +1362,16 @@ def etat_session(nom: str) -> str:
     compte, service = _service(nom)
     if _session_en_fichier(nom):
         return "deposee"
-    if subprocess.run(["security", "find-generic-password", "-a", compte, "-s", service],
-                      capture_output=True, text=True).returncode != 0:
+    if (
+        subprocess.run(
+            ["security", "find-generic-password", "-a", compte, "-s", service], capture_output=True, text=True
+        ).returncode
+        != 0
+    ):
         return "absente"
-    r = subprocess.run(["security", "find-generic-password", "-a", compte, "-s", service, "-w"],
-                       capture_output=True, text=True)
+    r = subprocess.run(
+        ["security", "find-generic-password", "-a", compte, "-s", service, "-w"], capture_output=True, text=True
+    )
     if r.returncode != 0:
         return "illisible"
     return "deposee" if r.stdout.strip() else "vide"
@@ -1150,8 +1398,9 @@ def session(nom: str) -> str | None:
     if en_fichier:
         return en_fichier
     compte, service = _service(nom)
-    r = subprocess.run(["security", "find-generic-password", "-a", compte, "-s", service, "-w"],
-                       capture_output=True, text=True)
+    r = subprocess.run(
+        ["security", "find-generic-password", "-a", compte, "-s", service, "-w"], capture_output=True, text=True
+    )
     if r.returncode != 0:
         return None
     v = r.stdout.strip()
@@ -1171,8 +1420,8 @@ def boite(nom: str) -> dict:
 
 TROUSSEAU_ABSENT = "boîte non configurée : mot de passe absent du trousseau"
 TROUSSEAU_VERROUILLE = "trousseau verrouillé (security unlock-keychain)"
-CODE_ABSENT = 44                    # errSecItemNotFound, tronqué par `security`
-CODES_VERROUILLE = (36, 51)         # errSecInteractionNotAllowed (-25308) et errSecAuthFailed, tronqués
+CODE_ABSENT = 44  # errSecItemNotFound, tronqué par `security`
+CODES_VERROUILLE = (36, 51)  # errSecInteractionNotAllowed (-25308) et errSecAuthFailed, tronqués
 
 
 def lire_mot_de_passe_boite(nom: str) -> tuple[str | None, str]:
@@ -1180,8 +1429,9 @@ def lire_mot_de_passe_boite(nom: str) -> tuple[str | None, str]:
     interaction refusée, autre code de `security`. La raison ne recopie jamais une sortie de la commande ; la valeur ne
     sert qu'à la connexion IMAP : ni journal, ni fiche, ni manifeste."""
     try:
-        r = subprocess.run(["security", "find-generic-password", "-s", service_boite(nom), "-w"],
-                           capture_output=True, text=True)
+        r = subprocess.run(
+            ["security", "find-generic-password", "-s", service_boite(nom), "-w"], capture_output=True, text=True
+        )
     except OSError:
         return None, "lecture du trousseau refusée (commande security introuvable)"
     if r.returncode == 0:
@@ -1256,12 +1506,13 @@ def commande_de_depot(nom: str, presse_papier: bool = False) -> str:
     # terminal, contrôle la valeur et remplace l'entrée sans `-U` (qui exige une
     # confirmation graphique). Les deux formes `security` restent documentées
     # dans ce script ; elles ne sont plus proposées ici.
-    _service(nom)      # lève si la session n'est pas déclarée
+    _service(nom)  # lève si la session n'est pas déclarée
     return f"python3 -m newskit.deposer_session {nom}"
 
 
-def verdict_de_reponse(url: str, url_finale: str, corps: str, marqueur: str,
-                       taille_min: int = 0, marqueur_absent: str = "") -> str:
+def verdict_de_reponse(
+    url: str, url_finale: str, corps: str, marqueur: str, taille_min: int = 0, marqueur_absent: str = ""
+) -> str:
     """Ce qu'une réponse 200 dit de la session. Sans réseau, donc testable.
 
     Un site qui renvoie vers sa page de connexion répond 200 avec le corps de
@@ -1279,8 +1530,7 @@ def verdict_de_reponse(url: str, url_finale: str, corps: str, marqueur: str,
     if marqueur_absent and marqueur_absent.lower() in corps.lower():
         return f"répond, mais pas authentifiée : la page dit encore « {marqueur_absent} »"
     if taille_min and len(corps) < taille_min:
-        return (f"répond, mais pas authentifiée : {len(corps)} octets, "
-                f"un billet entier en fait au moins {taille_min}")
+        return f"répond, mais pas authentifiée : {len(corps)} octets, un billet entier en fait au moins {taille_min}"
     return "authentifiée"
 
 
@@ -1298,26 +1548,40 @@ def eprouver(nom: str) -> dict:
         return {"nom": nom, "verdict": "pas de sonde déclarée"}
     etat = etat_session(nom)
     if etat != "deposee":
-        return {"nom": nom, "verdict": {
-            "absente": "session absente du trousseau",
-            "vide": "entrée présente mais vide : la saisie interactive n'a rien reçu",
-            "illisible": "entrée présente mais refusée à la lecture (droits du trousseau)",
-        }[etat]}
+        return {
+            "nom": nom,
+            "verdict": {
+                "absente": "session absente du trousseau",
+                "vide": "entrée présente mais vide : la saisie interactive n'a rien reçu",
+                "illisible": "entrée présente mais refusée à la lecture (droits du trousseau)",
+            }[etat],
+        }
     v = session(nom)
-    req = urllib.request.Request(url, headers={
-        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/120 Safari/537.36"),
-        "Accept": "text/html,application/json;q=0.9",
-        "Accept-Language": "en",
-        "Cookie": v,
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120 Safari/537.36"
+            ),
+            "Accept": "text/html,application/json;q=0.9",
+            "Accept-Language": "en",
+            "Cookie": v,
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             corps = r.read(400_000).decode("utf-8", "replace")
-            return {"nom": nom, "code": r.status, "url_finale": r.url, "taille": len(corps),
-                    "marqueur": (marqueur in corps) if marqueur else None,
-                    "verdict": verdict_de_reponse(url, r.url, corps, marqueur,
-                                                  taille_min_sonde(nom), marqueur_absent_sonde(nom))}
+            return {
+                "nom": nom,
+                "code": r.status,
+                "url_finale": r.url,
+                "taille": len(corps),
+                "marqueur": (marqueur in corps) if marqueur else None,
+                "verdict": verdict_de_reponse(
+                    url, r.url, corps, marqueur, taille_min_sonde(nom), marqueur_absent_sonde(nom)
+                ),
+            }
     except urllib.error.HTTPError as e:
         # Le corps d'une erreur dit souvent pourquoi (Substack répond en JSON) ;
         # il vient du serveur, pas de la requête, donc rien de secret n'y passe.
@@ -1357,8 +1621,7 @@ def cmd_verifier() -> int:
                 detail += f", redirigée vers {r['url_finale'][:90]}"
             print(detail)
         if r.get("verdict", "").startswith(("session absente", "entrée présente")):
-            print(f"        La déposer, valeur demandée à l'écran :\n          "
-                  f"{commande_de_depot(s.session)}")
+            print(f"        La déposer, valeur demandée à l'écran :\n          {commande_de_depot(s.session)}")
     return 1 if mauvais else 0
 
 
@@ -1383,14 +1646,20 @@ def main() -> int:
         if s.assistee:
             etat.append("assistée")
         if s.session:
-            etat.append("session " + {"deposee": "déposée", "absente": "ABSENTE",
-                                      "vide": "VIDE", "illisible": "ILLISIBLE"}[etat_session(s.session)])
+            etat.append(
+                "session "
+                + {"deposee": "déposée", "absente": "ABSENTE", "vide": "VIDE", "illisible": "ILLISIBLE"}[
+                    etat_session(s.session)
+                ]
+            )
         elif s.payant:
             etat.append("payant sans session")
         print(f"{s.cle:<28}{s.plateforme:<12}{s.abonnement:<9}{n:>7}  {', '.join(etat)}")
     v = conf["veille_arxiv"]
-    print(f"\nVeille arXiv : {len(v.get('categories') or [])} catégories, {len(v.get('themes') or [])} thèmes"
-          + "".join(f" ; {nom} : {len(w['themes'])} thèmes" for nom, w in sorted((v.get("graphes") or {}).items())))
+    print(
+        f"\nVeille arXiv : {len(v.get('categories') or [])} catégories, {len(v.get('themes') or [])} thèmes"
+        + "".join(f" ; {nom} : {len(w['themes'])} thèmes" for nom, w in sorted((v.get("graphes") or {}).items()))
+    )
     for s in conf["sources"]:
         if not s.session:
             continue
@@ -1398,13 +1667,17 @@ def main() -> int:
         if e == "deposee":
             continue
         if e == "vide":
-            print(f"\n  Session de {s.nom} : entrée présente mais vide, la saisie "
-                  f"interactive n'ayant rien reçu. Les deux commandes ci-dessous "
-                  f"mettent l'entrée à jour.")
+            print(
+                f"\n  Session de {s.nom} : entrée présente mais vide, la saisie "
+                f"interactive n'ayant rien reçu. Les deux commandes ci-dessous "
+                f"mettent l'entrée à jour."
+            )
         else:
             print(f"\n  Session {e} pour {s.nom}. Pour la déposer :")
-        print(f"    dans un terminal réel (le script déverrouille le trousseau et contrôle la valeur) :\n"
-              f"      {commande_de_depot(s.session)}")
+        print(
+            f"    dans un terminal réel (le script déverrouille le trousseau et contrôle la valeur) :\n"
+            f"      {commande_de_depot(s.session)}"
+        )
     return 0
 
 

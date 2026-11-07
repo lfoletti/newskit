@@ -26,6 +26,7 @@ Trois remontées :
     python3 -m newskit.peu_couverts --graphe <graphe>            # calcule, écrit, affiche
     python3 -m newskit.peu_couverts --graphe <graphe> --etat     # affiche ce qui est écrit, sans recalcul
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,9 +43,9 @@ from newskit import lacunes  # noqa: E402
 from newskit import synthese as sy  # noqa: E402
 from newskit import themes_emergents as te  # noqa: E402
 
-REFERENCES_MIN = 3          # une sous-question de carte portée par moins de fiches est « à support mince »
-PAR_SUJET = 12              # points gardés par sujet, les plus parlants d'abord (banc, lacune, canon, carte)
-REPIT = 14                  # jours avant qu'un point cherché par l'éclaireur revienne dans sa rotation
+REFERENCES_MIN = 3  # une sous-question de carte portée par moins de fiches est « à support mince »
+PAR_SUJET = 12  # points gardés par sujet, les plus parlants d'abord (banc, lacune, canon, carte)
+REPIT = 14  # jours avant qu'un point cherché par l'éclaireur revienne dans sa rotation
 ORDRE = {"banc": 0, "lacune": 1, "canon": 2, "carte": 3}
 
 
@@ -75,6 +76,7 @@ def tete(sujet: str) -> str:
 
 
 # --- Les quatre origines ---------------------------------------------------------------------------------------
+
 
 def du_canon(graphe: str, sujets: list[str]) -> dict[str, list[dict]]:
     p = cfg.chemins_du_graphe(graphe)["base"] / "avance.json"
@@ -113,9 +115,14 @@ def du_banc(graphe: str, sujets: list[str]) -> dict[str, list[dict]]:
             continue
         s = q.get("theme") or q.get("sujet")
         if s in sujets:
-            out.setdefault(s, []).append({"point": " ".join(str(q["question"]).split()), "origine": "banc",
-                                          "detail": f"{d.get('verdict')} au banc du {str(m.get('horodatage'))[:10]}",
-                                          "attendu": str(q.get("attendu") or "")[:300]})
+            out.setdefault(s, []).append(
+                {
+                    "point": " ".join(str(q["question"]).split()),
+                    "origine": "banc",
+                    "detail": f"{d.get('verdict')} au banc du {str(m.get('horodatage'))[:10]}",
+                    "attendu": str(q.get("attendu") or "")[:300],
+                }
+            )
     return out
 
 
@@ -130,8 +137,13 @@ def des_lacunes(graphe: str, sujets: list[str]) -> dict[str, list[dict]]:
         except Exception:  # noqa: BLE001 — sans encodeur ni carte, pas de routage
             c = None
         if c and c.get("sujet") in sujets:
-            out.setdefault(c["sujet"], []).append({"point": enonce, "origine": "lacune",
-                                                  "detail": f"vue {x.get('vues', 1)} fois, {', '.join(x.get('origines', []))}"})
+            out.setdefault(c["sujet"], []).append(
+                {
+                    "point": enonce,
+                    "origine": "lacune",
+                    "detail": f"vue {x.get('vues', 1)} fois, {', '.join(x.get('origines', []))}",
+                }
+            )
     return out
 
 
@@ -143,12 +155,18 @@ def des_cartes(graphe: str, sujets: list[str]) -> dict[str, list[dict]]:
         for q in c.get("questions") or []:
             refs = q.get("references") or []
             if len(refs) < REFERENCES_MIN:
-                out.setdefault(s, []).append({"point": q["q"], "origine": "carte",
-                                              "detail": f"{len(refs)} fiche(s) pour {len(q.get('notions') or [])} notion(s)"})
+                out.setdefault(s, []).append(
+                    {
+                        "point": q["q"],
+                        "origine": "carte",
+                        "detail": f"{len(refs)} fiche(s) pour {len(q.get('notions') or [])} notion(s)",
+                    }
+                )
     return out
 
 
 # --- Le calcul et sa remontée ----------------------------------------------------------------------------------
+
 
 def couverts_depuis(graphe: str, points: list[dict]) -> list[dict]:
     """Parmi des points « banc », ceux dont les faits attendus se lisent désormais dans le contexte assemblé pour la
@@ -156,6 +174,7 @@ def couverts_depuis(graphe: str, points: list[dict]) -> list[dict]:
     attendre le prochain banc — sinon le lecteur, prévenu que le graphe couvre peu, s'abstiendrait sur un fait présent."""
     from newskit import contexte  # noqa: PLC0415
     from newskit import interroger_graphe as ig  # noqa: PLC0415
+
     G = None
     out = []
     for p in points:
@@ -183,21 +202,35 @@ def calculer(graphe: str) -> dict:
     par_sujet = {s: [p for p in pts if cle_de(p["point"]) not in cles_couverts] for s, pts in par_sujet.items()}
     out = []
     for i, s in enumerate(sujets):
-        vus: set[str] = set(); pts = []
+        vus: set[str] = set()
+        pts = []
         for p in sorted(par_sujet.get(s, []), key=lambda p: ORDRE.get(p["origine"], 9)):
             k = cle_de(p["point"])
             if k in vus or not k:
                 continue
             vus.add(k)
-            if ancien.get(k, {}).get("cherche_le"):          # la mémoire de l'éclaireur survit au recalcul
+            if ancien.get(k, {}).get("cherche_le"):  # la mémoire de l'éclaireur survit au recalcul
                 p["cherche_le"] = ancien[k]["cherche_le"]
             p["depuis"] = ancien.get(k, {}).get("depuis") or time.strftime("%Y-%m-%d")
             pts.append(p)
-        out.append({"sujet": s, "indice": i, "tete": tete(s), "points": pts[:PAR_SUJET], "total": len(pts),
-                    "par_origine": {o: sum(1 for p in pts if p["origine"] == o) for o in ORDRE}})
-    return {"graphe": graphe, "date": time.strftime("%Y-%m-%d"), "sujets": out,
-            "total": sum(x["total"] for x in out), "sujets_demunis": sum(1 for x in out if x["total"]),
-            "couverts_depuis_le_banc": [{"point": p["point"], "couverture": p["couverture"]} for p in couverts]}
+        out.append(
+            {
+                "sujet": s,
+                "indice": i,
+                "tete": tete(s),
+                "points": pts[:PAR_SUJET],
+                "total": len(pts),
+                "par_origine": {o: sum(1 for p in pts if p["origine"] == o) for o in ORDRE},
+            }
+        )
+    return {
+        "graphe": graphe,
+        "date": time.strftime("%Y-%m-%d"),
+        "sujets": out,
+        "total": sum(x["total"] for x in out),
+        "sujets_demunis": sum(1 for x in out if x["total"]),
+        "couverts_depuis_le_banc": [{"point": p["point"], "couverture": p["couverture"]} for p in couverts],
+    }
 
 
 def ecrire(graphe: str, d: dict) -> None:
@@ -224,9 +257,13 @@ def pour_eclaireur(graphe: str, sujet: str, jour: str | None = None) -> str | No
             continue
         for p in x["points"]:
             if p["origine"] in ("lacune", "canon"):
-                continue                                   # déjà leurs voies : lacunes.a_chercher, combler_canon
+                continue  # déjà leurs voies : lacunes.a_chercher, combler_canon
             c = p.get("cherche_le")
-            if not c or (time.mktime(time.strptime(jour, "%Y-%m-%d")) - time.mktime(time.strptime(c, "%Y-%m-%d"))) / 86400 >= REPIT:
+            if (
+                not c
+                or (time.mktime(time.strptime(jour, "%Y-%m-%d")) - time.mktime(time.strptime(c, "%Y-%m-%d"))) / 86400
+                >= REPIT
+            ):
                 return p["point"]
     return None
 
@@ -240,7 +277,9 @@ def marquer(graphe: str, points: list[str], jour: str | None = None) -> None:
     for x in d.get("sujets", []):
         for p in x["points"]:
             if cle_de(p["point"]) in cles:
-                p["cherche_le"] = jour; p["essais"] = p.get("essais", 0) + 1; touche = True
+                p["cherche_le"] = jour
+                p["essais"] = p.get("essais", 0) + 1
+                touche = True
     if touche:
         chemin(graphe).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
 
@@ -254,9 +293,11 @@ def ligne(graphe: str, d: dict | None = None) -> str:
     demunis = ", ".join(f"{x['tete']} ({x['total']})" for x in sujets[:3])
     couverts = len(d.get("couverts_depuis_le_banc") or [])
     par_o = {o: sum(x["par_origine"].get(o, 0) for x in d["sujets"]) for o in ORDRE}
-    return (f"  {graphe} : {d.get('total', 0)} point(s) peu couvert(s) sur {len(sujets)} sujet(s) "
-            f"(banc {par_o['banc']}, lacunes {par_o['lacune']}, canon {par_o['canon']}, cartes {par_o['carte']}) ; "
-            f"les plus démunis : {demunis}" + (f" ; {couverts} question(s) du banc couverte(s) depuis" if couverts else ""))
+    return (
+        f"  {graphe} : {d.get('total', 0)} point(s) peu couvert(s) sur {len(sujets)} sujet(s) "
+        f"(banc {par_o['banc']}, lacunes {par_o['lacune']}, canon {par_o['canon']}, cartes {par_o['carte']}) ; "
+        f"les plus démunis : {demunis}" + (f" ; {couverts} question(s) du banc couverte(s) depuis" if couverts else "")
+    )
 
 
 def afficher(graphe: str, d: dict) -> None:
@@ -265,9 +306,12 @@ def afficher(graphe: str, d: dict) -> None:
             continue
         print(f"\n  {x['tete']} — {x['total']} point(s)")
         for p in x["points"]:
-            print(f"    [{p['origine']}] {p['point'][:140]}" + (f"  ({p['detail']})" if p.get("detail") else "")
-                  + (f"  cherché le {p['cherche_le']}" if p.get("cherche_le") else ""))
-    print("\n" + ligne(graphe, d), flush=True)      # en dernier : la routine garde la fin de la sortie
+            print(
+                f"    [{p['origine']}] {p['point'][:140]}"
+                + (f"  ({p['detail']})" if p.get("detail") else "")
+                + (f"  cherché le {p['cherche_le']}" if p.get("cherche_le") else "")
+            )
+    print("\n" + ligne(graphe, d), flush=True)  # en dernier : la routine garde la fin de la sortie
 
 
 def main() -> int:
@@ -276,7 +320,8 @@ def main() -> int:
     ap.add_argument("--etat", action="store_true", help="afficher sans recalculer")
     a = ap.parse_args()
     if a.etat:
-        afficher(a.graphe, lire(a.graphe)); return 0
+        afficher(a.graphe, lire(a.graphe))
+        return 0
     d = calculer(a.graphe)
     ecrire(a.graphe, d)
     afficher(a.graphe, d)

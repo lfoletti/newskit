@@ -22,6 +22,7 @@ chargés une fois, demandent un redémarrage du service (kg-mcp-maj le fait au p
 Appelé par la routine (routine_hebdo.publier_en_ligne) ; jamais bloquant : sans accès, rien n'est envoyé et la
 recherche du serveur reste lexicale.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,14 +35,20 @@ from newskit import config_sources as cfg  # noqa: E402
 from newskit import synthese as sy  # noqa: E402
 
 ACCES = Path.home() / ".secrets" / "vps_kg.env"
-CLONE_DEFAUT = cfg.edition()["clone"]   # le clone du serveur de l'édition (bloc `edition:`, N2)
+CLONE_DEFAUT = cfg.edition()["clone"]  # le clone du serveur de l'édition (bloc `edition:`, N2)
 
 
 def lire_acces() -> dict | None:
     if not ACCES.exists():
         return None
-    acces = {k.strip(): v.strip().strip("\"'") for k, v in
-             (l.split("=", 1) for l in ACCES.read_text(encoding="utf-8").splitlines() if "=" in l and not l.lstrip().startswith("#"))}
+    acces = {
+        k.strip(): v.strip().strip("\"'")
+        for k, v in (
+            l.split("=", 1)
+            for l in ACCES.read_text(encoding="utf-8").splitlines()
+            if "=" in l and not l.lstrip().startswith("#")
+        )
+    }
     return acces if {"VPS_HOTE", "VPS_UTILISATEUR", "VPS_CLE"} <= set(acces) else None
 
 
@@ -102,28 +109,60 @@ def publier(graphes: list[str] | None = None, modeles: bool = True, verbeux: boo
         return _dire(lignes, verbeux)
     sans_index = [g for g in graphes if not a_un_index(g)]
     if sans_index:
-        lignes.append(f"Index en ligne : pas d'index calculé pour {', '.join(sans_index)} — modèles communs seuls envoyés.")
+        lignes.append(
+            f"Index en ligne : pas d'index calculé pour {', '.join(sans_index)} — modèles communs seuls envoyés."
+        )
     try:
         dossiers = sorted({str(Path(rel).parent) if src.is_file() else rel for src, rel in envois})
-        subprocess.run([*ssh, hote, "sudo mkdir -p " + " ".join(f"{clone}/{d}" for d in dossiers)],
-                       capture_output=True, text=True, timeout=60, check=True)
+        subprocess.run(
+            [*ssh, hote, "sudo mkdir -p " + " ".join(f"{clone}/{d}" for d in dossiers)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
         for src, rel in envois:
             cible = f"{hote}:{clone}/{rel}" + ("/" if src.is_dir() else "")
-            r = subprocess.run(["rsync", "-rlt", "--rsync-path=sudo rsync", "-e", " ".join(ssh),    # (pas de --chmod : rsync 2.6.9 du Mac)
-                                str(src) + ("/" if src.is_dir() else ""), cible],
-                               capture_output=True, text=True, timeout=3600)
+            r = subprocess.run(
+                [
+                    "rsync",
+                    "-rlt",
+                    "--rsync-path=sudo rsync",
+                    "-e",
+                    " ".join(ssh),  # (pas de --chmod : rsync 2.6.9 du Mac)
+                    str(src) + ("/" if src.is_dir() else ""),
+                    cible,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=3600,
+            )
             if r.returncode != 0:
                 raise RuntimeError(f"rsync {rel} : {r.stderr.strip()[:160]}")
         # Seuls les dossiers créés ci-dessus changent de propriétaire : le 11 et le 12.10.2026, l'envoi d'un graphe financier (sans
         # index local, reclasseur seul) échouait sur le chown de graphe/<nom>/synthese, absent du serveur.
         cibles = " ".join(f"{clone}/{d}" for d in dossiers)
-        subprocess.run([*ssh, hote, f"sudo chown -R kg:kg {cibles} && sudo chmod -R u+rwX,go+rX {cibles}"],
-                       capture_output=True, text=True, timeout=120, check=True)
-        taille = sum((sum(f.stat().st_size for f in src.rglob("*") if f.is_file()) if src.is_dir() else src.stat().st_size)
-                     for src, _ in envois) / 1e6
-        lignes.append(f"Index en ligne : {', '.join(graphes)} — {len(envois)} élément(s), {taille:.0f} Mo au plus (rsync n'envoie que ce qui change).")
+        subprocess.run(
+            [*ssh, hote, f"sudo chown -R kg:kg {cibles} && sudo chmod -R u+rwX,go+rX {cibles}"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        )
+        taille = (
+            sum(
+                (sum(f.stat().st_size for f in src.rglob("*") if f.is_file()) if src.is_dir() else src.stat().st_size)
+                for src, _ in envois
+            )
+            / 1e6
+        )
+        lignes.append(
+            f"Index en ligne : {', '.join(graphes)} — {len(envois)} élément(s), {taille:.0f} Mo au plus (rsync n'envoie que ce qui change)."
+        )
     except subprocess.CalledProcessError as e:  # la commande distante dit pourquoi, pas sa ligne de commande
-        lignes.append(f"Index en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]}).")
+        lignes.append(
+            f"Index en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]})."
+        )
     except Exception as e:  # noqa: BLE001 — la recherche du serveur reste lexicale
         lignes.append(f"Index en ligne : envoi interrompu ({type(e).__name__} {str(e)[:120]}).")
     return _dire(lignes, verbeux)

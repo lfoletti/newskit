@@ -56,10 +56,18 @@ def apercus_recuperables() -> list[dict]:
             continue
         for slug, v in json.loads(src.manifeste.read_text(encoding="utf-8")).items():
             if not v.get("complet"):
-                out.append({"publication": src.nom, "cle": src.cle, "slug": slug,
-                            "session": src.session,
-                            "titre": v.get("title", ""), "date": v.get("date", ""),
-                            "url": v.get("url", ""), "mots": v.get("words", 0)})
+                out.append(
+                    {
+                        "publication": src.nom,
+                        "cle": src.cle,
+                        "slug": slug,
+                        "session": src.session,
+                        "titre": v.get("title", ""),
+                        "date": v.get("date", ""),
+                        "url": v.get("url", ""),
+                        "mots": v.get("words", 0),
+                    }
+                )
     return sorted(out, key=lambda x: x["date"], reverse=True)
 
 
@@ -69,8 +77,7 @@ def apercus_hors_abonnement() -> dict[str, int]:
     for src in cfg.toutes("Substack", abonnement="gratuit"):
         if not src.manifeste.exists():
             continue
-        n = sum(1 for v in json.loads(src.manifeste.read_text(encoding="utf-8")).values()
-                if not v.get("complet"))
+        n = sum(1 for v in json.loads(src.manifeste.read_text(encoding="utf-8")).values() if not v.get("complet"))
         if n:
             out[src.nom] = n
     return out
@@ -95,6 +102,7 @@ def couche2_en_retard() -> list[str]:
     if not EMPREINTES.exists():
         return []
     import hashlib
+
     connues = json.loads(EMPREINTES.read_text(encoding="utf-8"))
     retard = []
     for rel, h in connues.items():
@@ -117,42 +125,57 @@ def liste_de_travail() -> list[str]:
     for src in cfg.toutes():
         if src.session and not cfg.session_declaree(src.session):
             etat = cfg.etat_session(src.session)
-            taches.append(f"**Déposer la session de {src.nom}** "
-                          + ("(entrée présente mais vide : la saisie interactive n'a "
-                             "rien reçu)." if etat == "vide" else f"({etat}).")
-                          + " La valeur attendue est l'en-tête `cookie` d'une requête "
-                            "authentifiée, copié depuis les outils de développement. "
-                            "Rien ne passe par l'historique du shell :")
-            taches.append("  - dans un terminal réel, trousseau déverrouillé par le script : "
-                          "`" + cfg.commande_de_depot(src.session) + "`")
+            taches.append(
+                f"**Déposer la session de {src.nom}** "
+                + (
+                    "(entrée présente mais vide : la saisie interactive n'a rien reçu)."
+                    if etat == "vide"
+                    else f"({etat})."
+                )
+                + " La valeur attendue est l'en-tête `cookie` d'une requête "
+                "authentifiée, copié depuis les outils de développement. "
+                "Rien ne passe par l'historique du shell :"
+            )
+            taches.append(
+                "  - dans un terminal réel, trousseau déverrouillé par le script : "
+                "`" + cfg.commande_de_depot(src.session) + "`"
+            )
 
     ap = apercus_recuperables()
     if ap:
         avec_session = {a["publication"] for a in ap if a.get("session")}
-        taches.append(f"**{len(ap)} billet(s) payant(s) à compléter au navigateur.** "
-                      "La session étant persistante, ouvrir la page suffit : l'API de la "
-                      "publication rend alors le texte entier. Procédure dans JOURNAL.md, "
-                      "session 6, puis `newskit.recuperer_tronquee`.")
+        taches.append(
+            f"**{len(ap)} billet(s) payant(s) à compléter au navigateur.** "
+            "La session étant persistante, ouvrir la page suffit : l'API de la "
+            "publication rend alors le texte entier. Procédure dans JOURNAL.md, "
+            "session 6, puis `newskit.recuperer_tronquee`."
+        )
         if avec_session:
-            taches.append("  - une session est enregistrée pour "
-                          f"{', '.join(sorted(avec_session))} et n'a pas suffi : "
-                          "l'éprouver par `python3 -m newskit.config_sources verifier`, "
-                          "la redéposer si elle a expiré")
+            taches.append(
+                "  - une session est enregistrée pour "
+                f"{', '.join(sorted(avec_session))} et n'a pas suffi : "
+                "l'éprouver par `python3 -m newskit.config_sources verifier`, "
+                "la redéposer si elle a expiré"
+            )
         for a in ap[:8]:
             taches.append(f"  - {a['date']} · {a['titre'][:58]} · {a['url']}")
 
     tr = tronquees()
     if tr:
-        taches.append(f"**{len(tr)} fiche(s) portent un marqueur de troncature.** "
-                      "La capture a été plafonnée : relever la capacité de lecture et reprendre.")
+        taches.append(
+            f"**{len(tr)} fiche(s) portent un marqueur de troncature.** "
+            "La capture a été plafonnée : relever la capacité de lecture et reprendre."
+        )
         for t in tr[:6]:
             taches.append(f"  - {t}")
 
     r2 = couche2_en_retard()
     if r2:
-        taches.append(f"**Couche 2 en retard sur {len(r2)} fiche(s) dense(s).** "
-                      "La relancer coûte autant d'exécutions de sous-agents que de lots : "
-                      "décider, plutôt que d'enchaîner.")
+        taches.append(
+            f"**Couche 2 en retard sur {len(r2)} fiche(s) dense(s).** "
+            "La relancer coûte autant d'exécutions de sous-agents que de lots : "
+            "décider, plutôt que d'enchaîner."
+        )
         for f in r2[:6]:
             taches.append(f"  - {f}")
 
@@ -165,15 +188,18 @@ def liste_de_travail() -> list[str]:
     for src in cfg.toutes():
         if not src.assistee:
             continue
-        taches.append(f"**{src.nom} : collecte au navigateur.** "
-                      + (src.note.strip().rstrip(".") if src.note
-                         else "relever les nouveautés et capturer")
-                      + ". Les requêtes de script ont été refusées (403) lors de la "
-                        "collecte initiale, d'où le navigateur.")
+        taches.append(
+            f"**{src.nom} : collecte au navigateur.** "
+            + (src.note.strip().rstrip(".") if src.note else "relever les nouveautés et capturer")
+            + ". Les requêtes de script ont été refusées (403) lors de la "
+            "collecte initiale, d'où le navigateur."
+        )
         if src.session:
-            taches.append("  - une session est déclarée : "
-                          "`python3 -m newskit.config_sources verifier` dit si elle ouvre "
-                          "un chemin sans navigateur, auquel cas la collecte se planifie")
+            taches.append(
+                "  - une session est déclarée : "
+                "`python3 -m newskit.config_sources verifier` dit si elle ouvre "
+                "un chemin sans navigateur, auquel cas la collecte se planifie"
+            )
     return taches
 
 
@@ -202,21 +228,18 @@ def cmd_consigner(args) -> int:
     bloc = [f"\n## Session assistée — {date}", ""]
     if echecs:
         bloc += [f"### {len(echecs)} échec(s)", ""]
-        bloc += [f"- **{e.get('quoi','?')}** — {e.get('erreur','')}" for e in echecs] + [""]
+        bloc += [f"- **{e.get('quoi', '?')}** — {e.get('erreur', '')}" for e in echecs] + [""]
     if faits:
         bloc += [f"### {len(faits)} action(s) menée(s)", ""]
-        bloc += [f"- {f.get('quoi','?')}" + (f" — {f['detail']}" if f.get("detail") else "")
-                 for f in faits] + [""]
+        bloc += [f"- {f.get('quoi', '?')}" + (f" — {f['detail']}" if f.get("detail") else "") for f in faits] + [""]
     if not faits and not echecs:
         bloc += ["Rien à signaler.", ""]
     reste = liste_de_travail()
-    bloc += ["### Reste à faire", ""] + ["  " + t if t.startswith("  ") else "- " + t
-                                         for t in reste] + [""]
+    bloc += ["### Reste à faire", ""] + ["  " + t if t.startswith("  ") else "- " + t for t in reste] + [""]
 
     ancien = RAPPORT.read_text(encoding="utf-8") if RAPPORT.exists() else "# Routine hebdomadaire\n"
     RAPPORT.write_text(ancien.rstrip() + "\n" + "\n".join(bloc), encoding="utf-8")
-    print(f"  Consigné dans {RAPPORT.relative_to(RACINE)} : "
-          f"{len(faits)} action(s), {len(echecs)} échec(s).")
+    print(f"  Consigné dans {RAPPORT.relative_to(RACINE)} : {len(faits)} action(s), {len(echecs)} échec(s).")
     if echecs:
         print("  ALERTE : des échecs figurent au rapport.")
         return 1
@@ -227,7 +250,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("etat").set_defaults(fn=cmd_etat)
-    p = sub.add_parser("consigner"); p.add_argument("fichier"); p.set_defaults(fn=cmd_consigner)
+    p = sub.add_parser("consigner")
+    p.add_argument("fichier")
+    p.set_defaults(fn=cmd_consigner)
     args = ap.parse_args()
     return args.fn(args)
 

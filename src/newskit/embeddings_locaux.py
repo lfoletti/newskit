@@ -6,6 +6,7 @@ sur 127.0.0.1 seulement ; même encodeur que l'index du graphe (`synthese.encode
     python3 -m newskit.embeddings_locaux --graphe <graphe> --port 47900
     OPENAI_BASE_URL=http://127.0.0.1:47900/v1 CORTEXDB_EMBED_MODEL=local CORTEXDB_EMBED_DIM=<dim> cortexdb-grpc
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,19 +16,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-
 def textes(corps: dict) -> list[str]:
     x = corps.get("input")
     return [x] if isinstance(x, str) else [str(t) for t in x or []]
 
 
 def reponse(vecteurs, modele: str) -> dict:
-    return {"object": "list", "model": modele,
-            "data": [{"object": "embedding", "index": i, "embedding": [float(v) for v in vec]} for i, vec in enumerate(vecteurs)]}
+    return {
+        "object": "list",
+        "model": modele,
+        "data": [
+            {"object": "embedding", "index": i, "embedding": [float(v) for v in vec]} for i, vec in enumerate(vecteurs)
+        ],
+    }
 
 
 def main() -> int:
     from newskit import synthese as sy  # noqa: PLC0415
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--port", type=int, default=47900)
@@ -40,7 +46,8 @@ def main() -> int:
     class Service(BaseHTTPRequestHandler):
         def do_POST(self):  # noqa: N802
             if not self.path.rstrip("/").endswith("/embeddings"):
-                self.send_error(404); return
+                self.send_error(404)
+                return
             corps = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
             sortie = json.dumps(reponse(list(enc.embed(textes(corps))), modele)).encode()
             self.send_response(200)

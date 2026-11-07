@@ -24,6 +24,7 @@ Trois services, employés par tous les scripts qui appellent `claude -p` :
 Le registre lui-même (`cache/couts.jsonl`, une ligne par appel) reste hors dépôt : il grossit de quelques milliers
 de lignes par jour.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,17 +37,28 @@ import time
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 REGISTRE = RACINE / "cache" / "couts.jsonl"
 MARQUE = RACINE / "cache" / "limite_atteinte"
 # Le début de toute commande au modèle, le seul : tout site compose `[*couts.CLAUDE_P, …]` (tests/test_couts.py).
 # Le plugin cortexdb, installé au niveau de l'utilisateur le 18.10.2026, chargeait ses skills, ses outils et ses
 # crochets dans chaque appel du pipeline : 75 259 jetons de contexte pour « ok », 22 714 sans (mesuré le 22.10.2026).
-CLAUDE_P = ["claude", "-p", "--settings", json.dumps({"enabledPlugins": {"cortexdb@cortexdb": False, "thalamus@thalamus": False}})]
+CLAUDE_P = [
+    "claude",
+    "-p",
+    "--settings",
+    json.dumps({"enabledPlugins": {"cortexdb@cortexdb": False, "thalamus@thalamus": False}}),
+]
 RESUME = RACINE / "graphe" / "couts.json"
-SEUIL = 3                    # limites consécutives avant que le processus se déclare en limite
-MARQUE_VALIDE_S = 3 * 3600   # une marque posée par un autre processus vaut trois heures (la fenêtre d'usage se rouvre après)
-RE_LIMITE = re.compile(r"usage limit|hit your limit|limit reached|rate.?limit|out of (?:extra )?usage|limite d.usage|"
-                       r"quota|too many requests|resets? at|overloaded", re.I)
+SEUIL = 3  # limites consécutives avant que le processus se déclare en limite
+MARQUE_VALIDE_S = (
+    3 * 3600
+)  # une marque posée par un autre processus vaut trois heures (la fenêtre d'usage se rouvre après)
+RE_LIMITE = re.compile(
+    r"usage limit|hit your limit|limit reached|rate.?limit|out of (?:extra )?usage|limite d.usage|"
+    r"quota|too many requests|resets? at|overloaded",
+    re.I,
+)
 
 # La sentinelle de jetons (CHANTIER_GENERIQUE.md, étape 1) : quand la médiane du contexte d'entrée (entrée, cache écrit,
 # cache lu, pesés à leur prix : voir contexte()) des appels réussis d'un poste dans ce processus, après SENTINELLE_APPELS appels, dépasse SENTINELLE_FACTEUR
@@ -57,15 +69,15 @@ RE_LIMITE = re.compile(r"usage limit|hit your limit|limit reached|rate.?limit|ou
 # pour une seule alerte hors incident (banc_themes ×9, 10.10.2026).
 SENTINELLE_FACTEUR = 2.5
 SENTINELLE_JOURS = 7
-SENTINELLE_MIN = 20          # appels réussis du poste sur la période, en dessous desquels la sentinelle ne juge pas
-SENTINELLE_APPELS = 10       # appels réussis du poste dans le processus avant le premier jugement
+SENTINELLE_MIN = 20  # appels réussis du poste sur la période, en dessous desquels la sentinelle ne juge pas
+SENTINELLE_APPELS = 10  # appels réussis du poste dans le processus avant le premier jugement
 
 _verrou = threading.Lock()
 _consecutives = 0
-_derniere_limite = 0.0       # l'heure du dernier refus : un succès lancé avant ne dit rien de la fenêtre (06.11.2026)
-_medianes: dict[str, float | None] = {}     # par poste, calculée une fois par processus
-_courants: dict[str, list[int]] = {}         # par poste, le contexte des appels réussis de ce processus
-_alertes: set[str] = set()                   # postes déjà signalés par la sentinelle dans ce processus
+_derniere_limite = 0.0  # l'heure du dernier refus : un succès lancé avant ne dit rien de la fenêtre (06.11.2026)
+_medianes: dict[str, float | None] = {}  # par poste, calculée une fois par processus
+_courants: dict[str, list[int]] = {}  # par poste, le contexte des appels réussis de ce processus
+_alertes: set[str] = set()  # postes déjà signalés par la sentinelle dans ce processus
 
 
 class LimiteAtteinte(RuntimeError):
@@ -84,7 +96,7 @@ def lire_enveloppe(stdout: str | None) -> dict:
         i, j = t.find("{"), t.rfind("}")
         if 0 <= i < j:
             try:
-                env = json.loads(t[i:j + 1])
+                env = json.loads(t[i : j + 1])
                 return env if isinstance(env, dict) else {}
             except json.JSONDecodeError:
                 return {}
@@ -96,7 +108,7 @@ def est_une_limite(env: dict, texte: str = "", code: int | None = None) -> bool:
     Un refus du modèle (`stop_reason: refusal` avec une durée d'API non nulle) n'est pas une limite."""
     if env:
         if env.get("subtype") == "error_max_budget_usd":
-            return False        # coupé par son propre plafond (--max-budget-usd) : un plafond, pas une limite (03.11.2026)
+            return False  # coupé par son propre plafond (--max-budget-usd) : un plafond, pas une limite (03.11.2026)
         if env.get("duration_api_ms") == 0 and (code not in (0, None) or env.get("is_error")):
             return True
         if RE_LIMITE.search(str(env.get("result") or "")):
@@ -168,8 +180,11 @@ PRIX_CACHE_LU = 0.1
 
 def contexte(ligne: dict) -> float:
     """Le contexte d'entrée d'un appel, pesé à son prix, en jetons d'entrée : entrée, cache écrit, cache lu."""
-    return (int(ligne.get("entree") or 0) + PRIX_CACHE_ECRIT * int(ligne.get("cache_ecriture") or 0)
-            + PRIX_CACHE_LU * int(ligne.get("cache_lecture") or 0))
+    return (
+        int(ligne.get("entree") or 0)
+        + PRIX_CACHE_ECRIT * int(ligne.get("cache_ecriture") or 0)
+        + PRIX_CACHE_LU * int(ligne.get("cache_lecture") or 0)
+    )
 
 
 def _mediane(v: list[int]) -> float:
@@ -182,7 +197,7 @@ def sentinelle(poste: str, ctx: int, graphe: str | None = None) -> tuple[float, 
     tombe, une fois par poste, graphe et processus, sinon None. Un poste se juge dans son graphe (07.11.2026 : le banc
     d'un graphe, à 14 tours, jugé contre les bancs à deux tours des autres graphes, coupait toutes les boucles)."""
     cle = f"{poste}\t{graphe or 'principal'}"
-    m = mediane_du_poste(poste, graphe)     # lue au premier appel, avant que ceux du processus n'entrent au registre
+    m = mediane_du_poste(poste, graphe)  # lue au premier appel, avant que ceux du processus n'entrent au registre
     v = _courants.setdefault(cle, [])
     v.append(ctx)
     if cle in _alertes or len(v) < SENTINELLE_APPELS:
@@ -216,8 +231,15 @@ def _modele_de(env: dict, demande: str | None) -> str:
     return demande or "défaut"
 
 
-def enregistrer(poste: str, graphe: str | None, modele: str | None, r=None, duree: float | None = None,
-                env: dict | None = None, note: str = "") -> dict:
+def enregistrer(
+    poste: str,
+    graphe: str | None,
+    modele: str | None,
+    r=None,
+    duree: float | None = None,
+    env: dict | None = None,
+    note: str = "",
+) -> dict:
     """Consigne un appel et tient le coupe-circuit. `r` : le CompletedProcess de `claude -p` (stdout, stderr,
     returncode), ou None quand l'appel n'a pas abouti (délai, commande absente) — passer alors `note`. `env` : l'enveloppe
     déjà lue, si l'appelant l'a. Rend l'enveloppe (vide si illisible) ; ne lève jamais."""
@@ -230,13 +252,23 @@ def enregistrer(poste: str, graphe: str | None, modele: str | None, r=None, dure
         limite = est_une_limite(env, texte, code)
         ok = bool(env) and code == 0 and not env.get("is_error") and not limite
         ligne = {
-            "quand": time.strftime("%Y-%m-%d %H:%M:%S"), "poste": poste, "graphe": graphe or "principal",
-            "modele": _modele_de(env, modele), "ok": ok, "limite": limite, "code": code,
-            "entree": int(u.get("input_tokens") or 0), "cache_ecriture": int(u.get("cache_creation_input_tokens") or 0),
-            "cache_lecture": int(u.get("cache_read_input_tokens") or 0), "sortie": int(u.get("output_tokens") or 0),
-            "tours": int(env.get("num_turns") or 0), "cout_usd": round(float(env.get("total_cost_usd") or 0), 5),
-            "duree_api_ms": int(env.get("duration_api_ms") or 0), "duree_s": round(duree, 1) if duree is not None else None,
-            "arret": str(env.get("stop_reason") or ""), "pid": os.getpid(),
+            "quand": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "poste": poste,
+            "graphe": graphe or "principal",
+            "modele": _modele_de(env, modele),
+            "ok": ok,
+            "limite": limite,
+            "code": code,
+            "entree": int(u.get("input_tokens") or 0),
+            "cache_ecriture": int(u.get("cache_creation_input_tokens") or 0),
+            "cache_lecture": int(u.get("cache_read_input_tokens") or 0),
+            "sortie": int(u.get("output_tokens") or 0),
+            "tours": int(env.get("num_turns") or 0),
+            "cout_usd": round(float(env.get("total_cost_usd") or 0), 5),
+            "duree_api_ms": int(env.get("duration_api_ms") or 0),
+            "duree_s": round(duree, 1) if duree is not None else None,
+            "arret": str(env.get("stop_reason") or ""),
+            "pid": os.getpid(),
         }
         if note or (not ok and not env):
             ligne["note"] = (note or texte or "sortie illisible")[:160]
@@ -252,10 +284,14 @@ def enregistrer(poste: str, graphe: str | None, modele: str | None, r=None, dure
         elif ok:
             noter_succes(time.time() - duree if duree is not None else None)
         if alerte:
-            _poser_marque(f"sentinelle de jetons : {poste} ({graphe or 'principal'}), médiane de {alerte[0]:.0f} jetons "
-                          f"d'entrée (pesés à leur prix) ici pour {alerte[1]:.0f} sur {SENTINELLE_JOURS} jours")
-            print(f"  !! sentinelle de jetons : {poste}, médiane {alerte[0]:.0f} jetons d'entrée contre {alerte[1]:.0f}",
-                  file=sys.stderr)
+            _poser_marque(
+                f"sentinelle de jetons : {poste} ({graphe or 'principal'}), médiane de {alerte[0]:.0f} jetons "
+                f"d'entrée (pesés à leur prix) ici pour {alerte[1]:.0f} sur {SENTINELLE_JOURS} jours"
+            )
+            print(
+                f"  !! sentinelle de jetons : {poste}, médiane {alerte[0]:.0f} jetons d'entrée contre {alerte[1]:.0f}",
+                file=sys.stderr,
+            )
         return env
     except Exception as e:  # noqa: BLE001 — le registre ne doit jamais faire échouer un appel
         print(f"  (registre des coûts : {type(e).__name__} {str(e)[:80]})", file=sys.stderr)
@@ -263,6 +299,7 @@ def enregistrer(poste: str, graphe: str | None, modele: str | None, r=None, dure
 
 
 # --- Bilans ---------------------------------------------------------------------------------------------------------
+
 
 def lignes(depuis: str | None = None, jusqu_a: str | None = None) -> list[dict]:
     """Les lignes du registre entre deux horodatages « AAAA-MM-JJ[ HH:MM:SS] » (bornes incluses)."""
@@ -289,7 +326,19 @@ def agreger(ls: list[dict], cles: tuple[str, ...]) -> dict[tuple, dict]:
     out: dict[tuple, dict] = {}
     for d in ls:
         k = tuple(d.get("quand", "")[:10] if c == "jour" else d.get(c) for c in cles)
-        a = out.setdefault(k, {"appels": 0, "ok": 0, "limites": 0, "echecs": 0, "tokens": 0, "sortie": 0, "cout_usd": 0.0, "duree_s": 0.0})
+        a = out.setdefault(
+            k,
+            {
+                "appels": 0,
+                "ok": 0,
+                "limites": 0,
+                "echecs": 0,
+                "tokens": 0,
+                "sortie": 0,
+                "cout_usd": 0.0,
+                "duree_s": 0.0,
+            },
+        )
         a["appels"] += 1
         a["ok"] += bool(d.get("ok"))
         a["limites"] += bool(d.get("limite"))
@@ -305,7 +354,10 @@ def agreger(ls: list[dict], cles: tuple[str, ...]) -> dict[tuple, dict]:
 
 
 def total(ls: list[dict]) -> dict:
-    return next(iter(agreger(ls, ()).values()), {"appels": 0, "ok": 0, "limites": 0, "echecs": 0, "tokens": 0, "sortie": 0, "cout_usd": 0.0, "duree_s": 0})
+    return next(
+        iter(agreger(ls, ()).values()),
+        {"appels": 0, "ok": 0, "limites": 0, "echecs": 0, "tokens": 0, "sortie": 0, "cout_usd": 0.0, "duree_s": 0},
+    )
 
 
 def phrase(ls: list[dict]) -> str:
@@ -344,14 +396,22 @@ def afficher(ls: list[dict], par: str) -> None:
     if not ls:
         print("  registre vide (cache/couts.jsonl) : aucun appel consigné")
         return
-    cles = {"poste": ("jour", "poste"), "graphe": ("jour", "graphe"), "modele": ("jour", "modele"), "jour": ("jour",)}[par]
-    print(f"  {'jour':10} {par if par != 'jour' else '':14} {'appels':>7} {'ok':>5} {'limite':>6} {'échec':>5} {'tokens':>11} {'sortie':>8} {'coût $':>8} {'durée':>7}")
+    cles = {"poste": ("jour", "poste"), "graphe": ("jour", "graphe"), "modele": ("jour", "modele"), "jour": ("jour",)}[
+        par
+    ]
+    print(
+        f"  {'jour':10} {par if par != 'jour' else '':14} {'appels':>7} {'ok':>5} {'limite':>6} {'échec':>5} {'tokens':>11} {'sortie':>8} {'coût $':>8} {'durée':>7}"
+    )
     for k, a in sorted(agreger(ls, cles).items()):
         etiquette = str(k[1])[:14] if len(k) > 1 else ""
-        print(f"  {k[0]:10} {etiquette:14} {a['appels']:7} {a['ok']:5} {a['limites']:6} {a['echecs']:5} {a['tokens']:11} "
-              f"{a['sortie']:8} {a['cout_usd']:8.2f} {a['duree_s'] // 60:5.0f} mn")
+        print(
+            f"  {k[0]:10} {etiquette:14} {a['appels']:7} {a['ok']:5} {a['limites']:6} {a['echecs']:5} {a['tokens']:11} "
+            f"{a['sortie']:8} {a['cout_usd']:8.2f} {a['duree_s'] // 60:5.0f} mn"
+        )
     t = total(ls)
-    print(f"  total : {t['appels']} appels, {t['cout_usd']:.2f} $, {t['tokens']} tokens, {t['limites']} refusés par la limite, {t['echecs']} échecs")
+    print(
+        f"  total : {t['appels']} appels, {t['cout_usd']:.2f} $, {t['tokens']} tokens, {t['limites']} refusés par la limite, {t['echecs']} échecs"
+    )
     m = marque_en_cours()
     if m:
         print(f"  LIMITE EN COURS : {m}")
@@ -359,8 +419,13 @@ def afficher(ls: list[dict], par: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", nargs="?", choices=["etat", "resumer", "lever"], default="etat",
-                    help="etat : le bilan ; resumer : écrire graphe/couts.json ; lever : retirer la marque de limite")
+    ap.add_argument(
+        "action",
+        nargs="?",
+        choices=["etat", "resumer", "lever"],
+        default="etat",
+        help="etat : le bilan ; resumer : écrire graphe/couts.json ; lever : retirer la marque de limite",
+    )
     ap.add_argument("--etat", action="store_true", help="(équivalent de l'action etat)")
     ap.add_argument("--depuis", help="AAAA-MM-JJ (défaut : 7 derniers jours)")
     ap.add_argument("--par", choices=["poste", "graphe", "modele", "jour"], default="poste")

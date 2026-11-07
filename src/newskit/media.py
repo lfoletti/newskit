@@ -39,13 +39,20 @@ FICHIER = RACINE / "config.yaml"
 # L'identité du média (l'ancien bloc `edition:` du registre, NEWSKIT.md N2) : son nom (préfixe des clés de lecture
 # dans Thalamus, producteur des métadonnées, objet des courriels, agent HTTP), son site, son dépôt, le clone de son
 # serveur. Les valeurs neutres ; le moteur n'en écrit aucune autre dans son code.
-IDENTITE = {"nom": "newskit", "site": "", "depot": "", "clone": "", "principal": "principal", "domaine_principal": "",
-           "launchd": "local.newskit",   # launchd : préfixe des étiquettes des daemons (nouveau_graphe)
-           "lettre_site": "",               # le site public cité au pied de la lettre de la semaine (lettre.py, B16)
-           "anciens_sites": "",             # les sites d'avant, séparés par des virgules : encore des sites de l'édition
-           "graphe_du_site": "",            # le graphe du site (fil, lettre, station) ; vide : le graphe principal
-           "robot_contact": ""}             # l'adresse que le robot donne aux sites des sources (commun.agent_robot)
-NOM = re.compile(r"^[a-z0-9][a-z0-9-]{1,40}$")    # un nom de média ou de graphe
+IDENTITE = {
+    "nom": "newskit",
+    "site": "",
+    "depot": "",
+    "clone": "",
+    "principal": "principal",
+    "domaine_principal": "",
+    "launchd": "local.newskit",  # launchd : préfixe des étiquettes des daemons (nouveau_graphe)
+    "lettre_site": "",  # le site public cité au pied de la lettre de la semaine (lettre.py, B16)
+    "anciens_sites": "",  # les sites d'avant, séparés par des virgules : encore des sites de l'édition
+    "graphe_du_site": "",  # le graphe du site (fil, lettre, station) ; vide : le graphe principal
+    "robot_contact": "",
+}  # l'adresse que le robot donne aux sites des sources (commun.agent_robot)
+NOM = re.compile(r"^[a-z0-9][a-z0-9-]{1,40}$")  # un nom de média ou de graphe
 
 # Les modèles d'aujourd'hui, par rôle (relevé du 7.11.2026 dans 11 scripts). Un rôle, un travail :
 ROLES = {
@@ -64,13 +71,18 @@ DEFAUTS = {
     "traduction": "claude-haiku-5-5",
     "questions": "claude-haiku-5-5",
 }
-LANGUES = {"fr"}                 # les consignes aux modèles sont écrites en français (relevé N2, point 5)
-TRADUCTIONS = {"en"}             # fil_anglais et lettre_anglaise
-FREQUENCE = (5, 30)              # l'heure par défaut d'un graphe neuf, celle de nouveau_graphe avant le dossier
+LANGUES = {"fr"}  # les consignes aux modèles sont écrites en français (relevé N2, point 5)
+TRADUCTIONS = {"en"}  # fil_anglais et lettre_anglaise
+FREQUENCE = (5, 30)  # l'heure par défaut d'un graphe neuf, celle de nouveau_graphe avant le dossier
 # Les blocs du registre que config.yaml peut tenir à la place du fichier des sources.
 BLOCS = {"graphes", "poseur", "reporter", "eclaireur", "banc", "anciens_noms", "domaines"}
 CHAMPS = {"version", "media", "modeles", "sources", "diffusion", "registre_des_graphes"} | BLOCS
-PROPRES = {"langue", "traductions", "frequence", "passages"}      # les champs de `media:` qui ne sont pas de l'ancien `edition:`
+PROPRES = {
+    "langue",
+    "traductions",
+    "frequence",
+    "passages",
+}  # les champs de `media:` qui ne sont pas de l'ancien `edition:`
 
 
 class ConfigMediaInvalide(ValueError):
@@ -109,14 +121,16 @@ def charger(chemin: Path = FICHIER) -> dict:
     _valider_media(m, chemin.name)
     mod = d.get("modeles") or {}
     if not isinstance(mod, dict) or set(mod) - set(ROLES):
-        raise ConfigMediaInvalide(f"{chemin.name} : modeles : rôles inconnus {sorted(set(mod) - set(ROLES))} ; "
-                                  f"admis {sorted(ROLES)}")
+        raise ConfigMediaInvalide(
+            f"{chemin.name} : modeles : rôles inconnus {sorted(set(mod) - set(ROLES))} ; admis {sorted(ROLES)}"
+        )
     for role, v in mod.items():
         if not isinstance(v, str) or not v.strip():
             raise ConfigMediaInvalide(f"{chemin.name} : modeles.{role} : le nom d'un modèle")
     f = d.get("diffusion")
-    if f is not None and (not isinstance(f, str) or not f.endswith(".py") or Path(f).is_absolute()
-                          or ".." in Path(f).parts):
+    if f is not None and (
+        not isinstance(f, str) or not f.endswith(".py") or Path(f).is_absolute() or ".." in Path(f).parts
+    ):
         raise ConfigMediaInvalide(f"{chemin.name} : diffusion : un module .py relatif au dossier du média, lu {f!r}")
     r = d.get("registre_des_graphes")
     if r is not None and (not isinstance(r, str) or not r.strip()):
@@ -131,8 +145,9 @@ def charger(chemin: Path = FICHIER) -> dict:
 def _valider_media(m: dict, ou: str) -> None:
     inconnus = set(m) - set(IDENTITE) - PROPRES
     if inconnus:
-        raise ConfigMediaInvalide(f"{ou} : media : champs inconnus {sorted(inconnus)} ; "
-                                  f"admis {sorted(set(IDENTITE) | PROPRES)}")
+        raise ConfigMediaInvalide(
+            f"{ou} : media : champs inconnus {sorted(inconnus)} ; admis {sorted(set(IDENTITE) | PROPRES)}"
+        )
     for cle, v in m.items():
         if cle not in PROPRES and not isinstance(v, str):
             raise ConfigMediaInvalide(f"{ou} : media.{cle} : un texte")
@@ -278,8 +293,10 @@ def main() -> int:
     if not c:
         print(f"  aucun config.yaml sous {RACINE} : les valeurs d'aujourd'hui")
     m = c.get("media") or {}
-    print(f"  média {m.get('nom', '(sans nom)')} : langue {langue(c)}, traductions {traductions(c) or 'aucune'}, "
-          f"passages {_dire_passages(c)}")
+    print(
+        f"  média {m.get('nom', '(sans nom)')} : langue {langue(c)}, traductions {traductions(c) or 'aucune'}, "
+        f"passages {_dire_passages(c)}"
+    )
     for role, quoi in ROLES.items():
         print(f"  {role:<11} {modele(role, c):<20} {quoi}")
     return 0

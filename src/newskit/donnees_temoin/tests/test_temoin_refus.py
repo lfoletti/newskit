@@ -19,10 +19,12 @@ import pytest
 
 from newskit import temoin  # noqa: E402
 
-COLLECTES = {"flux RSS": ("Gazette des ruchers", "Archives de Hohenruche", "Annales de Valmiel"),
-             "revues (Crossref)": ("Revue d'apiculture médiévale",),
-             "OpenAlex": ("OpenAlex, essaimage",),
-             "GitHub et HuggingFace": ("GitHub, ruchers", "HuggingFace, ruchers")}
+COLLECTES = {
+    "flux RSS": ("Gazette des ruchers", "Archives de Hohenruche", "Annales de Valmiel"),
+    "revues (Crossref)": ("Revue d'apiculture médiévale",),
+    "OpenAlex": ("OpenAlex, essaimage",),
+    "GitHub et HuggingFace": ("GitHub, ruchers", "HuggingFace, ruchers"),
+}
 
 
 @pytest.fixture(scope="module")
@@ -30,16 +32,31 @@ def passage(tmp_path_factory):
     t = temoin.preparer(tmp_path_factory.mktemp("refus") / "t", reseau=True)
     env = temoin.environnement(t)
     env["TEMOIN_SANS_PAUSE"] = "1"
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=env, cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=env,
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r
 
 
 def _bloc(sortie: str, etape: str) -> str:
     """Les lignes de l'étape, jusqu'à l'étape suivante."""
-    m = re.search(rf"^(?:  ok      {re.escape(etape)} |{re.escape(etape)} : code \d+).*?(?=^\S|^  ok |^  sauté |\Z)",
-                  sortie, re.M | re.S)
+    m = re.search(
+        rf"^(?:  ok      {re.escape(etape)} |{re.escape(etape)} : code \d+).*?(?=^\S|^  ok |^  sauté |\Z)",
+        sortie,
+        re.M | re.S,
+    )
     return m.group(0) if m else ""
 
 

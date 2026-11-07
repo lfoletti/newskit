@@ -37,7 +37,7 @@ def module() -> ModuleType | None:
         raise FileNotFoundError(f"config.yaml : diffusion {nom} introuvable sous {RACINE}")
     deja = sys.modules.get(chemin.stem)
     if deja is not None and Path(getattr(deja, "__file__", "") or "").resolve() == chemin.resolve():
-        _module = deja                          # le même fichier, déjà importé sous son nom : une seule instance
+        _module = deja  # le même fichier, déjà importé sous son nom : une seule instance
         return deja
     if str(chemin.parent) not in sys.path:
         sys.path.insert(0, str(chemin.parent))  # le module de l'édition importe ses voisins

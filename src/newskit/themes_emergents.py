@@ -70,24 +70,63 @@ from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.y
 from newskit import couts  # noqa: E402
 from newskit import digerer_graphe as dg  # noqa: E402
 
-REGISTRE_SKILL = media.registre_des_graphes()     # le registre des graphes du média (config.yaml, N5)
+REGISTRE_SKILL = media.registre_des_graphes()  # le registre des graphes du média (config.yaml, N5)
 MIN_NOTIONS = 10
 MIN_PASSAGES = 2
-MIN_PASSAGES_AUTO = 3       # passages consécutifs avant qu'un candidat entre de lui-même parmi les sujets (09.10.2026)
-NUITS_NEUF = 5              # nuits où un sujet neuf passe en tête de l'éclaireur et du poseur (approfondissement)
-EXPRESSIONS_ARXIV = 3       # expressions anglaises ajoutées à la veille arXiv du graphe pour un sujet neuf
+MIN_PASSAGES_AUTO = 3  # passages consécutifs avant qu'un candidat entre de lui-même parmi les sujets (09.10.2026)
+NUITS_NEUF = 5  # nuits où un sujet neuf passe en tête de l'éclaireur et du poseur (approfondissement)
+EXPRESSIONS_ARXIV = 3  # expressions anglaises ajoutées à la veille arXiv du graphe pour un sujet neuf
 MIN_PASSAGES_DORMANT = 3
-MIN_PORTEURS = 3            # notions du graphe entier qui suffisent à dire un sujet porté
-GRAINE = "0"                # PYTHONHASHSEED de la routine (routine_hebdo.lancer)
-COMMUNAUTES = 20            # plus large que la carte (12) : un thème naissant est rarement dans les douze premières
-TETE = 8                    # notions de tête comparées aux sujets
+MIN_PORTEURS = 3  # notions du graphe entier qui suffisent à dire un sujet porté
+GRAINE = "0"  # PYTHONHASHSEED de la routine (routine_hebdo.lancer)
+COMMUNAUTES = 20  # plus large que la carte (12) : un thème naissant est rarement dans les douze premières
+TETE = 8  # notions de tête comparées aux sujets
 MODELE = os.environ.get("SE_CLAUDE_MODELE") or media.modele("analyse")
 DELAI = 120
 
-VIDES = {"dans", "avec", "pour", "sans", "sous", "entre", "comme", "leur", "leurs", "elles", "cette", "ces",
-         "des", "les", "une", "the", "and", "with", "from", "into", "that", "this", "ai", "ia", "intelligence",
-         "artificielle", "artificial", "machine", "learning", "model", "models", "modèles", "data", "données",
-         "systèmes", "systems", "system", "approche", "approches", "notions", "notion"}
+VIDES = {
+    "dans",
+    "avec",
+    "pour",
+    "sans",
+    "sous",
+    "entre",
+    "comme",
+    "leur",
+    "leurs",
+    "elles",
+    "cette",
+    "ces",
+    "des",
+    "les",
+    "une",
+    "the",
+    "and",
+    "with",
+    "from",
+    "into",
+    "that",
+    "this",
+    "ai",
+    "ia",
+    "intelligence",
+    "artificielle",
+    "artificial",
+    "machine",
+    "learning",
+    "model",
+    "models",
+    "modèles",
+    "data",
+    "données",
+    "systèmes",
+    "systems",
+    "system",
+    "approche",
+    "approches",
+    "notions",
+    "notion",
+}
 
 
 def mots(texte: str, mini: int = 4) -> set[str]:
@@ -106,8 +145,13 @@ def chemin_etat(graphe: str) -> Path:
 def lire_etat(graphe: str) -> dict:
     p = chemin_etat(graphe)
     d = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    d.setdefault("candidats", {}); d.setdefault("dormants", {}); d.setdefault("acceptes", []); d.setdefault("refuses", [])
-    d.setdefault("traductions", {}); d.setdefault("couverture", {}); d.setdefault("nouveaux", {})
+    d.setdefault("candidats", {})
+    d.setdefault("dormants", {})
+    d.setdefault("acceptes", [])
+    d.setdefault("refuses", [])
+    d.setdefault("traductions", {})
+    d.setdefault("couverture", {})
+    d.setdefault("nouveaux", {})
     return d
 
 
@@ -165,18 +209,33 @@ def cle_de(etiquette: str) -> str:
     return "-".join(sorted(mots(etiquette))) or etiquette.lower()
 
 
-SCHEMA_COUVERTURE = {"type": "object", "required": ["couverture"],
-                     "properties": {"couverture": {"type": "array", "items": {
-                         "type": "object", "required": ["communaute", "sujet"],
-                         "properties": {"communaute": {"type": "integer"}, "sujet": {"type": ["integer", "null"]}}}}}}
+SCHEMA_COUVERTURE = {
+    "type": "object",
+    "required": ["couverture"],
+    "properties": {
+        "couverture": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["communaute", "sujet"],
+                "properties": {"communaute": {"type": "integer"}, "sujet": {"type": ["integer", "null"]}},
+            },
+        }
+    },
+}
 
 
-POSTE = "themes"             # le poste consigné au registre des coûts ; un script appelant pose le sien (synthese : pyramide)
+POSTE = "themes"  # le poste consigné au registre des coûts ; un script appelant pose le sien (synthese : pyramide)
 GRAPHE_COURANT: str | None = None
 
 
-def appeler_claude(prompt: str, schema: dict | None = None, modele: str | None = None,
-                   poste: str | None = None, graphe: str | None = None) -> str | dict | None:
+def appeler_claude(
+    prompt: str,
+    schema: dict | None = None,
+    modele: str | None = None,
+    poste: str | None = None,
+    graphe: str | None = None,
+) -> str | dict | None:
     """Une réponse de Claude (`claude -p`, abonnement), sans outil ; None s'il manque ou échoue. `modele` remplace
     MODELE pour cet appel seulement : sûr quand plusieurs appels se chevauchent (synthese.py, 06.10.2026).
     Chaque appel est consigné au registre des coûts (couts.py) ; en limite d'usage, rien n'est tenté."""
@@ -184,7 +243,9 @@ def appeler_claude(prompt: str, schema: dict | None = None, modele: str | None =
     if couts.en_limite():
         return None
     # Toujours l'enveloppe JSON, même pour une réponse en texte : c'est elle qui porte le coût et les tokens.
-    args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json"] + (["--model", m] if m else [])
+    args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json"] + (
+        ["--model", m] if m else []
+    )
     if schema:
         args += ["--json-schema", json.dumps(schema)]
     t0 = time.time()
@@ -207,19 +268,23 @@ def appeler_claude(prompt: str, schema: dict | None = None, modele: str | None =
     return brut if isinstance(brut, dict) else None
 
 
-def couverture_par_claude(graphe: str, sujets: list[str], restantes: list[tuple[int, str, list[str]]]) -> dict[int, int | None]:
+def couverture_par_claude(
+    graphe: str, sujets: list[str], restantes: list[tuple[int, str, list[str]]]
+) -> dict[int, int | None]:
     """{indice de communauté: indice du sujet qui la couvre, ou None}. Vide si Claude manque."""
     if not sujets or not restantes:
         return {}
     decl = cfg.graphe_declare(graphe)
-    prompt = (f"Graphe de connaissances sur « {decl['libelle']} ». Ses sujets déclarés :\n"
-              + "\n".join(f"  S{i}. {s}" for i, s in enumerate(sujets))
-              + "\n\nDes groupes de notions détectés dans le graphe :\n"
-              + "\n".join(f"  C{i}. {e} — {', '.join(n)}" for i, e, n in restantes)
-              + "\n\nPour chaque groupe, dis quel sujet déclaré le couvre déjà (le groupe en est un cas, un aspect ou une "
-                "déclinaison), ou null si aucun sujet ne le couvre et qu'il mériterait un sujet à part. Un groupe qui n'est "
-                "qu'un acteur (une entreprise, un institut) sans thème propre est couvert par le sujet le plus proche. "
-                "Réponds en JSON : {\"couverture\": [{\"communaute\": <indice C>, \"sujet\": <indice S ou null>}, …]}.")
+    prompt = (
+        f"Graphe de connaissances sur « {decl['libelle']} ». Ses sujets déclarés :\n"
+        + "\n".join(f"  S{i}. {s}" for i, s in enumerate(sujets))
+        + "\n\nDes groupes de notions détectés dans le graphe :\n"
+        + "\n".join(f"  C{i}. {e} — {', '.join(n)}" for i, e, n in restantes)
+        + "\n\nPour chaque groupe, dis quel sujet déclaré le couvre déjà (le groupe en est un cas, un aspect ou une "
+        "déclinaison), ou null si aucun sujet ne le couvre et qu'il mériterait un sujet à part. Un groupe qui n'est "
+        "qu'un acteur (une entreprise, un institut) sans thème propre est couvert par le sujet le plus proche. "
+        'Réponds en JSON : {"couverture": [{"communaute": <indice C>, "sujet": <indice S ou null>}, …]}.'
+    )
     rep = appeler_claude(prompt, SCHEMA_COUVERTURE)
     if not rep:
         return {}
@@ -233,11 +298,23 @@ def couverture_par_claude(graphe: str, sujets: list[str], restantes: list[tuple[
     return out
 
 
-SCHEMA_TRADUCTIONS = {"type": "object", "required": ["traductions"],
-                      "properties": {"traductions": {"type": "array", "items": {
-                          "type": "object", "required": ["sujet", "expressions"],
-                          "properties": {"sujet": {"type": "integer"},
-                                         "expressions": {"type": "array", "items": {"type": "string"}}}}}}}
+SCHEMA_TRADUCTIONS = {
+    "type": "object",
+    "required": ["traductions"],
+    "properties": {
+        "traductions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["sujet", "expressions"],
+                "properties": {
+                    "sujet": {"type": "integer"},
+                    "expressions": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        }
+    },
+}
 
 
 def traduire_par_claude(graphe: str, sujets: list[str]) -> dict[str, list[str]]:
@@ -245,13 +322,15 @@ def traduire_par_claude(graphe: str, sujets: list[str]) -> dict[str, list[str]]:
     if not sujets:
         return {}
     decl = cfg.graphe_declare(graphe)
-    prompt = (f"Graphe de connaissances sur « {decl['libelle']} ». Ses notions sont le plus souvent nommées en anglais. "
-              "Voici des sujets déclarés en français :\n"
-              + "\n".join(f"  S{i}. {s}" for i, s in enumerate(sujets))
-              + "\n\nPour chacun, donne une à trois expressions courtes sous lesquelles une notion du graphe le "
-                "nommerait (le terme anglais d'usage, un sigle, un synonyme). Ne donne que des termes propres au sujet, "
-                "pas de mot générique. Réponds en JSON : "
-                "{\"traductions\": [{\"sujet\": <indice S>, \"expressions\": [\"…\"]}, …]}.")
+    prompt = (
+        f"Graphe de connaissances sur « {decl['libelle']} ». Ses notions sont le plus souvent nommées en anglais. "
+        "Voici des sujets déclarés en français :\n"
+        + "\n".join(f"  S{i}. {s}" for i, s in enumerate(sujets))
+        + "\n\nPour chacun, donne une à trois expressions courtes sous lesquelles une notion du graphe le "
+        "nommerait (le terme anglais d'usage, un sigle, un synonyme). Ne donne que des termes propres au sujet, "
+        "pas de mot générique. Réponds en JSON : "
+        '{"traductions": [{"sujet": <indice S>, "expressions": ["…"]}, …]}.'
+    )
     rep = appeler_claude(prompt, SCHEMA_TRADUCTIONS)
     if not rep:
         return {}
@@ -266,8 +345,16 @@ def traduire_par_claude(graphe: str, sujets: list[str]) -> dict[str, list[str]]:
     return out
 
 
-def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujets: list[str], etat: dict,
-             horo: str, juge=None, notions: list[str] | None = None, traduire=None) -> dict:
+def detecter(
+    graphe: str,
+    communautes: list[tuple[str, list[str], float]],
+    sujets: list[str],
+    etat: dict,
+    horo: str,
+    juge=None,
+    notions: list[str] | None = None,
+    traduire=None,
+) -> dict:
     """Met l'état à jour avec les communautés de ce passage. Rend l'état ; n'écrit rien.
 
     `juge(sujets, restantes) -> {indice communauté: indice sujet | None}` tranche les communautés
@@ -276,7 +363,7 @@ def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujet
     couvre mais que MIN_PORTEURS notions portent n'est pas dormant. `traduire(sujets) -> {sujet:
     expressions}` est demandé une fois pour les sujets que leur propre vocabulaire ne retrouve pas.
     """
-    porteurs = porteurs_de(notions) if notions is not None else None    # avant les boucles : `notions` y est réemployé
+    porteurs = porteurs_de(notions) if notions is not None else None  # avant les boucles : `notions` y est réemployé
     vocab_sujets = [mots(s) for s in sujets]
     vus: set[str] = set()
     couverts_par_sujet = [False] * len(sujets)
@@ -307,7 +394,9 @@ def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujet
                 verdicts[i] = nouveaux[i]
                 cache[cle_de(e)] = {"sujet": nouveaux[i], "sujets": empreinte_sujets, "date": horo, "etiquette": e}
     if restantes:
-        print(f"  couverture : {len(restantes) - len(a_juger)} communauté(s) déjà jugée(s), {len(a_juger)} soumise(s) au modèle")
+        print(
+            f"  couverture : {len(restantes) - len(a_juger)} communauté(s) déjà jugée(s), {len(a_juger)} soumise(s) au modèle"
+        )
     for i, etiquette, notions, score in assez:
         tete = notions[:TETE]
         recoupe = list(recoupements[i])
@@ -322,8 +411,16 @@ def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujet
             continue
         vus.add(k)
         c = etat["candidats"].get(k) or {"etiquette": etiquette, "premier": horo, "passages": 0, "libelle": None}
-        c.update({"etiquette": etiquette, "notions": tete, "taille": len(notions), "cohesion": round(score, 2),
-                  "passages": c["passages"] + (c.get("dernier") != horo), "dernier": horo})   # un passage par jour
+        c.update(
+            {
+                "etiquette": etiquette,
+                "notions": tete,
+                "taille": len(notions),
+                "cohesion": round(score, 2),
+                "passages": c["passages"] + (c.get("dernier") != horo),
+                "dernier": horo,
+            }
+        )  # un passage par jour
         etat["candidats"][k] = c
     # Un candidat absent de ce passage repart de zéro : la persistance se compte sur des passages consécutifs.
     for k in [k for k in etat["candidats"] if k not in vus]:
@@ -332,8 +429,9 @@ def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujet
         trad = etat.setdefault("traductions", {})
         for s in [s for s in trad if s not in sujets]:
             del trad[s]
-        vides = [s for i, s in enumerate(sujets)
-                 if not couverts_par_sujet[i] and not porte([s], porteurs) and s not in trad]
+        vides = [
+            s for i, s in enumerate(sujets) if not couverts_par_sujet[i] and not porte([s], porteurs) and s not in trad
+        ]
         if traduire and vides:
             trad.update(traduire(vides))
         for i, s in enumerate(sujets):
@@ -344,7 +442,8 @@ def detecter(graphe: str, communautes: list[tuple[str, list[str], float]], sujet
         if couverts_par_sujet[i]:
             etat["dormants"].pop(s, None)
         else:
-            d["passages"] += d.get("dernier") != horo; d["dernier"] = horo
+            d["passages"] += d.get("dernier") != horo
+            d["dernier"] = horo
             etat["dormants"][s] = d
     for s in [s for s in etat["dormants"] if s not in sujets]:
         del etat["dormants"][s]
@@ -358,19 +457,23 @@ def retenus(etat: dict) -> list[tuple[str, dict]]:
 
 
 def dormants(etat: dict) -> list[tuple[str, dict]]:
-    return sorted(((s, d) for s, d in etat["dormants"].items() if d["passages"] >= MIN_PASSAGES_DORMANT),
-                  key=lambda sd: -sd[1]["passages"])
+    return sorted(
+        ((s, d) for s, d in etat["dormants"].items() if d["passages"] >= MIN_PASSAGES_DORMANT),
+        key=lambda sd: -sd[1]["passages"],
+    )
 
 
 def nommer(graphe: str, c: dict) -> str | None:
     """Un libellé d'une ligne, en français, à partir des seules notions de la communauté. None si Claude manque."""
     decl = cfg.graphe_declare(graphe)
-    prompt = (f"Voici les notions les plus centrales d'un groupe détecté dans un graphe de connaissances sur « {decl['libelle']} » :\n"
-              + "\n".join(f"- {n}" for n in c["notions"])
-              + "\n\nNomme le thème que ces notions ont en commun, en français, en une ligne de 4 à 12 mots, "
-                "sans point final, sans guillemets, à la manière de « équité algorithmique et biais » ou "
-                "« armes autonomes et IA militaire : CCW, contrôle humain ». Ne nomme que ce que les notions "
-                "montrent. Réponds par la ligne seule.")
+    prompt = (
+        f"Voici les notions les plus centrales d'un groupe détecté dans un graphe de connaissances sur « {decl['libelle']} » :\n"
+        + "\n".join(f"- {n}" for n in c["notions"])
+        + "\n\nNomme le thème que ces notions ont en commun, en français, en une ligne de 4 à 12 mots, "
+        "sans point final, sans guillemets, à la manière de « équité algorithmique et biais » ou "
+        "« armes autonomes et IA militaire : CCW, contrôle humain ». Ne nomme que ce que les notions "
+        "montrent. Réponds par la ligne seule."
+    )
     rep = appeler_claude(prompt)
     if not rep:
         return None
@@ -381,21 +484,26 @@ def nommer(graphe: str, c: dict) -> str | None:
 
 def afficher(graphe: str, etat: dict) -> None:
     r, d = retenus(etat), dormants(etat)
-    print(f"  {graphe} : {len(etat['candidats'])} communauté(s) hors des sujets déclarés, "
-          f"{len(r)} retenue(s) (≥ {MIN_PASSAGES} passages, ≥ {MIN_NOTIONS} notions), {len(d)} sujet(s) dormant(s)")
+    print(
+        f"  {graphe} : {len(etat['candidats'])} communauté(s) hors des sujets déclarés, "
+        f"{len(r)} retenue(s) (≥ {MIN_PASSAGES} passages, ≥ {MIN_NOTIONS} notions), {len(d)} sujet(s) dormant(s)"
+    )
     for n, (k, c) in enumerate(r, 1):
         print(f"    {n}. {c.get('libelle') or c['etiquette']}  — {c['taille']} notions, {c['passages']} passages")
         print(f"       notions : {', '.join(c['notions'][:6])}")
     for s, v in d:
         print(f"    dormant : « {s} » — ni communauté ni notion ne le porte depuis {v['passages']} passages")
     if r:
-        print(f"  Accepter : python3 -m newskit.themes_emergents --graphe {graphe} accepter <n>   (refuser <n> pour ne plus le voir)")
+        print(
+            f"  Accepter : python3 -m newskit.themes_emergents --graphe {graphe} accepter <n>   (refuser <n> pour ne plus le voir)"
+        )
 
 
 def accepter(graphe: str, n: int, etat: dict) -> int:
     r = retenus(etat)
     if not 1 <= n <= len(r):
-        print(f"  pas de candidat n° {n} (il y en a {len(r)})", file=sys.stderr); return 1
+        print(f"  pas de candidat n° {n} (il y en a {len(r)})", file=sys.stderr)
+        return 1
     k, c = r[n - 1]
     libelle = c.get("libelle") or c["etiquette"]
     reg = json.loads(REGISTRE_SKILL.read_text(encoding="utf-8"))
@@ -403,7 +511,8 @@ def accepter(graphe: str, n: int, etat: dict) -> int:
     if libelle not in sujets:
         sujets.append(libelle)
     REGISTRE_SKILL.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    etat["acceptes"].append(k); del etat["candidats"][k]
+    etat["acceptes"].append(k)
+    del etat["candidats"][k]
     entrer_sujet(graphe, libelle, etat, k, c.get("notions", [])[:6], "thème émergent")
     for script in (REGISTRE_SKILL.parent / "synchroniser.py", CODE / "archiver_skill.py"):
         if script.exists():
@@ -423,8 +532,15 @@ def entrer_sujet(graphe: str, libelle: str, etat: dict, cle: str, notions: list[
     except Exception as e:  # noqa: BLE001
         print(f"  (expressions arXiv non obtenues : {str(e)[:80]})", file=sys.stderr)
     ajoutees = ajouter_themes_arxiv(graphe, libelle, expressions) if expressions else []
-    etat["nouveaux"][libelle] = {"date": time.strftime("%Y-%m-%d"), "cle": cle, "nuits": 0, "arxiv": ajoutees,
-                                 "statut": "en cours", "notions": notions, "origine": origine}
+    etat["nouveaux"][libelle] = {
+        "date": time.strftime("%Y-%m-%d"),
+        "cle": cle,
+        "nuits": 0,
+        "arxiv": ajoutees,
+        "statut": "en cours",
+        "notions": notions,
+        "origine": origine,
+    }
     ecrire_etat(graphe, etat)
     print(f"  sujet ajouté au registre du skill ({graphe}) : {libelle}")
     if ajoutees:
@@ -436,19 +552,23 @@ def declarer(graphe: str, libelle: str, etat: dict) -> int:
     Le sous-jeu du banc par thème est composé par la routine (ou : banc_themes.py --composer --themes « … »)."""
     libelle = " ".join(libelle.split())
     if len(libelle.split()) < 3:
-        print("  libellé trop court", file=sys.stderr); return 2
+        print("  libellé trop court", file=sys.stderr)
+        return 2
     reg = json.loads(REGISTRE_SKILL.read_text(encoding="utf-8"))
     sujets = reg.setdefault(graphe, {}).setdefault("sujets", [])
     if any(x.casefold() == libelle.casefold() for x in sujets):
-        print(f"  déjà parmi les sujets de {graphe}"); return 0
+        print(f"  déjà parmi les sujets de {graphe}")
+        return 0
     sujets.append(libelle)
     REGISTRE_SKILL.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     entrer_sujet(graphe, libelle, etat, cle_de(libelle), [], "porteur")
     for script in (REGISTRE_SKILL.parent / "synchroniser.py", CODE / "archiver_skill.py"):
         if script.exists():
             subprocess.run([sys.executable, str(script)], cwd=RACINE, capture_output=True, text=True, timeout=120)
-    print(f"  chaîne lancée : éclaireur et poseur en tête {NUITS_NEUF} passages, canon redemandé à la prochaine mesure, "
-          f"sous-jeu du banc par thème à la prochaine routine (ou maintenant : python3 -m newskit.banc_themes --graphe {graphe} --composer --themes \"{libelle[:40]}…\")")
+    print(
+        f"  chaîne lancée : éclaireur et poseur en tête {NUITS_NEUF} passages, canon redemandé à la prochaine mesure, "
+        f'sous-jeu du banc par thème à la prochaine routine (ou maintenant : python3 -m newskit.banc_themes --graphe {graphe} --composer --themes "{libelle[:40]}…")'
+    )
     return 0
 
 
@@ -460,7 +580,8 @@ def renommer(graphe: str, ancien: str, nouveau: str, etat: dict) -> int:
     sujets = reg.setdefault(graphe, {}).setdefault("sujets", [])
     cibles = [x for x in sujets if x.casefold() == ancien.casefold() or ancien.casefold() in x.casefold()]
     if len(cibles) > 1:
-        print(f"  {len(cibles)} sujets correspondent à « {ancien} » : préciser", file=sys.stderr); return 1
+        print(f"  {len(cibles)} sujets correspondent à « {ancien} » : préciser", file=sys.stderr)
+        return 1
     # Déjà renommé au skill (second passage, après qu'un jeu composé sous l'ancien libellé est arrivé) : on poursuit
     # avec le libellé donné, pour le jeu, l'historique et `nouveaux`.
     vieux = cibles[0] if cibles else " ".join(ancien.split())
@@ -478,18 +599,28 @@ def renommer(graphe: str, ancien: str, nouveau: str, etat: dict) -> int:
             q = json.loads(p.read_text(encoding="utf-8"))
             for x in q:
                 if x.get("theme") == vieux or (not cibles and ancien.casefold() in str(x.get("theme", "")).casefold()):
-                    x["theme"] = nouveau; n_q += 1
+                    x["theme"] = nouveau
+                    n_q += 1
             p.write_text(json.dumps(q, ensure_ascii=False, indent=1), encoding="utf-8")
     p = base / "themes_banc_historique.jsonl"
     if p.exists():
-        p.write_text(p.read_text(encoding="utf-8").replace(json.dumps(vieux, ensure_ascii=False), json.dumps(nouveau, ensure_ascii=False)), encoding="utf-8")
+        p.write_text(
+            p.read_text(encoding="utf-8").replace(
+                json.dumps(vieux, ensure_ascii=False), json.dumps(nouveau, ensure_ascii=False)
+            ),
+            encoding="utf-8",
+        )
     t = cfg.FICHIER.read_text(encoding="utf-8")
     if f"pour le sujet « {vieux[:70]} »" in t:
-        cfg.FICHIER.write_text(t.replace(f"pour le sujet « {vieux[:70]} »", f"pour le sujet « {nouveau[:70]} »"), encoding="utf-8")
+        cfg.FICHIER.write_text(
+            t.replace(f"pour le sujet « {vieux[:70]} »", f"pour le sujet « {nouveau[:70]} »"), encoding="utf-8"
+        )
     for script in (REGISTRE_SKILL.parent / "synchroniser.py", CODE / "archiver_skill.py"):
         if script.exists():
             subprocess.run([sys.executable, str(script)], cwd=RACINE, capture_output=True, text=True, timeout=120)
-    print(f"  sujet renommé ({graphe}) : « {vieux[:60]} » → « {nouveau[:80]} » ; {n_q} question(s) du banc par thème suivies")
+    print(
+        f"  sujet renommé ({graphe}) : « {vieux[:60]} » → « {nouveau[:80]} » ; {n_q} question(s) du banc par thème suivies"
+    )
     return 0
 
 
@@ -519,8 +650,15 @@ def ajouter_themes_arxiv(graphe: str, libelle: str, expressions: list[str], regi
     i_g = next((i for i in range(debut, len(lignes)) if lignes[i].rstrip() == f"    {graphe}:"), None)
     if i_g is None:
         return []
-    i_t = next((i for i in range(i_g + 1, len(lignes)) if lignes[i].rstrip() == "      themes:"
-                or (lignes[i].strip() and not lignes[i].startswith("      ") and not lignes[i].startswith("    #"))), None)
+    i_t = next(
+        (
+            i
+            for i in range(i_g + 1, len(lignes))
+            if lignes[i].rstrip() == "      themes:"
+            or (lignes[i].strip() and not lignes[i].startswith("      ") and not lignes[i].startswith("    #"))
+        ),
+        None,
+    )
     if i_t is None or lignes[i_t].rstrip() != "      themes:":
         return []
     fin = i_t + 1
@@ -528,11 +666,13 @@ def ajouter_themes_arxiv(graphe: str, libelle: str, expressions: list[str], regi
         if not lignes[fin].strip():
             break
         fin += 1
-    deja = {l.strip()[2:].strip().strip('"').casefold() for l in lignes[i_t + 1:fin] if l.strip().startswith("- ")}
+    deja = {l.strip()[2:].strip().strip('"').casefold() for l in lignes[i_t + 1 : fin] if l.strip().startswith("- ")}
     neuves = [e.strip() for e in expressions if e.strip() and e.strip().casefold() not in deja]
     if not neuves:
         return []
-    ajout = [f"        # ajoutés le {time.strftime('%Y-%m-%d')} par themes_emergents.py pour le sujet « {libelle[:70]} »"]
+    ajout = [
+        f"        # ajoutés le {time.strftime('%Y-%m-%d')} par themes_emergents.py pour le sujet « {libelle[:70]} »"
+    ]
     ajout += [f"        - {e}" for e in neuves]
     lignes[fin:fin] = ajout
     registre.write_text("\n".join(lignes), encoding="utf-8")
@@ -543,8 +683,11 @@ def nouveaux_en_cours(graphe: str, etat: dict | None = None) -> list[str]:
     """Les sujets neufs encore en approfondissement (moins de NUITS_NEUF nuits, non tenus), le plus récent d'abord."""
     etat = etat if etat is not None else lire_etat(graphe)
     # Les plus faibles au banc par thème d'abord (un sujet jamais mesuré compte comme 0), puis les plus récents.
-    return [lib for lib, v in sorted(etat["nouveaux"].items(), key=lambda kv: (kv[1].get("juste", 0.0), kv[1].get("date", "")))
-            if v.get("statut") == "en cours" and v.get("nuits", 0) < NUITS_NEUF]
+    return [
+        lib
+        for lib, v in sorted(etat["nouveaux"].items(), key=lambda kv: (kv[1].get("juste", 0.0), kv[1].get("date", "")))
+        if v.get("statut") == "en cours" and v.get("nuits", 0) < NUITS_NEUF
+    ]
 
 
 def retirer(graphe: str, libelle: str, etat: dict) -> int:
@@ -554,7 +697,8 @@ def retirer(graphe: str, libelle: str, etat: dict) -> int:
     sujets = reg.setdefault(graphe, {}).setdefault("sujets", [])
     cibles = [x for x in sujets if x.casefold() == libelle.casefold() or libelle.casefold() in x.casefold()]
     if len(cibles) != 1:
-        print(f"  {len(cibles)} sujet(s) correspondent à « {libelle} » : préciser", file=sys.stderr); return 1
+        print(f"  {len(cibles)} sujet(s) correspondent à « {libelle} » : préciser", file=sys.stderr)
+        return 1
     sujets.remove(cibles[0])
     REGISTRE_SKILL.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     # Retirer n'est pas refuser (porteur, 09.10.2026) : la communauté redevient candidate, et si elle se représente
@@ -575,9 +719,11 @@ def retirer(graphe: str, libelle: str, etat: dict) -> int:
 def refuser(graphe: str, n: int, etat: dict) -> int:
     r = retenus(etat)
     if not 1 <= n <= len(r):
-        print(f"  pas de candidat n° {n} (il y en a {len(r)})", file=sys.stderr); return 1
+        print(f"  pas de candidat n° {n} (il y en a {len(r)})", file=sys.stderr)
+        return 1
     k, c = r[n - 1]
-    etat["refuses"].append(k); del etat["candidats"][k]
+    etat["refuses"].append(k)
+    del etat["candidats"][k]
     ecrire_etat(graphe, etat)
     print(f"  candidat écarté, il ne sera plus proposé : {c.get('libelle') or c['etiquette']}")
     return 0
@@ -588,10 +734,16 @@ def main() -> int:
     ap.add_argument("--graphe", default=cfg.GRAPHE_PRINCIPAL)
     ap.add_argument("--etat", action="store_true", help="afficher sans détecter")
     ap.add_argument("--sans-modele", action="store_true", help="ne pas demander de libellé à Claude")
-    ap.add_argument("action", nargs="?", choices=["accepter", "refuser", "auto", "retirer", "declarer", "renommer"],
-                    help="auto : accepter les candidats tenus MIN_PASSAGES_AUTO passages ; retirer <libellé> : défaire ; "
-                         "declarer <libellé> : un sujet du porteur, avec la chaîne d'approfondissement")
-    ap.add_argument("numero", nargs="?", help="numéro du candidat (accepter, refuser) ou libellé (retirer, declarer, renommer)")
+    ap.add_argument(
+        "action",
+        nargs="?",
+        choices=["accepter", "refuser", "auto", "retirer", "declarer", "renommer"],
+        help="auto : accepter les candidats tenus MIN_PASSAGES_AUTO passages ; retirer <libellé> : défaire ; "
+        "declarer <libellé> : un sujet du porteur, avec la chaîne d'approfondissement",
+    )
+    ap.add_argument(
+        "numero", nargs="?", help="numéro du candidat (accepter, refuser) ou libellé (retirer, declarer, renommer)"
+    )
     ap.add_argument("nouveau", nargs="?", help="renommer : le nouveau libellé")
     args = ap.parse_args()
     graphe = cfg.nom_actuel(args.graphe)
@@ -604,23 +756,28 @@ def main() -> int:
         return 0
     if args.action == "retirer":
         if not args.numero:
-            print("  libellé du sujet attendu", file=sys.stderr); return 2
+            print("  libellé du sujet attendu", file=sys.stderr)
+            return 2
         return retirer(graphe, str(args.numero), etat)
     if args.action == "renommer":
         if not args.numero or not args.nouveau:
-            print("  ancien et nouveau libellés attendus", file=sys.stderr); return 2
+            print("  ancien et nouveau libellés attendus", file=sys.stderr)
+            return 2
         return renommer(graphe, str(args.numero), args.nouveau, etat)
     if args.action == "declarer":
         if not args.numero:
-            print("  libellé du sujet attendu", file=sys.stderr); return 2
+            print("  libellé du sujet attendu", file=sys.stderr)
+            return 2
         return declarer(graphe, str(args.numero), etat)
     if args.action:
         if args.numero is None or not str(args.numero).isdigit():
-            print("  numéro du candidat attendu", file=sys.stderr); return 2
+            print("  numéro du candidat attendu", file=sys.stderr)
+            return 2
         return (accepter if args.action == "accepter" else refuser)(graphe, int(args.numero), etat)
     if args.etat:
-        afficher(graphe, etat); return 0
-    if os.environ.get("PYTHONHASHSEED") != GRAINE:      # la graine se fixe au démarrage de l'interpréteur
+        afficher(graphe, etat)
+        return 0
+    if os.environ.get("PYTHONHASHSEED") != GRAINE:  # la graine se fixe au démarrage de l'interpréteur
         os.execve(sys.executable, [sys.executable, *sys.argv], {**os.environ, "PYTHONHASHSEED": GRAINE})
     G = charger(graphe)
     notions = notions_du_graphe(G) if G is not None else []
@@ -632,8 +789,16 @@ def main() -> int:
     horo = time.strftime("%Y-%m-%d")
     juge = None if args.sans_modele else (lambda sujets, restantes: couverture_par_claude(graphe, sujets, restantes))
     traduire = None if args.sans_modele else (lambda sujets: traduire_par_claude(graphe, sujets))
-    etat = detecter(graphe, communautes_du_graphe(graphe, G), sujets_declares(graphe), etat, horo, juge,
-                    notions=notions, traduire=traduire)
+    etat = detecter(
+        graphe,
+        communautes_du_graphe(graphe, G),
+        sujets_declares(graphe),
+        etat,
+        horo,
+        juge,
+        notions=notions,
+        traduire=traduire,
+    )
     if not args.sans_modele:
         for k, c in retenus(etat):
             if not c.get("libelle"):

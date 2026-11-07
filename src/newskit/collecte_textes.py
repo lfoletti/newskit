@@ -36,14 +36,20 @@ from newskit import fiche  # noqa: E402
 
 # Un jeu d'en-têtes de navigateur complet et cohérent, selon la méthode de l'outil d'audit de site_scraper (stealth.py) :
 # le NIST refusait un agent nommé, le Conseil de l'Europe un agent seul (403, 07.10.2026) ; jamais d'agent seul en dur.
-UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-      "sec-ch-ua-mobile": "?0", "sec-ch-ua-platform": '"macOS"',
-      "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1",
-      "Upgrade-Insecure-Requests": "1"}
+UA = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 # Les textes, par graphe : une donnée de l'édition (N2), dans textes_de_reference.yaml sous la racine des données.
 # `forme` : « eurlex » (HTML d'EUR-Lex, découpé par article et annexe), « pdf » (découpé par les titres de section donnés
@@ -74,8 +80,10 @@ def decouper_eurlex(h: str) -> list[dict]:
     """Articles et annexes d'un acte d'EUR-Lex, chacun avec son chapitre (et sa section) en sous-titre."""
     # Chaque borne commence à la balise qui porte l'identifiant, pas à l'identifiant : sinon le début de la balise
     # suivante finit dans le texte de la partie précédente.
-    bornes = [(m.start(), m.group(1)) for m in
-              re.finditer(r'<[a-z]+[^<>]*\bid="((?:art_\d+|anx_[IVXLC]+|cpt_[IVXLC]+(?:\.sct_\d+)?|fnp_\d+))"', h)]
+    bornes = [
+        (m.start(), m.group(1))
+        for m in re.finditer(r'<[a-z]+[^<>]*\bid="((?:art_\d+|anx_[IVXLC]+|cpt_[IVXLC]+(?:\.sct_\d+)?|fnp_\d+))"', h)
+    ]
     out, chapitre, section = [], "", ""
     for k, (debut, ident) in enumerate(bornes):
         fin = bornes[k + 1][0] if k + 1 < len(bornes) else len(h)
@@ -94,18 +102,32 @@ def decouper_eurlex(h: str) -> list[dict]:
             n = int(ident[4:])
             titre = f"Article {n}" + (f": {lignes[1]}" if len(lignes) > 1 else "")
             corps = "\n\n".join(lignes[2:])
-            out.append({"ident": ident, "rang": f"art-{n:03d}", "titre": titre, "contexte": " · ".join(x for x in (chapitre, section) if x),
-                        "corps": corps})
+            out.append(
+                {
+                    "ident": ident,
+                    "rang": f"art-{n:03d}",
+                    "titre": titre,
+                    "contexte": " · ".join(x for x in (chapitre, section) if x),
+                    "corps": corps,
+                }
+            )
         else:
             titre = " — ".join(lignes[:2])
-            out.append({"ident": ident, "rang": f"anx-{ident[4:].lower()}", "titre": titre, "contexte": "Annexes",
-                        "corps": "\n\n".join(lignes[2:])})
+            out.append(
+                {
+                    "ident": ident,
+                    "rang": f"anx-{ident[4:].lower()}",
+                    "titre": titre,
+                    "contexte": "Annexes",
+                    "corps": "\n\n".join(lignes[2:]),
+                }
+            )
     return out
 
 
 def decouper_fedlex(h: str) -> list[dict]:
     """Les articles d'un acte de Fedlex (un <article id="art_…"> chacun), avec leur chapitre et leur section."""
-    titres = []                                   # (position, niveau, intitulé) des chapitres et sections
+    titres = []  # (position, niveau, intitulé) des chapitres et sections
     for m in re.finditer(r'<section id="(chap_[^"/]+(?:/sec_[^"]+)?)"[^>]*>\s*<h\d[^>]*>(.*?)</h\d>', h, flags=re.S):
         titres.append((m.start(), "sec" if "/sec_" in m.group(1) else "chap", texte_de(m.group(2)).replace("\n", " ")))
     out = []
@@ -114,13 +136,28 @@ def decouper_fedlex(h: str) -> list[dict]:
         titre = texte_de(tete.group(1)).replace("\n", " ") if tete else m.group(1)
         corps = texte_de(re.sub(r'(?s)<h6[^>]*>.*?</h6>|<div class="footnotes".*', "", m.group(2)))
         chap = next((x for p, n, x in reversed(titres) if p < m.start() and n == "chap"), "")
-        sec = next((x for p, n, x in reversed(titres) if p < m.start() and n == "sec"
-                    and p > max([q for q, k, _ in titres if k == "chap" and q < m.start()] or [0])), "")
+        sec = next(
+            (
+                x
+                for p, n, x in reversed(titres)
+                if p < m.start()
+                and n == "sec"
+                and p > max([q for q, k, _ in titres if k == "chap" and q < m.start()] or [0])
+            ),
+            "",
+        )
         ident = m.group(1)
         n = re.match(r"art_(\d+)([a-z]*)", ident)
         rang = f"art-{int(n.group(1)):03d}{n.group(2)}" if n else ident.replace("_", "-")
-        out.append({"ident": ident, "rang": rang, "titre": titre, "contexte": " · ".join(x for x in (chap, sec) if x),
-                    "corps": "\n\n".join(corps.splitlines())})
+        out.append(
+            {
+                "ident": ident,
+                "rang": rang,
+                "titre": titre,
+                "contexte": " · ".join(x for x in (chap, sec) if x),
+                "corps": "\n\n".join(corps.splitlines()),
+            }
+        )
     return out
 
 
@@ -130,6 +167,7 @@ def pages_depuis_index(t: dict) -> list[dict]:
     Based Rendering, LearnOpenGL, documentation d'Unreal Engine)."""
     import urllib.parse  # noqa: PLC0415
     from newskit import collecte_rss as cr  # noqa: PLC0415
+
     urls = list(t.get("pages") or [])
     if not urls:
         index = lire(t["url"]).decode("utf-8", "replace")
@@ -151,8 +189,10 @@ def pages_depuis_index(t: dict) -> list[dict]:
 def sections_html(h: str, niveau: str = "h3", exclure: str = "^appendix") -> list[dict]:
     """Une page longue (une spécification) découpée à chaque titre de `niveau` portant un identifiant, avec le titre
     de section supérieur pour contexte (07.10.2026 : la spécification glTF 2.0, 99 sections)."""
-    marques = [(m.start(), m.group(1), m.group(2), m.group(3)) for m in
-               re.finditer(r'<(h2|' + niveau + r') id="([^"]+)"[^>]*>(.*?)</\1>', h, flags=re.S)]
+    marques = [
+        (m.start(), m.group(1), m.group(2), m.group(3))
+        for m in re.finditer(r"<(h2|" + niveau + r') id="([^"]+)"[^>]*>(.*?)</\1>', h, flags=re.S)
+    ]
     out, contexte = [], ""
     for k, (debut, balise, ident, titre) in enumerate(marques):
         titre = texte_de(titre).replace("\n", " ")
@@ -172,6 +212,7 @@ def markdown_github(t: dict) -> list[dict]:
     """Un fichier Markdown par sous-dossier d'un dépôt GitHub (07.10.2026 : les extensions officielles de glTF,
     KhronosGroup/glTF/extensions/2.0/Khronos/<extension>/README.md)."""
     import json  # noqa: PLC0415
+
     liste = json.loads(lire(t["api"]).decode("utf-8"))
     out = []
     for e in liste:
@@ -183,8 +224,16 @@ def markdown_github(t: dict) -> list[dict]:
         except Exception:  # noqa: BLE001
             continue
         titre = (re.search(r"^#\s+(.+)$", md, flags=re.M) or [None, e["name"]])[1]
-        out.append({"ident": e["name"], "rang": e["name"].lower(), "titre": titre.strip(), "contexte": "",
-                    "corps": md, "url": f"https://github.com/{t['depot']}/blob/{t.get('branche', 'main')}/{e['path']}"})
+        out.append(
+            {
+                "ident": e["name"],
+                "rang": e["name"].lower(),
+                "titre": titre.strip(),
+                "contexte": "",
+                "corps": md,
+                "url": f"https://github.com/{t['depot']}/blob/{t.get('branche', 'main')}/{e['path']}",
+            }
+        )
     return out
 
 
@@ -192,7 +241,10 @@ def decouper_pdf_articles(donnees: bytes) -> list[dict]:
     """Un traité en PDF, découpé par article (« Article N – Titre »), avec son chapitre. Les lignes coupées par la mise en
     page sont recousues ; un renvoi en tête de ligne (« Article 3 du… ») n'ouvre pas d'article : les numéros croissent."""
     import pypdf  # noqa: PLC0415
-    lignes = [l.strip() for p in pypdf.PdfReader(io.BytesIO(donnees)).pages for l in (p.extract_text() or "").splitlines()]
+
+    lignes = [
+        l.strip() for p in pypdf.PdfReader(io.BytesIO(donnees)).pages for l in (p.extract_text() or "").splitlines()
+    ]
     out, chapitre, courant, attendu = [], "", None, 1
     for l in lignes:
         mc = re.match(r"^Chapter\s+[IVXLC]+\s+[–-]\s+(.+)$", l)
@@ -201,8 +253,13 @@ def decouper_pdf_articles(donnees: bytes) -> list[dict]:
             chapitre = l
             continue
         if ma and int(ma.group(1)) == attendu:
-            courant = {"ident": f"art_{attendu}", "rang": f"art-{attendu:03d}", "titre": f"Article {attendu}: {ma.group(2)}",
-                       "contexte": chapitre, "lignes": []}
+            courant = {
+                "ident": f"art_{attendu}",
+                "rang": f"art-{attendu:03d}",
+                "titre": f"Article {attendu}: {ma.group(2)}",
+                "contexte": chapitre,
+                "lignes": [],
+            }
             out.append(courant)
             attendu += 1
             continue
@@ -222,6 +279,7 @@ def decouper_pdf_articles(donnees: bytes) -> list[dict]:
 
 def decouper_pdf(donnees: bytes, sections: list[str]) -> list[dict]:
     import pypdf  # noqa: PLC0415
+
     lecteur = pypdf.PdfReader(io.BytesIO(donnees))
     lignes = [l.strip() for p in lecteur.pages for l in (p.extract_text() or "").splitlines()]
     reperes = []
@@ -235,8 +293,10 @@ def decouper_pdf(donnees: bytes, sections: list[str]) -> list[dict]:
     out = []
     for k, (i, titre) in enumerate(reperes):
         fin = reperes[k + 1][0] if k + 1 < len(reperes) else len(lignes)
-        corps = re.sub(r"(?<![.:;])\n(?=[a-z(])", " ", "\n".join(lignes[i + 1:fin]))
-        out.append({"ident": f"sec_{k + 1}", "rang": f"sec-{k + 1:02d}", "titre": titre, "contexte": "", "corps": corps})
+        corps = re.sub(r"(?<![.:;])\n(?=[a-z(])", " ", "\n".join(lignes[i + 1 : fin]))
+        out.append(
+            {"ident": f"sec_{k + 1}", "rang": f"sec-{k + 1:02d}", "titre": titre, "contexte": "", "corps": corps}
+        )
     return out
 
 
@@ -287,14 +347,26 @@ def collecter(graphe: str, controle: bool = False) -> int:
                 print(f"    écrirait {chemin.relative_to(RACINE)}  ({len(p['corps'].split())} mots)")
                 ecrites += 1
                 continue
-            champs = {"title": titre, "subtitle": p["contexte"], "author": t["auteur"], "date": t["date"],
-                      "url": p.get("url") or ((t.get("lien") or t["url"]) + (f"#{p['ident']}" if t["forme"] in ("eurlex", "fedlex", "sections_html") else "")),
-                      # Un PDF n'a pas d'ancre par article : l'adresse est celle du document, le titre dit l'article.
-                      "plateforme": "Référence", "publication": t["publication"], "complet": True,
-                      "collected": aujourdhui, "source": f"texte de référence, officiel, découpé par partie ({t['court']})"}
+            champs = {
+                "title": titre,
+                "subtitle": p["contexte"],
+                "author": t["auteur"],
+                "date": t["date"],
+                "url": p.get("url")
+                or (
+                    (t.get("lien") or t["url"])
+                    + (f"#{p['ident']}" if t["forme"] in ("eurlex", "fedlex", "sections_html") else "")
+                ),
+                # Un PDF n'a pas d'ancre par article : l'adresse est celle du document, le titre dit l'article.
+                "plateforme": "Référence",
+                "publication": t["publication"],
+                "complet": True,
+                "collected": aujourdhui,
+                "source": f"texte de référence, officiel, découpé par partie ({t['court']})",
+            }
             try:
                 fiche.ecrire(chemin, champs, corps, strict=False)
-            except fiche.IdentiteDejaVue as deja:      # une autre fiche du graphe porte déjà cette partie
+            except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà cette partie
                 print(f"  déjà vue : {deja}")
                 continue
             ecrites += 1
@@ -302,9 +374,12 @@ def collecter(graphe: str, controle: bool = False) -> int:
     # La version et le statut de chaque fiche (en vigueur, remplacée) dans son en-tête, d'après les familles
     # déclarées ci-dessus (diachronie.py, 09.10.2026) ; l'en-tête seul change, rien n'est réextrait.
     from newskit import diachronie  # noqa: PLC0415
+
     c = diachronie.annoter_fiches(graphe, controle)
-    print(f"  versions : {c['ecrites']} en-tête(s) {'à écrire' if controle else 'écrit(s)'}, {c[diachronie.EN_VIGUEUR]} fiche(s) "
-          f"en vigueur, {c[diachronie.REMPLACEE]} remplacée(s)")
+    print(
+        f"  versions : {c['ecrites']} en-tête(s) {'à écrire' if controle else 'écrit(s)'}, {c[diachronie.EN_VIGUEUR]} fiche(s) "
+        f"en vigueur, {c[diachronie.REMPLACEE]} remplacée(s)"
+    )
     return 0
 
 
@@ -312,10 +387,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--controle", action="store_true")
-    ap.add_argument("--versions", action="store_true", help="veille seule : versions nouvelles en ligne (diachronie.py --versions)")
+    ap.add_argument(
+        "--versions", action="store_true", help="veille seule : versions nouvelles en ligne (diachronie.py --versions)"
+    )
     a = ap.parse_args()
     if a.versions:
         from newskit import diachronie  # noqa: PLC0415
+
         signaux = diachronie.veille(cfg.nom_actuel(a.graphe))
         for s in signaux:
             print(f"  À FAIRE : {s}")

@@ -24,13 +24,25 @@ PLAFOND = 10
 @pytest.fixture(scope="module")
 def passage(tmp_path_factory):
     t = temoin.preparer(tmp_path_factory.mktemp("plafonds") / "t")
-    reg = t.donnees / "config.yaml"     # les graphes et leurs bornes vivent au config.yaml du média
+    reg = t.donnees / "config.yaml"  # les graphes et leurs bornes vivent au config.yaml du média
     d = yaml.safe_load(reg.read_text(encoding="utf-8"))
     d["graphes"][temoin.GRAPHE].update({"plafond_couche2": 4, "plafond_couche2_max": PLAFOND})
     reg.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r
 
 

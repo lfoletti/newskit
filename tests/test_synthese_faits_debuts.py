@@ -1,5 +1,6 @@
 """`synthese.faits` : un mot courant en tête de phrase n'est pas un nom propre (04.11.2026, éclairages NCSC et AI Act :
 « Au-delà de 14 jours » retiré, « Seul » refusé)."""
+
 from newskit import synthese as sy
 
 

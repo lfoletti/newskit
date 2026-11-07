@@ -41,6 +41,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 GRAPHE = RACINE / "graphe" / "graphe.json"
 SORTIE = RACINE / "graphe" / "carte.md"
 
@@ -69,8 +70,11 @@ def _type(G, n) -> str:
 
 
 def _tableau(entetes: list[str], lignes: list[list[str]]) -> list[str]:
-    return (["| " + " | ".join(entetes) + " |", "|" + "---|" * len(entetes)]
-            + ["| " + " | ".join(str(c) for c in l) + " |" for l in lignes] + [""])
+    return (
+        ["| " + " | ".join(entetes) + " |", "|" + "---|" * len(entetes)]
+        + ["| " + " | ".join(str(c) for c in l) + " |" for l in lignes]
+        + [""]
+    )
 
 
 def communautes(G, combien: int) -> list[tuple[str, list[str], float]]:
@@ -87,10 +91,11 @@ def communautes(G, combien: int) -> list[tuple[str, list[str], float]]:
         return []
     try:
         from graphify.cluster import cluster, label_communities_by_hub, score_all
+
         comms = cluster(H)
         etiquettes = label_communities_by_hub(H, comms)
         scores = score_all(H, comms)
-    except Exception:                                  # repli sans graphify
+    except Exception:  # repli sans graphify
         comms = {i: list(c) for i, c in enumerate(nx.community.greedy_modularity_communities(H))}
         etiquettes = {i: _label(H, max(c, key=lambda n: H.degree(n))) for i, c in comms.items()}
         scores = {i: 0.0 for i in comms}
@@ -120,6 +125,7 @@ def main() -> int:
         else:
             pass
             from newskit import config_sources as cfg  # noqa: PLC0415
+
             chemins = cfg.chemins_du_graphe(args.graphe)
             p, SORTIE = chemins["graphe"], chemins["carte"]
     if args.sortie:
@@ -134,70 +140,102 @@ def main() -> int:
     confs = Counter(d.get("confidence", "?") for _, _, d in G.edges(data=True))
 
     L: list[str] = [
-        "# Carte du domaine" + (f" — {args.graphe}" if args.graphe and "/" not in args.graphe
-                                 and not args.graphe.endswith(".json") else ""),
+        "# Carte du domaine"
+        + (f" — {args.graphe}" if args.graphe and "/" not in args.graphe and not args.graphe.endswith(".json") else ""),
         "",
         "*Produite par `newskit.digerer_graphe`. Ce document est fait pour être chargé "
         "intégralement : il oriente dans le graphe, il ne le remplace pas. "
         "Pour creuser, `newskit.interroger_graphe`.*",
         "",
-        (f"**{G.number_of_nodes() - types['auteur']} nœuds hors auteurs, {types['auteur']} auteurs, "
-         f"{G.number_of_edges()} arêtes.** " if types.get("auteur") else
-         f"**{G.number_of_nodes()} nœuds, {G.number_of_edges()} arêtes.** ") +
-        "Confiance : " + ", ".join(f"{n} {k.lower()}" for k, n in confs.most_common()) + ".",
+        (
+            f"**{G.number_of_nodes() - types['auteur']} nœuds hors auteurs, {types['auteur']} auteurs, "
+            f"{G.number_of_edges()} arêtes.** "
+            if types.get("auteur")
+            else f"**{G.number_of_nodes()} nœuds, {G.number_of_edges()} arêtes.** "
+        )
+        + "Confiance : "
+        + ", ".join(f"{n} {k.lower()}" for k, n in confs.most_common())
+        + ".",
         "",
-        (lambda nm, am: (
-            f"*{nm} nœuds et {am} arêtes viennent de la source « Modèle » : des compléments "
-            f"écrits par un modèle, sans source externe, là où le corpus a une lacune "
-            f"constatée. Ils sont marqués `·modèle` partout dans cette carte, et leurs "
-            f"relations sont en INFERRED ou AMBIGUOUS. "
-            f"`interroger_graphe.py --sans-modele` les écarte.*")
-         if nm else "")(
+        (
+            lambda nm, am: (
+                (
+                    f"*{nm} nœuds et {am} arêtes viennent de la source « Modèle » : des compléments "
+                    f"écrits par un modèle, sans source externe, là où le corpus a une lacune "
+                    f"constatée. Ils sont marqués `·modèle` partout dans cette carte, et leurs "
+                    f"relations sont en INFERRED ou AMBIGUOUS. "
+                    f"`interroger_graphe.py --sans-modele` les écarte.*"
+                )
+                if nm
+                else ""
+            )
+        )(
             sum(1 for n in G if _du_modele(G, n)),
-            sum(1 for _u, _v, d in G.edges(data=True) if d.get("origine") == "modele")),
+            sum(1 for _u, _v, d in G.edges(data=True) if d.get("origine") == "modele"),
+        ),
         "",
         "## Ce que le graphe contient",
         "",
     ]
-    L += _tableau(["type de nœud", "nombre", "ce que c'est"], [
-        [t, n, {
-            "auteur": "personnes signataires, newsletters et papiers confondus",
-            "papier": "papiers arXiv, avec titre, auteurs, résumé et catégories",
-            "article": "fiches du corpus : éditions, billets, articles",
-            "rationale": "principes, mécanismes, motifs de conception",
-            "concept": "notions, modèles, entreprises, normes",
-            "depot": "dépôts GitHub cités",
-            "externe": "ressources hors corpus citées par au moins deux fiches",
-            "document": "sections de fiche, issues de la structure des titres",
-            "entite": "institutions et personnes du who-is-who suisse",
-            "publication": "publications d'origine",
-            "code": "outils et classes nommés dans le texte",
-            "paper": "papiers nommés par la couche conceptuelle",
-        }.get(t, "")] for t, n in types.most_common()])
+    L += _tableau(
+        ["type de nœud", "nombre", "ce que c'est"],
+        [
+            [
+                t,
+                n,
+                {
+                    "auteur": "personnes signataires, newsletters et papiers confondus",
+                    "papier": "papiers arXiv, avec titre, auteurs, résumé et catégories",
+                    "article": "fiches du corpus : éditions, billets, articles",
+                    "rationale": "principes, mécanismes, motifs de conception",
+                    "concept": "notions, modèles, entreprises, normes",
+                    "depot": "dépôts GitHub cités",
+                    "externe": "ressources hors corpus citées par au moins deux fiches",
+                    "document": "sections de fiche, issues de la structure des titres",
+                    "entite": "institutions et personnes du who-is-who suisse",
+                    "publication": "publications d'origine",
+                    "code": "outils et classes nommés dans le texte",
+                    "paper": "papiers nommés par la couche conceptuelle",
+                }.get(t, ""),
+            ]
+            for t, n in types.most_common()
+        ],
+    )
 
     L += ["## Le vocabulaire des relations", ""]
-    L += _tableau(["relation", "nombre", "sens"], [
-        [r, n, {
-            "ecrit_par": "une fiche ou un papier vers ses auteurs",
-            "cite_papier": "une fiche vers un papier arXiv",
-            "publie_dans": "une fiche vers sa publication",
-            "cite_article": "une fiche vers une autre fiche du corpus",
-            "cite_externe": "une fiche vers une ressource externe adoptée",
-            "cite_depot": "une fiche vers un dépôt GitHub",
-            "contains": "une fiche vers ses sections",
-            "references": "mention explicite, couche conceptuelle",
-            "implements": "une notion met en œuvre une autre",
-            "conceptually_related_to": "parenté conceptuelle établie par lecture",
-            "semantically_similar_to": "rapprochement inféré, avec un score",
-            "rationale_for": "une notion justifie une autre",
-            "cites": "citation académique",
-            "shares_data_with": "deux notions partagent une structure",
-        }.get(r, "relation issue du who-is-who")] for r, n in rels.most_common(18)])
+    L += _tableau(
+        ["relation", "nombre", "sens"],
+        [
+            [
+                r,
+                n,
+                {
+                    "ecrit_par": "une fiche ou un papier vers ses auteurs",
+                    "cite_papier": "une fiche vers un papier arXiv",
+                    "publie_dans": "une fiche vers sa publication",
+                    "cite_article": "une fiche vers une autre fiche du corpus",
+                    "cite_externe": "une fiche vers une ressource externe adoptée",
+                    "cite_depot": "une fiche vers un dépôt GitHub",
+                    "contains": "une fiche vers ses sections",
+                    "references": "mention explicite, couche conceptuelle",
+                    "implements": "une notion met en œuvre une autre",
+                    "conceptually_related_to": "parenté conceptuelle établie par lecture",
+                    "semantically_similar_to": "rapprochement inféré, avec un score",
+                    "rationale_for": "une notion justifie une autre",
+                    "cites": "citation académique",
+                    "shares_data_with": "deux notions partagent une structure",
+                }.get(r, "relation issue du who-is-who"),
+            ]
+            for r, n in rels.most_common(18)
+        ],
+    )
 
-    for titre, t, n in [("Notions les plus centrales", TYPES_CONCEPT, 30),
-                        ("Papiers les plus cités", ("papier",), 15),
-                        ("Dépôts les plus cités", ("depot",), 15),
-                        ("Auteurs les plus présents", ("auteur",), 12)]:
+    for titre, t, n in [
+        ("Notions les plus centrales", TYPES_CONCEPT, 30),
+        ("Papiers les plus cités", ("papier",), 15),
+        ("Dépôts les plus cités", ("depot",), 15),
+        ("Auteurs les plus présents", ("auteur",), 12),
+    ]:
         noeuds = [x for x in G if _type(G, x) in t]
         noeuds.sort(key=lambda x: -G.degree(x))
         L += [f"## {titre}", ""]
@@ -205,37 +243,57 @@ def main() -> int:
 
     comms = communautes(G, args.communautes)
     if comms:
-        L += ["## Communautés du graphe conceptuel", "",
-              "*Détectées sur le seul sous-graphe des notions : sur le graphe entier, "
-              "les auteurs et les papiers dominent la structure et décriraient la "
-              "bibliographie plutôt que le domaine.*", ""]
+        L += [
+            "## Communautés du graphe conceptuel",
+            "",
+            "*Détectées sur le seul sous-graphe des notions : sur le graphe entier, "
+            "les auteurs et les papiers dominent la structure et décriraient la "
+            "bibliographie plutôt que le domaine.*",
+            "",
+        ]
         for etiquette, membres, score in comms:
             tete = ", ".join(_label(G, m) for m in membres[:12])
-            L += [f"**{etiquette}** — {len(membres)} notions"
-                  + (f", cohésion {score:.2f}" if score else "") + f"  \n{tete}", ""]
+            L += [
+                f"**{etiquette}** — {len(membres)} notions"
+                + (f", cohésion {score:.2f}" if score else "")
+                + f"  \n{tete}",
+                "",
+            ]
 
-    ponts = [(d.get("confidence_score", 0), u, v) for u, v, d in G.edges(data=True)
-             if d.get("relation") == "semantically_similar_to"]
+    ponts = [
+        (d.get("confidence_score", 0), u, v)
+        for u, v, d in G.edges(data=True)
+        if d.get("relation") == "semantically_similar_to"
+    ]
     ponts.sort(reverse=True)
     if ponts:
-        L += ["## Rapprochements inférés les plus forts", "",
-              "*Établis par la couche conceptuelle entre notions sans lien structurel. "
-              "Ce sont des hypothèses, avec leur score.*", ""]
-        L += _tableau(["notion", "notion", "score"],
-                      [[_label(G, u)[:44], _label(G, v)[:44], f"{s:.2f}"] for s, u, v in ponts[:18]])
+        L += [
+            "## Rapprochements inférés les plus forts",
+            "",
+            "*Établis par la couche conceptuelle entre notions sans lien structurel. "
+            "Ce sont des hypothèses, avec leur score.*",
+            "",
+        ]
+        L += _tableau(
+            ["notion", "notion", "score"],
+            [[_label(G, u)[:44], _label(G, v)[:44], f"{s:.2f}"] for s, u, v in ponts[:18]],
+        )
 
     L += [
-        "## Creuser", "",
+        "## Creuser",
+        "",
         "```bash",
-        "python3 -m newskit.interroger_graphe chercher   \"agent memory\"",
-        "python3 -m newskit.interroger_graphe expliquer  \"event sourcing\"",
+        'python3 -m newskit.interroger_graphe chercher   "agent memory"',
+        'python3 -m newskit.interroger_graphe expliquer  "event sourcing"',
         "python3 -m newskit.interroger_graphe voisinage  concept_knowledge_graph",
-        "python3 -m newskit.interroger_graphe chemin     \"ontologie\" \"audit trail\"",
-        "python3 -m newskit.interroger_graphe sources    \"bi-temporal\"",
+        'python3 -m newskit.interroger_graphe chemin     "ontologie" "audit trail"',
+        'python3 -m newskit.interroger_graphe sources    "bi-temporal"',
         "python3 -m newskit.interroger_graphe fiche      audit-auditor",
         "python3 -m newskit.interroger_graphe sommets    --type papier",
-        "```", "",
-        "Chaque réponse porte sa provenance, fichier et ligne, et aucune n'appelle de modèle.", "",
+        "```",
+        "",
+        "Chaque réponse porte sa provenance, fichier et ligne, et aucune n'appelle de modèle.",
+        "",
     ]
 
     SORTIE.write_text("\n".join(L), encoding="utf-8")
@@ -249,6 +307,5 @@ if __name__ == "__main__":
     # de hachage demande de relancer l'interpréteur : la variable est lue au
     # démarrage et ne peut pas être posée après coup.
     if os.environ.get("PYTHONHASHSEED") != "0":
-        os.execve(sys.executable, [sys.executable, *sys.argv],
-                  {**os.environ, "PYTHONHASHSEED": "0"})
+        os.execve(sys.executable, [sys.executable, *sys.argv], {**os.environ, "PYTHONHASHSEED": "0"})
     sys.exit(main())

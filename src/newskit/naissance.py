@@ -14,6 +14,7 @@ Trois gardes, en calcul pur, et l'état dans `graphe/<g>/naissance.json` :
     python3 -m newskit.naissance quarantaine --graphe <graphe>    # après chaque collecte, avant l'extraction
     python3 -m newskit.naissance etat --graphe <graphe>
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,8 +44,13 @@ def adresses_citees(q: dict) -> set[str]:
 def sceller(jeu: list[dict], quand: str) -> dict:
     if not jeu:
         raise ValueError("un jeu vide ne se scelle pas")
-    return {"questions": len(jeu), "scelle_le": quand, "empreinte": empreinte(jeu), "indices": [q.get("i") for q in jeu],
-            "adresses": sorted(set().union(*(adresses_citees(q) for q in jeu)))}
+    return {
+        "questions": len(jeu),
+        "scelle_le": quand,
+        "empreinte": empreinte(jeu),
+        "indices": [q.get("i") for q in jeu],
+        "adresses": sorted(set().union(*(adresses_citees(q) for q in jeu))),
+    }
 
 
 def completer(jeu: list[dict], sceaux: list[dict], fiches: list[tuple[str, str]], quand: str) -> dict:
@@ -68,8 +74,12 @@ def mesurables(jeu: list[dict], sceaux: list[dict]) -> list[dict]:
 
 
 def empreinte(jeu: list[dict]) -> str:
-    lignes = sorted(json.dumps({k: q.get(k) for k in ("question", "attendu", "citation", "source")}, ensure_ascii=False,
-                               sort_keys=True) for q in jeu)
+    lignes = sorted(
+        json.dumps(
+            {k: q.get(k) for k in ("question", "attendu", "citation", "source")}, ensure_ascii=False, sort_keys=True
+        )
+        for q in jeu
+    )
     return hashlib.sha256("\n".join(lignes).encode()).hexdigest()[:16]
 
 
@@ -87,8 +97,14 @@ def contaminees(fiches: list[tuple[str, str]], sceau: dict) -> list[str]:
 
 
 def depense(lignes: list[dict], graphe: str, depuis: str) -> float:
-    return round(sum(float(l.get("cout_usd") or 0) for l in lignes
-                     if l.get("graphe") == graphe and str(l.get("quand") or "") >= depuis), 4)
+    return round(
+        sum(
+            float(l.get("cout_usd") or 0)
+            for l in lignes
+            if l.get("graphe") == graphe and str(l.get("quand") or "") >= depuis
+        ),
+        4,
+    )
 
 
 def reste(plafond: float, depense_: float) -> float:
@@ -96,6 +112,7 @@ def reste(plafond: float, depense_: float) -> float:
 
 
 # --- entrées-sorties --------------------------------------------------------------------------------------------------
+
 
 def chemin_etat(graphe: str) -> Path:
     return RACINE / "graphe" / graphe / "naissance.json"
@@ -114,6 +131,7 @@ def ecrire_etat(graphe: str, etat: dict) -> None:
 
 def depense_du_registre(graphe: str, depuis: str) -> float:
     from newskit import couts  # noqa: PLC0415
+
     lignes = []
     if couts.REGISTRE.exists():
         for l in couts.REGISTRE.read_text(encoding="utf-8").splitlines():
@@ -138,6 +156,7 @@ def mettre_en_quarantaine(chemins: list[str], racine: Path, cible: Path) -> list
 def fiches_du_graphe(graphe: str) -> list[tuple[str, str]]:
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import fiche  # noqa: PLC0415
+
     out = []
     for d in cfg.dossiers_du_graphe(graphe):
         for p in sorted(Path(d).rglob("*.md")):
@@ -159,12 +178,21 @@ def main() -> int:
     if a.action == "commencer":
         if chemin_etat(g).exists():
             raise SystemExit(f"{g} : naissance déjà commencée ({chemin_etat(g)})")
-        ecrire_etat(g, {"commence_le": time.strftime("%Y-%m-%d %H:%M:%S"), "plafond_usd": a.plafond_usd,
-                        "plafond_fiches": a.plafond_fiches, "sceau": None, "quarantaine": []})
+        ecrire_etat(
+            g,
+            {
+                "commence_le": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "plafond_usd": a.plafond_usd,
+                "plafond_fiches": a.plafond_fiches,
+                "sceau": None,
+                "quarantaine": [],
+            },
+        )
         print(f"{g} : naissance commencée, plafond {a.plafond_usd} $ et {a.plafond_fiches} fiches")
         return 0
     etat = lire_etat(g)
     from newskit import banc_themes  # noqa: PLC0415
+
     p_jeu, _ = banc_themes.chemins(g)
     jeu = json.loads(p_jeu.read_text(encoding="utf-8")) if p_jeu.exists() else []
     if a.action == "sceller":
@@ -174,14 +202,17 @@ def main() -> int:
             raise SystemExit(f"{g} : des fiches existent déjà, le jeu ne peut plus être scellé avant la collecte")
         etat["sceau"] = sceller(jeu, time.strftime("%Y-%m-%d %H:%M:%S"))
         ecrire_etat(g, etat)
-        print(f"{g} : {etat['sceau']['questions']} questions scellées, {len(etat['sceau']['adresses'])} adresses citées")
+        print(
+            f"{g} : {etat['sceau']['questions']} questions scellées, {len(etat['sceau']['adresses'])} adresses citées"
+        )
         return 0
     if not etat["sceau"]:
         raise SystemExit(f"{g} : jeu non scellé")
     sceaux = [etat["sceau"], *etat.get("complements", [])]
-    if a.action == "plafond":            # une décision du porteur, datée
-        etat.setdefault("plafonds", []).append({"quand": time.strftime("%Y-%m-%d %H:%M:%S"), "avant": etat["plafond_usd"],
-                                                 "apres": a.plafond_usd})
+    if a.action == "plafond":  # une décision du porteur, datée
+        etat.setdefault("plafonds", []).append(
+            {"quand": time.strftime("%Y-%m-%d %H:%M:%S"), "avant": etat["plafond_usd"], "apres": a.plafond_usd}
+        )
         etat["plafond_usd"] = a.plafond_usd
         ecrire_etat(g, etat)
         print(f"{g} : plafond porté à {a.plafond_usd} $")
@@ -190,7 +221,9 @@ def main() -> int:
         c = completer(jeu, sceaux, fiches_du_graphe(g), time.strftime("%Y-%m-%d %H:%M:%S"))
         etat.setdefault("complements", []).append(c)
         ecrire_etat(g, etat)
-        print(f"{g} : {c['questions']} question(s) ajoutée(s) scellée(s), {len(c['exclues'])} exclue(s) (page déjà ingérée)")
+        print(
+            f"{g} : {c['questions']} question(s) ajoutée(s) scellée(s), {len(c['exclues'])} exclue(s) (page déjà ingérée)"
+        )
         return 0
     if a.action == "quarantaine":
         touchees = contaminees(fiches_du_graphe(g), reunir(sceaux))
@@ -201,10 +234,21 @@ def main() -> int:
         return 0
     d = depense_du_registre(g, etat["commence_le"])
     n = len(fiches_du_graphe(g))
-    print(json.dumps({"graphe": g, "depense_usd": d, "reste_usd": reste(etat["plafond_usd"], d), "fiches": n,
-                      "reste_fiches": max(0, etat["plafond_fiches"] - n), "jeu_intact": all(intact(jeu, s) for s in sceaux),
-                      "questions_mesurables": len(mesurables(jeu, sceaux)),
-                      "quarantaine": len(etat["quarantaine"])}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "graphe": g,
+                "depense_usd": d,
+                "reste_usd": reste(etat["plafond_usd"], d),
+                "fiches": n,
+                "reste_fiches": max(0, etat["plafond_fiches"] - n),
+                "jeu_intact": all(intact(jeu, s) for s in sceaux),
+                "questions_mesurables": len(mesurables(jeu, sceaux)),
+                "quarantaine": len(etat["quarantaine"]),
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 

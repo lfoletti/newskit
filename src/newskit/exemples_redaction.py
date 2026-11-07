@@ -9,6 +9,7 @@ privé). La consigne de rédaction reçoit les EXEMPLES paires les plus proches 
 exemple concret que d'une règle de plus. Les corrections du relecteur adverse n'y entrent pas : seul le jugement
 humain fait exemple.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,23 +21,73 @@ from pathlib import Path
 from newskit import lettre as lt
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
+
 FICHIER = RACINE / "docs" / "corrections_eclairages.jsonl"
-EXEMPLES = 6            # paires données au rédacteur
-MOTS_PAIRE = 120        # une paire plus longue est coupée dans la consigne
-BONUS_HUMAIN = 2        # une correction humaine passe devant une correction du relecteur aussi proche du sujet
-_VIDES = {"le", "la", "les", "de", "des", "du", "un", "une", "et", "a", "au", "aux", "en", "sur", "pour", "par",
-          "que", "qui", "ne", "pas", "se", "sa", "son", "ses", "est", "il", "elle", "dans", "d", "l"}
+EXEMPLES = 6  # paires données au rédacteur
+MOTS_PAIRE = 120  # une paire plus longue est coupée dans la consigne
+BONUS_HUMAIN = 2  # une correction humaine passe devant une correction du relecteur aussi proche du sujet
+_VIDES = {
+    "le",
+    "la",
+    "les",
+    "de",
+    "des",
+    "du",
+    "un",
+    "une",
+    "et",
+    "a",
+    "au",
+    "aux",
+    "en",
+    "sur",
+    "pour",
+    "par",
+    "que",
+    "qui",
+    "ne",
+    "pas",
+    "se",
+    "sa",
+    "son",
+    "ses",
+    "est",
+    "il",
+    "elle",
+    "dans",
+    "d",
+    "l",
+}
 
 
-def noter(avant: str, apres: str, raison: str, graphe: str = "", slug: str = "", quand: str | None = None,
-          source: str = "humain") -> None:
+def noter(
+    avant: str,
+    apres: str,
+    raison: str,
+    graphe: str = "",
+    slug: str = "",
+    quand: str | None = None,
+    source: str = "humain",
+) -> None:
     """Garde une correction, ajoutée, jamais remplacée. `source` : « humain » (relecture du mainteneur) ou « relecteur »
     (correction du relecteur adverse gardée jusqu'à la publication)."""
     FICHIER.parent.mkdir(parents=True, exist_ok=True)
     with FICHIER.open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"quand": quand or time.strftime("%Y-%m-%d %H:%M:%S"), "graphe": graphe, "slug": slug,
-                            "avant": " ".join(str(avant).split()), "apres": " ".join(str(apres).split()),
-                            "raison": " ".join(str(raison).split()), "source": source}, ensure_ascii=False) + "\n")
+        f.write(
+            json.dumps(
+                {
+                    "quand": quand or time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "graphe": graphe,
+                    "slug": slug,
+                    "avant": " ".join(str(avant).split()),
+                    "apres": " ".join(str(apres).split()),
+                    "raison": " ".join(str(raison).split()),
+                    "source": source,
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
 
 
 def _phrases(ecl: dict) -> list[str]:
@@ -89,8 +140,15 @@ def choisir(texte: str, n: int = EXEMPLES) -> list[dict]:
     """Les n corrections les plus proches de `texte` (mots communs), la plus récente d'abord à égalité."""
     cible = _mots(texte)
     tout = lire()
-    notes = [(len(cible & _mots(f"{x.get('avant', '')} {x.get('apres', '')} {x.get('raison', '')}"))
-              + (BONUS_HUMAIN if x.get("source", "humain") == "humain" else 0), i, x) for i, x in enumerate(tout)]
+    notes = [
+        (
+            len(cible & _mots(f"{x.get('avant', '')} {x.get('apres', '')} {x.get('raison', '')}"))
+            + (BONUS_HUMAIN if x.get("source", "humain") == "humain" else 0),
+            i,
+            x,
+        )
+        for i, x in enumerate(tout)
+    ]
     return [x for _, _, x in sorted(notes, key=lambda t: (-t[0], -t[1]))[:n]]
 
 
@@ -98,10 +156,17 @@ def bloc(exemples: list[dict]) -> str:
     """Le passage de la consigne de rédaction ; vide sans exemple."""
     if not exemples:
         return ""
+
     def court(t):
         m = str(t).split()
         return " ".join(m[:MOTS_PAIRE]) + (" …" if len(m) > MOTS_PAIRE else "")
-    lignes = [f"- avant : « {court(x.get('avant', ''))} »\n  après : « {court(x.get('apres', '')) or '(supprimé)'} »\n"
-              f"  raison : {x.get('raison', '')}" for x in exemples]
-    return ("Corrections du rédacteur en chef sur des éclairages précédents. Elles montrent ce qu'il attend ; "
-            "applique la même exigence, sans recopier ces phrases :\n" + "\n".join(lignes))
+
+    lignes = [
+        f"- avant : « {court(x.get('avant', ''))} »\n  après : « {court(x.get('apres', '')) or '(supprimé)'} »\n"
+        f"  raison : {x.get('raison', '')}"
+        for x in exemples
+    ]
+    return (
+        "Corrections du rédacteur en chef sur des éclairages précédents. Elles montrent ce qu'il attend ; "
+        "applique la même exigence, sans recopier ces phrases :\n" + "\n".join(lignes)
+    )

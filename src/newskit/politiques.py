@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Les politiques de publication, lues dans deploiement/politiques.yaml (A3, 25.10.2026). Une valeur, un seul endroit :
 la borne des extraits et l'adresse des registres de masques. Ce module ne fait que lire et vérifier."""
+
 from __future__ import annotations
 
 import re
@@ -9,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 FICHIER = RACINE / "deploiement" / "politiques.yaml"
 
 
@@ -46,8 +48,11 @@ def demarchage(chemin: Path = FICHIER) -> dict:
 
 def demarchage_manquant(m: dict) -> list[str]:
     """Les décisions qui manquent pour publier la page : une page publique ne promet rien qui ne soit décidé."""
-    return [cle for cle in ("responsable", "contact", "delai_refus_jours", "conservation_sans_reponse_mois")
-            if m.get(cle) in (None, "")]
+    return [
+        cle
+        for cle in ("responsable", "contact", "delai_refus_jours", "conservation_sans_reponse_mois")
+        if m.get(cle) in (None, "")
+    ]
 
 
 def registre_sources(chemin: Path = FICHIER) -> Path:
@@ -55,10 +60,13 @@ def registre_sources(chemin: Path = FICHIER) -> Path:
     nomment les politiques (masques.source, relatif à la racine des données), sinon sources.yaml (N3, NEWSKIT.md :
     l'édition écrit les valeurs, le moteur les lit). Les deux noms, s'ils sont donnés, doivent dire le même fichier."""
     from newskit import media  # noqa: PLC0415 — media lit config_sources à la vérification, qui lit ce module à l'import
+
     du_media = media.fichier_des_sources()
     des_politiques = RACINE / charger(chemin)["masques"]["source"] if chemin.exists() else None
     if du_media and des_politiques and du_media.resolve() != des_politiques.resolve():
-        raise ValueError(f"config.yaml nomme {du_media.name}, {chemin.name} nomme {des_politiques.name} : un seul registre")
+        raise ValueError(
+            f"config.yaml nomme {du_media.name}, {chemin.name} nomme {des_politiques.name} : un seul registre"
+        )
     return du_media or des_politiques or RACINE / "sources.yaml"
 
 

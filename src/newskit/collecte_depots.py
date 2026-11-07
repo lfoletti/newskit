@@ -57,7 +57,7 @@ def readme(url: str) -> str:
     except Exception:
         return ""
     t = re.sub(r"<!--.*?-->", "", t, flags=re.S)
-    t = re.sub(r"^---\n.*?\n---\n", "", t, flags=re.S)          # carte HF : en-tête YAML retiré
+    t = re.sub(r"^---\n.*?\n---\n", "", t, flags=re.S)  # carte HF : en-tête YAML retiré
     t = t.strip()
     return (t[:CORPS_MAX].rsplit("\n", 1)[0] + "\n\n[…coupé]") if len(t) > CORPS_MAX else t
 
@@ -69,16 +69,29 @@ def slug(t: str) -> str:
 def ecrire(src, manifeste: dict, e: dict, echecs: list[str]) -> bool:
     nom = f"{e['date']}_{slug(e['titre'])}.md"
     corps = [f"# {e['titre']}", "", e["entete"], ""]
-    corps += [e["corps"], ""] if e["corps"] else ["*Pas de README ni de carte lisible : la fiche se réduit "
-                                                  "à la description du dépôt.*", ""]
+    corps += (
+        [e["corps"], ""]
+        if e["corps"]
+        else ["*Pas de README ni de carte lisible : la fiche se réduit à la description du dépôt.*", ""]
+    )
     corps += [f"Dépôt : {e['url']}", ""]
-    champs = {"title": e["titre"], "subtitle": "", "author": e["auteur"], "date": e["date"], "url": e["url"],
-              "plateforme": src.plateforme, "publication": src.nom, "complet": bool(e["corps"]),
-              "collected": time.strftime("%Y-%m-%d"), "source": f"{src.plateforme}, requête « {e['requete']} »",
-              "requete": e["requete"], **e["champs"]}
+    champs = {
+        "title": e["titre"],
+        "subtitle": "",
+        "author": e["auteur"],
+        "date": e["date"],
+        "url": e["url"],
+        "plateforme": src.plateforme,
+        "publication": src.nom,
+        "complet": bool(e["corps"]),
+        "collected": time.strftime("%Y-%m-%d"),
+        "source": f"{src.plateforme}, requête « {e['requete']} »",
+        "requete": e["requete"],
+        **e["champs"],
+    }
     try:
         fiche.ecrire(src.chemin / nom, champs, "\n".join(corps))
-    except fiche.IdentiteDejaVue as deja:   # une autre fiche du graphe porte déjà ce document
+    except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
         print(f"  déjà vue : {deja}")
         return False
     except ValueError as err:
@@ -93,8 +106,10 @@ def github(src, depuis: str, manifeste: dict, echecs: list[str]) -> tuple[int, i
     par = int(getattr(src, "par_requete", 8) or 8)
     etoiles_min = int(getattr(src, "etoiles_min", 20) or 20)
     for q in src.requetes:
-        u = (f"https://api.github.com/search/repositories?q={urllib.parse.quote(f'{q} created:>{depuis}')}"
-             f"&sort=stars&order=desc&per_page={par}")
+        u = (
+            f"https://api.github.com/search/repositories?q={urllib.parse.quote(f'{q} created:>{depuis}')}"
+            f"&sort=stars&order=desc&per_page={par}"
+        )
         try:
             d = lire(u, accept="application/vnd.github+json")
         except Exception as e:
@@ -107,13 +122,22 @@ def github(src, depuis: str, manifeste: dict, echecs: list[str]) -> tuple[int, i
                 continue
             corps = readme(f"https://raw.githubusercontent.com/{it['full_name']}/HEAD/README.md")
             sujets = ", ".join(it.get("topics") or [])
-            e = {"titre": it["full_name"], "url": it["html_url"], "date": it["created_at"][:10],
-                 "auteur": it["owner"]["login"], "requete": q, "corps": corps,
-                 "entete": f"{it.get('description') or ''}\n\nÉtoiles : {it['stargazers_count']} · "
-                           f"langage : {it.get('language') or '?'} · sujets : {sujets or '—'} · "
-                           f"créé le {it['created_at'][:10]}, mis à jour le {it['pushed_at'][:10]}",
-                 "champs": {"etoiles": int(it["stargazers_count"]), "langage": it.get("language") or "",
-                            "sujets": sujets}}
+            e = {
+                "titre": it["full_name"],
+                "url": it["html_url"],
+                "date": it["created_at"][:10],
+                "auteur": it["owner"]["login"],
+                "requete": q,
+                "corps": corps,
+                "entete": f"{it.get('description') or ''}\n\nÉtoiles : {it['stargazers_count']} · "
+                f"langage : {it.get('language') or '?'} · sujets : {sujets or '—'} · "
+                f"créé le {it['created_at'][:10]}, mis à jour le {it['pushed_at'][:10]}",
+                "champs": {
+                    "etoiles": int(it["stargazers_count"]),
+                    "langage": it.get("language") or "",
+                    "sujets": sujets,
+                },
+            }
             if ecrire(src, manifeste, e, echecs):
                 ecrits += 1
         time.sleep(7)
@@ -131,8 +155,10 @@ def huggingface(src, depuis: str, manifeste: dict, echecs: list[str]) -> tuple[i
                 if genre == "papers":
                     items = lire("https://huggingface.co/api/papers/search?q=" + urllib.parse.quote(q))[:par]
                 else:
-                    items = lire(f"https://huggingface.co/api/{genre}?search={urllib.parse.quote(q)}"
-                                 f"&sort=lastModified&direction=-1&limit={par}")
+                    items = lire(
+                        f"https://huggingface.co/api/{genre}?search={urllib.parse.quote(q)}"
+                        f"&sort=lastModified&direction=-1&limit={par}"
+                    )
             except Exception as e:
                 echecs.append(f"{src.nom} : {genre} « {q} » : {type(e).__name__}: {str(e)[:60]}")
                 continue
@@ -145,12 +171,21 @@ def huggingface(src, depuis: str, manifeste: dict, echecs: list[str]) -> tuple[i
                     date = (it.get("publishedAt") or pap.get("publishedAt") or "")[:10]
                     if not pid or url in manifeste or (date and date < depuis):
                         continue
-                    e = {"titre": it.get("title") or pap.get("title") or pid, "url": url, "date": date or depuis,
-                         "auteur": ", ".join(a.get("name", "") for a in (pap.get("authors") or [])[:6]),
-                         "requete": q, "corps": it.get("summary") or pap.get("summary") or "",
-                         "entete": f"Papier HuggingFace · arXiv:{pid} · votes : {pap.get('upvotes', '?')}",
-                         "champs": {"genre": "paper", "likes": int(pap.get("upvotes") or 0), "telechargements": 0,
-                                    "papier_arxiv": pid}}
+                    e = {
+                        "titre": it.get("title") or pap.get("title") or pid,
+                        "url": url,
+                        "date": date or depuis,
+                        "auteur": ", ".join(a.get("name", "") for a in (pap.get("authors") or [])[:6]),
+                        "requete": q,
+                        "corps": it.get("summary") or pap.get("summary") or "",
+                        "entete": f"Papier HuggingFace · arXiv:{pid} · votes : {pap.get('upvotes', '?')}",
+                        "champs": {
+                            "genre": "paper",
+                            "likes": int(pap.get("upvotes") or 0),
+                            "telechargements": 0,
+                            "papier_arxiv": pid,
+                        },
+                    }
                 else:
                     url = f"https://huggingface.co/{'datasets/' if genre == 'datasets' else ''}{it['id']}"
                     date = (it.get("lastModified") or it.get("createdAt") or "")[:10]
@@ -158,11 +193,17 @@ def huggingface(src, depuis: str, manifeste: dict, echecs: list[str]) -> tuple[i
                     if url in manifeste or (date and date < depuis) or likes + dl < activite_min:
                         continue
                     corps = readme(url + "/raw/main/README.md")
-                    e = {"titre": f"{it['id']} ({genre[:-1]})", "url": url, "date": date or depuis,
-                         "auteur": it.get("author") or it["id"].split("/")[0], "requete": q, "corps": corps,
-                         "entete": f"HuggingFace {genre[:-1]} · likes : {likes} · téléchargements : {dl} · "
-                                   f"étiquettes : {', '.join((it.get('tags') or [])[:10]) or '—'}",
-                         "champs": {"genre": genre[:-1], "likes": likes, "telechargements": dl}}
+                    e = {
+                        "titre": f"{it['id']} ({genre[:-1]})",
+                        "url": url,
+                        "date": date or depuis,
+                        "auteur": it.get("author") or it["id"].split("/")[0],
+                        "requete": q,
+                        "corps": corps,
+                        "entete": f"HuggingFace {genre[:-1]} · likes : {likes} · téléchargements : {dl} · "
+                        f"étiquettes : {', '.join((it.get('tags') or [])[:10]) or '—'}",
+                        "champs": {"genre": genre[:-1], "likes": likes, "telechargements": dl},
+                    }
                 if ecrire(src, manifeste, e, echecs):
                     ecrits += 1
             time.sleep(1)
@@ -175,8 +216,11 @@ def main() -> int:
     ap.add_argument("--graphe", help="ne traiter que les sources d'un graphe")
     ap.add_argument("--jours", type=int, help="fenêtre, en jours (défaut : celle du registre)")
     args = ap.parse_args()
-    sources = [s for s in cfg.toutes("GitHub", graphe=args.graphe) + cfg.toutes("HuggingFace", graphe=args.graphe)
-               if not args.source or s.cle == args.source]
+    sources = [
+        s
+        for s in cfg.toutes("GitHub", graphe=args.graphe) + cfg.toutes("HuggingFace", graphe=args.graphe)
+        if not args.source or s.cle == args.source
+    ]
     if not sources:
         print("  aucune source « GitHub » ni « HuggingFace » au registre, rien à collecter.")
         return 0
@@ -188,8 +232,10 @@ def main() -> int:
         depuis = (dt.date.today() - dt.timedelta(days=jours)).isoformat()
         vus, ecrits = (github if src.plateforme == "GitHub" else huggingface)(src, depuis, manifeste, echecs)
         src.manifeste.write_text(json.dumps(manifeste, indent=1, ensure_ascii=False), encoding="utf-8")
-        print(f"  {src.nom} : {vus} dépôt(s) lu(s) depuis le {depuis}, {ecrits} fiche(s) neuve(s), "
-              f"{len(manifeste)} au total")
+        print(
+            f"  {src.nom} : {vus} dépôt(s) lu(s) depuis le {depuis}, {ecrits} fiche(s) neuve(s), "
+            f"{len(manifeste)} au total"
+        )
     for e in echecs:
         print(f"  !! {e}", file=sys.stderr)
     # Un refus n'est pas une absence : ce qui n'a pas pu être lu se lit dans le code de sortie (comme collecte_rss).

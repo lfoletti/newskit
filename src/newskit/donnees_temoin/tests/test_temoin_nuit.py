@@ -24,10 +24,13 @@ JOUR, COMMIT = "2026-11-07", "a" * 40
 def _marque(racine: Path, **m) -> None:
     p = racine / "cache" / temoin.MARQUE
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"date": JOUR, "commit": COMMIT, "vert": True, "detail": "55 passed", **m}), encoding="utf-8")
+    p.write_text(
+        json.dumps({"date": JOUR, "commit": COMMIT, "vert": True, "detail": "55 passed", **m}), encoding="utf-8"
+    )
 
 
 # --- Le verdict lu par la routine --------------------------------------------
+
 
 def test_sans_marque_la_routine_part_et_le_dit(tmp_path):
     ok, dit = temoin.verdict(tmp_path, COMMIT, JOUR)
@@ -39,11 +42,14 @@ def test_un_temoin_vert_du_jour_et_du_commit_laisse_partir(tmp_path):
     assert temoin.verdict(tmp_path, COMMIT, JOUR) == (True, "")
 
 
-@pytest.mark.parametrize("marque,motif", [
-    ({"vert": False, "detail": "1 failed, 54 passed"}, "rouge"),
-    ({"date": "2026-11-06"}, "2026-11-06"),
-    ({"commit": "b" * 40}, "bbbbbbbbb"),
-])
+@pytest.mark.parametrize(
+    "marque,motif",
+    [
+        ({"vert": False, "detail": "1 failed, 54 passed"}, "rouge"),
+        ({"date": "2026-11-06"}, "2026-11-06"),
+        ({"commit": "b" * 40}, "bbbbbbbbb"),
+    ],
+)
 def test_un_temoin_rouge_ancien_ou_d_un_autre_commit_arrete(tmp_path, marque, motif):
     _marque(tmp_path, **marque)
     ok, dit = temoin.verdict(tmp_path, COMMIT, JOUR)
@@ -51,6 +57,7 @@ def test_un_temoin_rouge_ancien_ou_d_un_autre_commit_arrete(tmp_path, marque, mo
 
 
 # --- La nuit -------------------------------------------------------------------
+
 
 def _nuit(tmp_path, essais, manquantes=0, payes=0):
     """`essais` : les (code, dernière ligne) rendus par chaque passage du témoin, dans l'ordre."""
@@ -70,6 +77,7 @@ def _nuit(tmp_path, essais, manquantes=0, payes=0):
     def payer(t, plafond):
         payees.append(plafond)
         return {"payes": payes, "erreurs": 0, "restantes": manquantes - payes, "cout_usd": 0.1 * payes}
+
     code = temoin.nuit(tmp_path, essai=essai, rejeu=rejeu, payer=payer, commit=COMMIT, jour=JOUR)
     m = json.loads((tmp_path / "cache" / temoin.MARQUE).read_text(encoding="utf-8"))
     return code, m, len(passes), payees
@@ -97,6 +105,7 @@ def test_un_reenregistrement_qui_ne_paie_rien_ne_repasse_pas(tmp_path):
 
 # --- La routine ----------------------------------------------------------------
 
+
 def test_la_routine_refuse_un_temoin_rouge(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("TEMOIN_REEL", raising=False)
     monkeypatch.setattr(rh, "RACINE", tmp_path)
@@ -118,8 +127,9 @@ def test_dans_le_temoin_la_routine_ne_s_exige_pas_elle_meme(tmp_path, monkeypatc
 
 def test_la_routine_exige_le_temoin_apres_la_pause_et_avant_le_verrou():
     src = Path(rh.__file__).read_text(encoding="utf-8")
-    main = src[src.index("def main() -> int:"):]
-    pause, exige, verrou = (main.index(x) for x in ('pause = RACINE / "cache" / "routines.pause"',
-                                                     "exiger_le_temoin()", "verrou = prendre_le_verrou("))
+    main = src[src.index("def main() -> int:") :]
+    pause, exige, verrou = (
+        main.index(x)
+        for x in ('pause = RACINE / "cache" / "routines.pause"', "exiger_le_temoin()", "verrou = prendre_le_verrou(")
+    )
     assert pause < exige < verrou
-

@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.5] - 2026-11-07
+
+### Corrigé
+
+- Couche 2 : un appel au modèle ne part plus avant que le résultat précédent soit écrit. Une étape tuée perdait des réponses payées, qui étaient repayées au passage suivant.
+
 ## [0.1.4] - 2026-11-07
 
 ### Modifié
@@ -46,7 +52,8 @@ Première version, sortie du dépôt de l'édition où le moteur est né.
 - Le témoin : une nuit entière sur un graphe sans rapport, rejouée de réponses enregistrées, sans appel payant (`newskit temoin nuit`) ; une nuit ne part pas sans un témoin vert du jour.
 - Le plugin de Claude Code : le skill `newskit` (formulaire du média, sources et thèmes de départ, naissance, nuit, interrogation) et un crochet qui refuse les appels au modèle quand la fenêtre d'usage est fermée.
 
-[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.4...HEAD
+[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/lfoletti/newskit/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/lfoletti/newskit/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/lfoletti/newskit/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/lfoletti/newskit/compare/v0.1.1...v0.1.2

@@ -44,7 +44,7 @@ done
 if echo "$touches" | grep -q -E '(^| )(src/|tests/|skills/|hooks/|conftest.py|pyproject.toml)'; then
 	py="$racine/.venv/bin/python"
 	[ -x "$py" ] || py=python3
-	(cd "$racine" && "$py" -m ruff check . && "$py" -m pytest -q) || {
+	(cd "$racine" && "$py" -m ruff check . && "$py" -m ruff format --check . && "$py" -m pytest -q) || {
 		echo "pre-push : ruff ou pytest a échoué" >&2
 		exit 1
 	}

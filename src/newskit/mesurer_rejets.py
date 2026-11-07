@@ -14,6 +14,7 @@ fait absent. Né de la nuit du 10 au 11.10.2026 : 705 phrases retirées sur 1 52
 
     python3 -m newskit.mesurer_rejets --graphe <graphe> [--depuis "2026-10-11 14"] [--exemples 8]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,9 +28,48 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code 
 from newskit import interroger_graphe as ig  # noqa: E402
 from newskit import synthese  # noqa: E402
 
-MOIS_FR = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre"]
-MOIS_EN = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
-MOIS_DE = ["januar", "februar", "marz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "dezember"]
+MOIS_FR = [
+    "janvier",
+    "fevrier",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "aout",
+    "septembre",
+    "octobre",
+    "novembre",
+    "decembre",
+]
+MOIS_EN = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+]
+MOIS_DE = [
+    "januar",
+    "februar",
+    "marz",
+    "april",
+    "mai",
+    "juni",
+    "juli",
+    "august",
+    "september",
+    "oktober",
+    "november",
+    "dezember",
+]
 
 
 def formes_de_dates(texte: str) -> set[str]:
@@ -39,8 +79,19 @@ def formes_de_dates(texte: str) -> set[str]:
     noms = {m: i + 1 for liste in (MOIS_FR, MOIS_EN, MOIS_DE) for i, m in enumerate(liste)}
 
     def ajouter(j: int, m: int, a: int) -> None:
-        out.update({f"{a:04d}-{m:02d}-{j:02d}", f"{j:02d}.{m:02d}.{a:04d}", f"{j}.{m}.{a}", f"{j:02d}/{m:02d}/{a:04d}",
-                str(a), str(j), f"{j:02d}", str(m), f"{m:02d}"})
+        out.update(
+            {
+                f"{a:04d}-{m:02d}-{j:02d}",
+                f"{j:02d}.{m:02d}.{a:04d}",
+                f"{j}.{m}.{a}",
+                f"{j:02d}/{m:02d}/{a:04d}",
+                str(a),
+                str(j),
+                f"{j:02d}",
+                str(m),
+                f"{m:02d}",
+            }
+        )
 
     for a, m, j in re.findall(r"\b(\d{4})-(\d{2})-(\d{2})\b", texte):
         ajouter(int(j), int(m), int(a))
@@ -114,7 +165,8 @@ def rejouer(graphe: str, entrees: list[dict], exemples: int) -> int:
     """Le contrôle d'aujourd'hui (synthese.verifier, matiere_de) rejoué sur les phrases retirées du journal, sans appel :
     la mesure d'un changement du contrôle. Les étiquettes des preuves sont relues du graphe."""
     if not entrees:
-        print("  journal vide"); return 1
+        print("  journal vide")
+        return 1
     G = synthese.charger_graphe(graphe)
     tenues, retirees, encore = 0, 0, Counter()
     ex_tenues, ex_retirees = [], []
@@ -124,7 +176,9 @@ def rejouer(graphe: str, entrees: list[dict], exemples: int) -> int:
         for r in e["retirees"]:
             retirees += 1
             if not r["preuves"]:
-                encore["(aucune preuve)"] += 1; ex_retirees.append((e["label"], r["texte"], ["(aucune preuve)"])); continue
+                encore["(aucune preuve)"] += 1
+                ex_retirees.append((e["label"], r["texte"], ["(aucune preuve)"]))
+                continue
             citees = [pr[i - 1] for i in r["preuves"] if 0 < i <= len(pr)]
             manque = synthese.verifier(r["texte"], synthese.matiere_de(G, n, citees))
             if manque:
@@ -134,8 +188,10 @@ def rejouer(graphe: str, entrees: list[dict], exemples: int) -> int:
             else:
                 tenues += 1
                 ex_tenues.append((e["label"], r["texte"], r["manque"]))
-    print(f"  {graphe} : {retirees} phrase(s) retirée(s) au journal ; avec le contrôle actuel, {tenues} tiendraient "
-          f"({100 * tenues / max(retirees, 1):.0f} %), {retirees - tenues} resteraient retirées")
+    print(
+        f"  {graphe} : {retirees} phrase(s) retirée(s) au journal ; avec le contrôle actuel, {tenues} tiendraient "
+        f"({100 * tenues / max(retirees, 1):.0f} %), {retirees - tenues} resteraient retirées"
+    )
     print("  faits encore introuvables : " + ", ".join(f"{k} {v}" for k, v in encore.most_common(25)))
     print("\n  — tiendraient désormais (faits qui manquaient hier) —")
     for label, texte, manque in ex_tenues[:exemples]:
@@ -151,8 +207,12 @@ def main() -> int:
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--depuis", help="ne lire que les entrées datées à partir de « AAAA-MM-JJ HH:MM »")
     ap.add_argument("--exemples", type=int, default=6, help="exemples montrés par catégorie")
-    ap.add_argument("--rejouer", action="store_true", help="rejouer le contrôle actuel sur les phrases du journal (charge le graphe) : "
-                    "combien tiendraient aujourd'hui, et ce qui manque encore")
+    ap.add_argument(
+        "--rejouer",
+        action="store_true",
+        help="rejouer le contrôle actuel sur les phrases du journal (charge le graphe) : "
+        "combien tiendraient aujourd'hui, et ce qui manque encore",
+    )
     a = ap.parse_args()
     if a.rejouer:
         return rejouer(a.graphe, lire_journal(a.graphe, a.depuis), a.exemples)
@@ -181,14 +241,19 @@ def main() -> int:
             phrases_par[v_phrase] += 1
             exemples.setdefault(v_phrase, []).append((e["label"], r["texte"], verdicts))
     total = gardees + retirees
-    print(f"  {a.graphe} : {notions} notion(s) au journal, {retirees} phrase(s) retirée(s) sur {total} ({100 * retirees / max(total, 1):.0f} %)")
-    print("  par phrase : " + ", ".join(f"{k} {v} ({100 * v / max(retirees, 1):.0f} %)" for k, v in phrases_par.most_common()))
+    print(
+        f"  {a.graphe} : {notions} notion(s) au journal, {retirees} phrase(s) retirée(s) sur {total} ({100 * retirees / max(total, 1):.0f} %)"
+    )
+    print(
+        "  par phrase : "
+        + ", ".join(f"{k} {v} ({100 * v / max(retirees, 1):.0f} %)" for k, v in phrases_par.most_common())
+    )
     print("  par fait introuvable : " + ", ".join(f"{k} {v}" for k, v in faits_par.most_common()))
     for cat in ("a_tort", "brodee", "sans_preuve"):
         if not exemples.get(cat):
             continue
         print(f"\n  — {cat} —")
-        for label, texte, verdicts in exemples[cat][:a.exemples]:
+        for label, texte, verdicts in exemples[cat][: a.exemples]:
             print(f"  [{label}] {texte[:220]}")
             if verdicts:
                 print("      " + " ; ".join(f"{f} → {v}" for f, v in verdicts))

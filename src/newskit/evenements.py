@@ -48,16 +48,18 @@ def observer(entrees, base: Path, quand: str) -> int:
             sorte = "fiche_auteur_connu" if cle in auteurs else "auteur_nouveau"
             auteurs.add(cle)
             if not premier:
-                nouveaux.append({"quand": quand, "sorte": sorte, "auteur": nom, "fiche": e["chemin"],
-                                 "url": e.get("url") or ""})
+                nouveaux.append(
+                    {"quand": quand, "sorte": sorte, "auteur": nom, "fiche": e["chemin"], "url": e.get("url") or ""}
+                )
     base.mkdir(parents=True, exist_ok=True)
     if nouveaux:
         with (base / JOURNAL).open("a", encoding="utf-8") as f:
             for ev in nouveaux:
                 f.write(json.dumps(ev, ensure_ascii=False) + "\n")
     tmp = etat_f.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"auteurs": sorted(auteurs), "fiches": sorted(fiches)}, ensure_ascii=False),
-                   encoding="utf-8")
+    tmp.write_text(
+        json.dumps({"auteurs": sorted(auteurs), "fiches": sorted(fiches)}, ensure_ascii=False), encoding="utf-8"
+    )
     tmp.replace(etat_f)
     return len(nouveaux)
 
@@ -80,8 +82,11 @@ def fiches_du_graphe(g: str):
             if chemin.name.startswith("_"):
                 continue
             champs, _ = fiche.lire_fichier(chemin)
-            yield {"chemin": chemin.relative_to(cfg.SOURCES).as_posix(), "author": champs.get("author"),
-                   "url": champs.get("url")}
+            yield {
+                "chemin": chemin.relative_to(cfg.SOURCES).as_posix(),
+                "author": champs.get("author"),
+                "url": champs.get("url"),
+            }
 
 
 def main(argv=None) -> int:
@@ -91,8 +96,11 @@ def main(argv=None) -> int:
     base = cfg.chemins_du_graphe(a.graphe)["base"]
     premier = not (base / ETAT).exists()
     n = observer(fiches_du_graphe(a.graphe), base, time.strftime("%Y-%m-%d %H:%M"))
-    print("premier passage : auteurs et fiches enregistrés, aucun événement" if premier
-          else f"{n} événement(s) ajouté(s) à {base / JOURNAL}")
+    print(
+        "premier passage : auteurs et fiches enregistrés, aucun événement"
+        if premier
+        else f"{n} événement(s) ajouté(s) à {base / JOURNAL}"
+    )
     return 0
 
 

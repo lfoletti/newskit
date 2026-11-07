@@ -51,21 +51,36 @@ from newskit import digerer_graphe as dg  # noqa: E402
 from newskit import fiche  # noqa: E402
 from newskit import themes_emergents as te  # noqa: E402
 
-PLAFOND = 20                 # notions traitées par passage
-ESSAIS = 2                   # passages sans résolution avant « à trancher »
+PLAFOND = 20  # notions traitées par passage
+ESSAIS = 2  # passages sans résolution avant « à trancher »
 ETOILES_MIN = 300
 MOTS_MIN, MOTS_MAX = 80, 1200
 # Wikipédia demande un User-Agent qui dit comment joindre l'auteur ; sans lui, et sans pause, elle a rendu
 # 113 refus (HTTP 429) au passage du 05.10.2026.
-AGENT = f"{cfg.edition()['nom']}/1.0 (veille personnelle ; {cfg.edition()['site']} ; combler_canon.py)"   # bloc `edition:` (N2)
-LOT_MODELE = 40              # notions classées par appel au modèle : 252 d'un coup restaient sans réponse
+AGENT = f"{cfg.edition()['nom']}/1.0 (veille personnelle ; {cfg.edition()['site']} ; combler_canon.py)"  # bloc `edition:` (N2)
+LOT_MODELE = 40  # notions classées par appel au modèle : 252 d'un coup restaient sans réponse
 FAMILLES = ("papier", "depot", "produit", "notion")
 
-SCHEMA = {"type": "object", "required": ["notions"], "properties": {"notions": {"type": "array", "items": {
-    "type": "object", "required": ["i", "alias", "famille", "requete"],
-    "properties": {"i": {"type": "integer"}, "alias": {"type": ["integer", "null"]},
-                   "famille": {"type": "string", "enum": list(FAMILLES)}, "requete": {"type": "string"},
-                   "depot": {"type": ["string", "null"]}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["notions"],
+    "properties": {
+        "notions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["i", "alias", "famille", "requete"],
+                "properties": {
+                    "i": {"type": "integer"},
+                    "alias": {"type": ["integer", "null"]},
+                    "famille": {"type": "string", "enum": list(FAMILLES)},
+                    "requete": {"type": "string"},
+                    "depot": {"type": ["string", "null"]},
+                },
+            },
+        }
+    },
+}
 
 
 def chemin_etat(graphe: str) -> Path:
@@ -170,6 +185,7 @@ def candidats(terme: str, etiquettes: list[str], combien: int = 6) -> list[str]:
 
 # --- Résolution, par recherche -----------------------------------------------------------------
 
+
 def titre_attendu(requete: str, titre: str) -> bool:
     """Le titre trouvé est celui que le modèle a donné (au sous-titre près)."""
     r, t = plat(requete), plat(titre)
@@ -182,12 +198,18 @@ def chercher_arxiv(terme: str, requete: str) -> tuple[str, str] | None:
     Professional Go Dataset » pour l'attaque PGD, « LIRA: Lifelong Image Restoration » pour l'attaque LiRA
     (05.10.2026). Sinon, le titre doit être le nom, ou le nom suivi d'un deux-points."""
     par_titre = len(plat(requete or "").split()) >= 5
-    for q in ((f'ti:"{requete}"',) if par_titre else (f'ti:"{terme}"', f'all:"{requete}"' if requete and requete != terme else "")):
+    for q in (
+        (f'ti:"{requete}"',)
+        if par_titre
+        else (f'ti:"{terme}"', f'all:"{requete}"' if requete and requete != terme else "")
+    ):
         if not q:
             continue
-        x = lire_url("https://export.arxiv.org/api/query?max_results=25&search_query=" + urllib.parse.quote(q),
-                     accept="application/atom+xml")
-        time.sleep(3)                                    # courtoisie demandée par arXiv
+        x = lire_url(
+            "https://export.arxiv.org/api/query?max_results=25&search_query=" + urllib.parse.quote(q),
+            accept="application/atom+xml",
+        )
+        time.sleep(3)  # courtoisie demandée par arXiv
         suivies = set(cfg.veille_arxiv().get("categories") or [])
         for e in re.findall(r"<entry>(.*?)</entry>", x, flags=re.S):
             m = re.search(r"<id>http://arxiv.org/abs/([^<v]+)", e)
@@ -207,17 +229,28 @@ def chercher_github(terme: str, officiel: str | None = None) -> dict | None:
     dépôt suffixé : la règle a pris « angristan/wireguard-install » pour WireGuard (05.10.2026)."""
     if officiel and re.fullmatch(r"[\w.-]+/[\w.-]+", officiel.strip()):
         try:
-            it = json.loads(lire_url("https://api.github.com/repos/" + officiel.strip(), accept="application/vnd.github+json"))
+            it = json.loads(
+                lire_url("https://api.github.com/repos/" + officiel.strip(), accept="application/vnd.github+json")
+            )
         except Refus as e:
             if "404" not in str(e):
                 raise
             it = None
         time.sleep(1)
-        if it and it.get("stargazers_count", 0) >= ETOILES_MIN and plat(terme).replace(" ", "") in plat(it["full_name"]).replace(" ", ""):
+        if (
+            it
+            and it.get("stargazers_count", 0) >= ETOILES_MIN
+            and plat(terme).replace(" ", "") in plat(it["full_name"]).replace(" ", "")
+        ):
             return it
-    d = json.loads(lire_url("https://api.github.com/search/repositories?sort=stars&order=desc&per_page=5&q="
-                            + urllib.parse.quote(f"{terme} in:name"), accept="application/vnd.github+json"))
-    time.sleep(2.5 if jeton_github() else 7)             # trente recherches par minute avec jeton, dix sans
+    d = json.loads(
+        lire_url(
+            "https://api.github.com/search/repositories?sort=stars&order=desc&per_page=5&q="
+            + urllib.parse.quote(f"{terme} in:name"),
+            accept="application/vnd.github+json",
+        )
+    )
+    time.sleep(2.5 if jeton_github() else 7)  # trente recherches par minute avec jeton, dix sans
     t = plat(terme).replace(" ", "")
     for it in d.get("items", []):
         if it["stargazers_count"] >= ETOILES_MIN and plat(it["name"]).replace(" ", "") == t:
@@ -237,10 +270,22 @@ def chercher_openalex(terme: str, requete: str) -> dict | None:
     exactement le titre officiel que le modèle a donné ; et un résumé assez long pour faire une fiche — une
     notice sans texte n'apporte rien au graphe."""
     from newskit.collecte_openalex import resume  # noqa: PLC0415
-    d = json.loads(lire_url(OPENALEX + "?" + urllib.parse.urlencode(
-        {"search": requete or terme, "per_page": 10, "mailto": contact(),
-         "select": "id,doi,title,publication_year,publication_date,authorships,primary_location,"
-                   "abstract_inverted_index,cited_by_count"})))
+
+    d = json.loads(
+        lire_url(
+            OPENALEX
+            + "?"
+            + urllib.parse.urlencode(
+                {
+                    "search": requete or terme,
+                    "per_page": 10,
+                    "mailto": contact(),
+                    "select": "id,doi,title,publication_year,publication_date,authorships,primary_location,"
+                    "abstract_inverted_index,cited_by_count",
+                }
+            )
+        )
+    )
     time.sleep(1)
     r = plat(requete or "")
     bons = []
@@ -251,20 +296,28 @@ def chercher_openalex(terme: str, requete: str) -> dict | None:
             continue
         # Le titre exact donné par le modèle, pas « Nom : … » : dans les revues, « Space Syntax: Some
         # Inconsistencies » est une critique, pas la fondation (05.10.2026).
-        juste = len(r) >= 12 and (tt == r or (len(r.split()) >= 5 and (tt.startswith(r + " ") or r.startswith(tt + " "))))
+        juste = len(r) >= 12 and (
+            tt == r or (len(r.split()) >= 5 and (tt.startswith(r + " ") or r.startswith(tt + " ")))
+        )
         texte = resume(w.get("abstract_inverted_index"), MOTS_MAX)
         if juste and len(texte.split()) >= MOTS_MIN:
             bons.append((w.get("cited_by_count") or 0, w, titre, texte))
     if not bons:
         return None
-    _, w, titre, texte = max(bons, key=lambda x: x[0])                 # le plus cité, à titre égal
+    _, w, titre, texte = max(bons, key=lambda x: x[0])  # le plus cité, à titre égal
     auteurs = ", ".join(a["author"]["display_name"] for a in (w.get("authorships") or [])[:6] if a.get("author"))
     revue = (((w.get("primary_location") or {}).get("source")) or {}).get("display_name") or "OpenAlex"
     url = w.get("doi") or w.get("id") or ""
-    return {"titre": titre, "url": url, "texte": texte, "date": str(w.get("publication_date") or f"{w.get('publication_year')}-01-01")[:10],
-            "auteur": auteurs, "publication": revue,
-            "mention": f"Source : {url} ({revue}, {w.get('publication_year')}) — résumé par OpenAlex",
-            "origine": f"OpenAlex, papier hors arXiv du canon « {terme} »"}
+    return {
+        "titre": titre,
+        "url": url,
+        "texte": texte,
+        "date": str(w.get("publication_date") or f"{w.get('publication_year')}-01-01")[:10],
+        "auteur": auteurs,
+        "publication": revue,
+        "mention": f"Source : {url} ({revue}, {w.get('publication_year')}) — résumé par OpenAlex",
+        "origine": f"OpenAlex, papier hors arXiv du canon « {terme} »",
+    }
 
 
 def chercher_wikipedia(terme: str, requete: str) -> dict | None:
@@ -273,17 +326,33 @@ def chercher_wikipedia(terme: str, requete: str) -> dict | None:
 
     def lire_page(titre: str) -> tuple[dict, bool]:
         """(page, venue d'une redirection) ; une page d'homonymie ou trop courte rend {}."""
-        p = json.loads(lire_url(api + urllib.parse.urlencode(
-            {"action": "query", "prop": "extracts|pageprops|info", "explaintext": 1, "exsectionformat": "plain",
-             "redirects": 1, "inprop": "url", "titles": titre})))
+        p = json.loads(
+            lire_url(
+                api
+                + urllib.parse.urlencode(
+                    {
+                        "action": "query",
+                        "prop": "extracts|pageprops|info",
+                        "explaintext": 1,
+                        "exsectionformat": "plain",
+                        "redirects": 1,
+                        "inprop": "url",
+                        "titles": titre,
+                    }
+                )
+            )
+        )
         q = p.get("query", {})
         page = next(iter(q.get("pages", {}).values()), {})
         texte = (page.get("extract") or "").strip()
         if "missing" in page or "disambiguation" in (page.get("pageprops") or {}) or len(texte.split()) < MOTS_MIN:
             return {}, False
-        return {"titre": page["title"], "url": page.get("fullurl", ""), "texte": texte,
-                "date": str(page.get("touched") or "")[:10] or time.strftime("%Y-%m-%d")}, \
-            bool(q.get("redirects")) and not any(r.get("tofragment") for r in q["redirects"])
+        return {
+            "titre": page["title"],
+            "url": page.get("fullurl", ""),
+            "texte": texte,
+            "date": str(page.get("touched") or "")[:10] or time.strftime("%Y-%m-%d"),
+        }, bool(q.get("redirects")) and not any(r.get("tofragment") for r in q["redirects"])
 
     # Un sigle que Wikipédia redirige vers sa page est cette page : « STFT » → Short-time Fourier transform,
     # rédaction humaine et non rapprochement de mots (05.10.2026). Pas une redirection vers une section :
@@ -302,68 +371,115 @@ def chercher_wikipedia(terme: str, requete: str) -> dict | None:
         page, redirige = lire_page(terme)
         if page and (nomme(terme, page["titre"]) or (redirige and requete and plat(requete) == plat(page["titre"]))):
             return page
-    s = json.loads(lire_url(api + urllib.parse.urlencode(
-        {"action": "query", "list": "search", "srsearch": requete or terme, "srlimit": 3})))
+    s = json.loads(
+        lire_url(
+            api
+            + urllib.parse.urlencode({"action": "query", "list": "search", "srsearch": requete or terme, "srlimit": 3})
+        )
+    )
     for hit in s.get("query", {}).get("search", []):
         page, _ = lire_page(hit["title"])
         # Le titre de la page doit nommer la notion, ou être exactement son nom officiel. Ses racines dans le
         # chapeau ne suffisent pas : « img2img » avait ramené Riffusion, « intrinsic decomposition » la
         # transformée de Hilbert-Huang.
-        if page and ((nomme(terme, page["titre"]) and not precise) or (requete and plat(requete) == plat(page["titre"]))):
+        if page and (
+            (nomme(terme, page["titre"]) and not precise) or (requete and plat(requete) == plat(page["titre"]))
+        ):
             return page
     return None
 
 
 # --- Écriture ----------------------------------------------------------------------------------
 
+
 def ecrire_reference(src, terme: str, page: dict) -> str:
     mots = page["texte"].split()
-    corps = "\n".join([f"# {page['titre']}", "", " ".join(mots[:MOTS_MAX]) if len(mots) > MOTS_MAX else page["texte"], "",
-                       page.get("mention") or f"Source : {page['url']} (Wikipédia, CC BY-SA)", ""])
-    champs = {"title": page["titre"], "subtitle": "", "author": page.get("auteur") or "Wikipedia contributors",
-              "date": page["date"], "url": page["url"], "plateforme": "Référence",
-              "publication": page.get("publication") or "Wikipedia",
-              "complet": len(mots) <= MOTS_MAX, "collected": time.strftime("%Y-%m-%d"),
-              "source": page.get("origine") or f"Wikipédia, notion du canon « {terme} »"}
+    corps = "\n".join(
+        [
+            f"# {page['titre']}",
+            "",
+            " ".join(mots[:MOTS_MAX]) if len(mots) > MOTS_MAX else page["texte"],
+            "",
+            page.get("mention") or f"Source : {page['url']} (Wikipédia, CC BY-SA)",
+            "",
+        ]
+    )
+    champs = {
+        "title": page["titre"],
+        "subtitle": "",
+        "author": page.get("auteur") or "Wikipedia contributors",
+        "date": page["date"],
+        "url": page["url"],
+        "plateforme": "Référence",
+        "publication": page.get("publication") or "Wikipedia",
+        "complet": len(mots) <= MOTS_MAX,
+        "collected": time.strftime("%Y-%m-%d"),
+        "source": page.get("origine") or f"Wikipédia, notion du canon « {terme} »",
+    }
     chemin = src.chemin / f"{page['date']}_{te.cle_de(page['titre'])[:70] or 'reference'}.md"
     src.chemin.mkdir(parents=True, exist_ok=True)
     try:
         fiche.ecrire(chemin, champs, corps)
-    except fiche.IdentiteDejaVue as deja:              # la page est déjà une fiche du graphe : la notion est couverte
+    except fiche.IdentiteDejaVue as deja:  # la page est déjà une fiche du graphe : la notion est couverte
         return str(deja.existante.relative_to(Path(RACINE).resolve()))
     return str(chemin.relative_to(RACINE))
 
 
 def ecrire_depot(src, terme: str, it: dict) -> str:
     from newskit import collecte_depots as cd  # noqa: PLC0415
+
     lisezmoi = cd.readme(f"https://raw.githubusercontent.com/{it['full_name']}/HEAD/README.md")
     sujets = ", ".join(it.get("topics") or [])
-    corps = "\n".join([f"# {it['full_name']}", "", f"{it.get('description') or ''}", "",
-                       f"Étoiles : {it['stargazers_count']} · langage : {it.get('language') or '?'} · sujets : "
-                       f"{sujets or '—'} · créé le {it['created_at'][:10]}, mis à jour le {it['pushed_at'][:10]}", "",
-                       lisezmoi or "*Pas de README lisible : la fiche se réduit à la description du dépôt.*", "",
-                       f"Dépôt : {it['html_url']}", ""])
-    champs = {"title": it["full_name"], "subtitle": "", "author": it["owner"]["login"], "date": it["created_at"][:10],
-              "url": it["html_url"], "plateforme": "GitHub", "publication": src.nom, "complet": bool(lisezmoi),
-              "collected": time.strftime("%Y-%m-%d"), "source": f"GitHub, notion du canon « {terme} »",
-              "etoiles": int(it["stargazers_count"]), "langage": it.get("language") or "", "sujets": sujets}
+    corps = "\n".join(
+        [
+            f"# {it['full_name']}",
+            "",
+            f"{it.get('description') or ''}",
+            "",
+            f"Étoiles : {it['stargazers_count']} · langage : {it.get('language') or '?'} · sujets : "
+            f"{sujets or '—'} · créé le {it['created_at'][:10]}, mis à jour le {it['pushed_at'][:10]}",
+            "",
+            lisezmoi or "*Pas de README lisible : la fiche se réduit à la description du dépôt.*",
+            "",
+            f"Dépôt : {it['html_url']}",
+            "",
+        ]
+    )
+    champs = {
+        "title": it["full_name"],
+        "subtitle": "",
+        "author": it["owner"]["login"],
+        "date": it["created_at"][:10],
+        "url": it["html_url"],
+        "plateforme": "GitHub",
+        "publication": src.nom,
+        "complet": bool(lisezmoi),
+        "collected": time.strftime("%Y-%m-%d"),
+        "source": f"GitHub, notion du canon « {terme} »",
+        "etoiles": int(it["stargazers_count"]),
+        "langage": it.get("language") or "",
+        "sujets": sujets,
+    }
     chemin = src.chemin / f"{it['created_at'][:10]}_{cd.slug(it['full_name'])}.md"
     src.chemin.mkdir(parents=True, exist_ok=True)
     try:
         fiche.ecrire(chemin, champs, corps)
-    except fiche.IdentiteDejaVue as deja:              # la page est déjà une fiche du graphe : la notion est couverte
+    except fiche.IdentiteDejaVue as deja:  # la page est déjà une fiche du graphe : la notion est couverte
         return str(deja.existante.relative_to(Path(RACINE).resolve()))
     return str(chemin.relative_to(RACINE))
 
 
 # --- Passage -----------------------------------------------------------------------------------
 
+
 def file_du_canon(sujets: list[dict], justes: dict[str, float]) -> list[str]:
     """Les notions absentes dans l'ordre où les chercher. Avec la mesure par thème, les sujets faibles d'abord, chacun en
     entier (09.10.2026). Sans elle (un graphe qui naît), les sujets à tour de rôle : le 22.10.2026, la file d'un graphe de chansons
     alignait les notions sujet après sujet, et quatre passages n'ont pas atteint le cinquième sujet."""
-    listes = [list(s.get("absentes", [])) + list((s.get("critique") or {}).get("absentes", []))
-              for s in (sorted(sujets, key=lambda s: justes.get(s.get("sujet"), 0.75)) if justes else sujets)]
+    listes = [
+        list(s.get("absentes", [])) + list((s.get("critique") or {}).get("absentes", []))
+        for s in (sorted(sujets, key=lambda s: justes.get(s.get("sujet"), 0.75)) if justes else sujets)
+    ]
     if justes:
         ordre = [n for l in listes for n in l]
     else:
@@ -375,7 +491,13 @@ def a_traiter(graphe: str, etat: dict, plafond: int = PLAFOND) -> list[str]:
     p = cfg.chemins_du_graphe(graphe)["base"] / "avance.json"
     if not p.exists():
         return []
-    faits = set(etat["alias"]) | set(etat["references"]) | set(etat["depots"]) | set(etat["papiers"].values()) | set(etat["a_trancher"])
+    faits = (
+        set(etat["alias"])
+        | set(etat["references"])
+        | set(etat["depots"])
+        | set(etat["papiers"].values())
+        | set(etat["a_trancher"])
+    )
     p_h = cfg.chemins_du_graphe(graphe)["base"] / "themes_banc_historique.jsonl"
     justes: dict[str, float] = {}
     if p_h.exists():
@@ -384,12 +506,14 @@ def a_traiter(graphe: str, etat: dict, plafond: int = PLAFOND) -> list[str]:
             justes = {th: (v.get("ensemble") or {}).get("juste", 0.75) for th, v in (m.get("par_theme") or {}).items()}
         except (json.JSONDecodeError, IndexError):
             justes = {}
-    reste = [n for n in file_du_canon(json.loads(p.read_text(encoding="utf-8")).get("sujets", []), justes) if n not in faits]
+    reste = [
+        n for n in file_du_canon(json.loads(p.read_text(encoding="utf-8")).get("sujets", []), justes) if n not in faits
+    ]
     return reste[:plafond] if plafond else reste
 
 
 def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
-    te.POSTE, te.GRAPHE_COURANT = "canon", graphe          # registre des coûts
+    te.POSTE, te.GRAPHE_COURANT = "canon", graphe  # registre des coûts
     etat = lire_etat(graphe)
     termes = a_traiter(graphe, etat, plafond)
     if not termes:
@@ -401,7 +525,7 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
     decl = cfg.graphe_declare(graphe)
     juges: dict[int, dict] = {}
     for debut in range(0, len(termes), LOT_MODELE):
-        lot, cands_lot = termes[debut:debut + LOT_MODELE], cands[debut:debut + LOT_MODELE]
+        lot, cands_lot = termes[debut : debut + LOT_MODELE], cands[debut : debut + LOT_MODELE]
         rep = te.appeler_claude(
             f"Domaine : « {decl['libelle']} ». Pour chaque notion ci-dessous, trois réponses.\n"
             "`alias` : si l'un des noms proposés désigne EXACTEMENT la même chose (même méthode, même produit, même "
@@ -412,13 +536,19 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
             "papier, le titre exact de l'article qui l'a introduit.\n"
             "`depot` : pour un projet à code ouvert, son dépôt GitHub OFFICIEL « propriétaire/nom » (pas un script "
             "d'installation ni un dérivé) ; sinon null.\n\n"
-            + "\n".join(f"  {i}. {t}  — noms proposés : " + (" ; ".join(f"[{k}] {c}" for k, c in enumerate(cs)) or "aucun")
-                        for i, (t, cs) in enumerate(zip(lot, cands_lot)))
+            + "\n".join(
+                f"  {i}. {t}  — noms proposés : " + (" ; ".join(f"[{k}] {c}" for k, c in enumerate(cs)) or "aucun")
+                for i, (t, cs) in enumerate(zip(lot, cands_lot))
+            )
             + '\n\nRéponds en JSON : {"notions": [{"i": <indice>, "alias": <indice ou null>, "famille": "…", "requete": "…", "depot": "…"}, …]}.',
-            SCHEMA)
+            SCHEMA,
+        )
         if not rep:
-            print(f"  {graphe} : le modèle n'a pas répondu pour les notions {debut + 1} à {debut + len(lot)}, "
-                  f"elles attendent le passage suivant", file=sys.stderr)
+            print(
+                f"  {graphe} : le modèle n'a pas répondu pour les notions {debut + 1} à {debut + len(lot)}, "
+                f"elles attendent le passage suivant",
+                file=sys.stderr,
+            )
             continue
         for x in rep.get("notions", []):
             if isinstance(x.get("i"), int) and 0 <= x["i"] < len(lot):
@@ -435,7 +565,8 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
             continue
         a = x.get("alias")
         if isinstance(a, int) and 0 <= a < len(cands[i]):
-            etat["alias"][terme] = cands[i][a]; bilan["alias"] += 1
+            etat["alias"][terme] = cands[i][a]
+            bilan["alias"] += 1
             print(f"    alias      {terme}  =  {cands[i][a]}")
             continue
         if controle:
@@ -446,33 +577,45 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
             try:
                 r = chercher_arxiv(terme, requete)
             except Refus as e:
-                r = None; refus.append(str(e))
+                r = None
+                refus.append(str(e))
             if r:
-                etat["papiers"][r[0]] = terme; bilan["papier"] += 1; fait = True
+                etat["papiers"][r[0]] = terme
+                bilan["papier"] += 1
+                fait = True
                 print(f"    papier     {terme}  →  arXiv {r[0]}  {r[1][:70]}")
         if not fait and famille == "papier" and src:
             try:
                 page = chercher_openalex(terme, requete)
             except Refus as e:
-                page = None; refus.append(str(e))
+                page = None
+                refus.append(str(e))
             if page:
-                etat["references"][terme] = ecrire_reference(src, terme, page); bilan["hors_arxiv"] += 1; fait = True
+                etat["references"][terme] = ecrire_reference(src, terme, page)
+                bilan["hors_arxiv"] += 1
+                fait = True
                 print(f"    hors arXiv {terme}  →  {page['titre'][:70]} ({page['publication'][:30]})")
         if not fait and famille == "depot" and src:
             try:
                 it = chercher_github(terme, x.get("depot"))
             except Refus as e:
-                it = None; refus.append(str(e))
+                it = None
+                refus.append(str(e))
             if it:
-                etat["depots"][terme] = ecrire_depot(src, terme, it); bilan["depot"] += 1; fait = True
+                etat["depots"][terme] = ecrire_depot(src, terme, it)
+                bilan["depot"] += 1
+                fait = True
                 print(f"    dépôt      {terme}  →  {it['full_name']} ({it['stargazers_count']} étoiles)")
         if not fait and src:
             try:
                 page = chercher_wikipedia(terme, requete)
             except Refus as e:
-                page = None; refus.append(str(e))
+                page = None
+                refus.append(str(e))
             if page:
-                etat["references"][terme] = ecrire_reference(src, terme, page); bilan["reference"] += 1; fait = True
+                etat["references"][terme] = ecrire_reference(src, terme, page)
+                bilan["reference"] += 1
+                fait = True
                 print(f"    référence  {terme}  →  {page['titre']}")
         if not fait and refus:
             # Un service qui refuse n'a rien dit de la notion : pas d'essai compté, elle revient au passage suivant.
@@ -485,26 +628,35 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
             if etat["essais"][terme] >= ESSAIS:
                 etat["a_trancher"][terme] = f"{famille} : aucune source vérifiable trouvée en {ESSAIS} passages"
             print(f"    sans suite {terme}  ({famille})")
-        if not controle:      # au fil de l'eau : une notion résolue est écrite avant que la suivante soit cherchée
+        if not controle:  # au fil de l'eau : une notion résolue est écrite avant que la suivante soit cherchée
             chemin_etat(graphe).write_text(json.dumps(etat, ensure_ascii=False, indent=1), encoding="utf-8")
     if not controle:
         chemin_etat(graphe).write_text(json.dumps(etat, ensure_ascii=False, indent=1), encoding="utf-8")
         if bilan["papier"]:
             # Les papiers retenus deviennent des jalons : leur fiche est écrite et la liste recalculée.
-            subprocess.run([sys.executable, str(CODE / "choisir_jalons.py"), "--graphe", graphe],
-                           cwd=RACINE, capture_output=True, text=True, timeout=900)
-    print(f"  {graphe} : {len(termes)} notion(s) du canon traitées — {bilan['alias']} déjà là sous un autre nom, "
-          f"{bilan['papier']} papier(s), {bilan['hors_arxiv']} hors arXiv, {bilan['depot']} dépôt(s), {bilan['reference']} page(s) de référence, "
-          f"{bilan['sans']} sans suite ; {len(etat['a_trancher'])} à trancher"
-          + (f" ; {bilan['refus']} REFUSÉE(S) par un service, reprise(s) au passage suivant" if bilan["refus"] else ""))
+            subprocess.run(
+                [sys.executable, str(CODE / "choisir_jalons.py"), "--graphe", graphe],
+                cwd=RACINE,
+                capture_output=True,
+                text=True,
+                timeout=900,
+            )
+    print(
+        f"  {graphe} : {len(termes)} notion(s) du canon traitées — {bilan['alias']} déjà là sous un autre nom, "
+        f"{bilan['papier']} papier(s), {bilan['hors_arxiv']} hors arXiv, {bilan['depot']} dépôt(s), {bilan['reference']} page(s) de référence, "
+        f"{bilan['sans']} sans suite ; {len(etat['a_trancher'])} à trancher"
+        + (f" ; {bilan['refus']} REFUSÉE(S) par un service, reprise(s) au passage suivant" if bilan["refus"] else "")
+    )
     # Un refus n'est pas une absence : le code de sortie le dit, comme pour les collecteurs.
     return 1 if bilan["refus"] else 0
 
 
 def afficher(graphe: str) -> None:
     e = lire_etat(graphe)
-    print(f"  {graphe} : {len(e['alias'])} alias, {len(e['papiers'])} papier(s), {len(e['depots'])} dépôt(s), "
-          f"{len(e['references'])} référence(s), {len(e['a_trancher'])} à trancher")
+    print(
+        f"  {graphe} : {len(e['alias'])} alias, {len(e['papiers'])} papier(s), {len(e['depots'])} dépôt(s), "
+        f"{len(e['references'])} référence(s), {len(e['a_trancher'])} à trancher"
+    )
     for t, motif in e["a_trancher"].items():
         print(f"    à trancher : {t} — {motif}")
 
@@ -514,12 +666,17 @@ def main() -> int:
     ap.add_argument("--graphe", default=cfg.GRAPHE_PRINCIPAL)
     ap.add_argument("--etat", action="store_true")
     ap.add_argument("--controle", action="store_true", help="rapprocher et classer, sans rien chercher ni écrire")
-    ap.add_argument("--plafond", type=int, default=PLAFOND,
-                    help=f"notions traitées par passage (défaut {PLAFOND} ; 0 : toutes, pour un passage à la main)")
+    ap.add_argument(
+        "--plafond",
+        type=int,
+        default=PLAFOND,
+        help=f"notions traitées par passage (défaut {PLAFOND} ; 0 : toutes, pour un passage à la main)",
+    )
     args = ap.parse_args()
     graphe = cfg.nom_actuel(args.graphe)
     if args.etat:
-        afficher(graphe); return 0
+        afficher(graphe)
+        return 0
     return passage(graphe, args.controle, args.plafond)
 
 

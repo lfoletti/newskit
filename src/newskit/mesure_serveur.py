@@ -8,6 +8,7 @@ mémoire de pointe du processus. Aucun appel au modèle, rien d'écrit.
 
 Repères du 10.10.2026 sur le serveur (4 vCPU), modèles fp32 : chargement 13 s, 5 à 6 s par question, RSS 2,4 Go ;
 attendus avec plongements int8 et BM25 inversé : ~1,2 Go, 4 à 5 s."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,7 @@ QUESTIONS = [
 
 def rss() -> int:
     r = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return r // (1024 if sys.platform != "darwin" else 1024 ** 2)
+    return r // (1024 if sys.platform != "darwin" else 1024**2)
 
 
 def main() -> int:
@@ -35,14 +36,28 @@ def main() -> int:
     ap.add_argument("--graphe", required=True)
     a = ap.parse_args()
     from newskit import synthese as sy  # noqa: PLC0415
+
     g = a.graphe
-    for nom, f in (("graphe", lambda: sy.charger_graphe(g)), ("encodeur", lambda: sy.encodeur(g)),
-                   ("index", lambda: sy.index(g)), ("reclasseur", sy.reclasseur)):
-        t = time.time(); x = f()
-        print(f"  {nom:10s} {type(x).__name__ if x is not None else 'absent':16s} {time.time() - t:5.1f} s   RSS {rss()} Mo", flush=True)
+    for nom, f in (
+        ("graphe", lambda: sy.charger_graphe(g)),
+        ("encodeur", lambda: sy.encodeur(g)),
+        ("index", lambda: sy.index(g)),
+        ("reclasseur", sy.reclasseur),
+    ):
+        t = time.time()
+        x = f()
+        print(
+            f"  {nom:10s} {type(x).__name__ if x is not None else 'absent':16s} {time.time() - t:5.1f} s   RSS {rss()} Mo",
+            flush=True,
+        )
     for q in QUESTIONS:
-        t = time.time(); p = sy.passages_hybrides(g, q, 3)
-        print(f"  question : {time.time() - t:4.1f} s, {len(p or [])} passage(s)" + ("" if p else " (recherche hybride indisponible)"), flush=True)
+        t = time.time()
+        p = sy.passages_hybrides(g, q, 3)
+        print(
+            f"  question : {time.time() - t:4.1f} s, {len(p or [])} passage(s)"
+            + ("" if p else " (recherche hybride indisponible)"),
+            flush=True,
+        )
     print(f"  RSS de pointe {rss()} Mo")
     return 0
 

@@ -1,13 +1,17 @@
 """L'éditeur d'une page web est le nom que la page déclare (`og:site_name`), pas son domaine (04.11.2026 :
 « thenextweb.com » corrigé à la main dans deux dossiers d'éclairage)."""
+
 from __future__ import annotations
 
 from newskit import lecture_web as lw
 from newskit import reporter as rp
 
 URL = "https://thenextweb.com/news/ai-act-guidelines"
-CORPS = "".join(f"<p>Point {i}. The Commission published guidance on general-purpose models and their providers "
-                f"under the AI Act, with obligations that apply from August.</p>" for i in range(40))
+CORPS = "".join(
+    f"<p>Point {i}. The Commission published guidance on general-purpose models and their providers "
+    f"under the AI Act, with obligations that apply from August.</p>"
+    for i in range(40)
+)
 
 
 def _page(entete: str) -> bytes:

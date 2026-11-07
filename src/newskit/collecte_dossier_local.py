@@ -44,8 +44,8 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code 
 from newskit import config_sources as cfg  # noqa: E402
 from newskit import fiche  # noqa: E402
 
-TAILLE_MAX = 30_000       # caractères par fiche avant redécoupage
-TAILLE_MORCEAU = 22_000   # taille visée d'un morceau sans titre
+TAILLE_MAX = 30_000  # caractères par fiche avant redécoupage
+TAILLE_MORCEAU = 22_000  # taille visée d'un morceau sans titre
 RE_TITRE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 RE_DATE = re.compile(r"\b(\d{2})\.(\d{2})\.(\d{4})\b")
 
@@ -97,7 +97,8 @@ def redecouper(lignes: list[str], titre: str, debut: int, fin: int, niveau: int)
     for i in range(debut, fin):
         taille += len(lignes[i]) + 1
         if taille >= TAILLE_MORCEAU and not lignes[i].strip():
-            morceaux.append((a, i)); a, taille = i, 0
+            morceaux.append((a, i))
+            a, taille = i, 0
     morceaux.append((a, fin))
     n = len(morceaux)
     return [(f"{titre} ({k + 1}/{n})" if n > 1 else titre, a, b) for k, (a, b) in enumerate(morceaux)]
@@ -112,14 +113,14 @@ def date_de(texte: str, repli: str) -> str:
             d = dt.date(int(aaaa), int(mm), int(jj))
         except ValueError:
             continue
-        if d <= aujourdhui:                 # une échéance à venir n'est pas la date du texte
+        if d <= aujourdhui:  # une échéance à venir n'est pas la date du texte
             dates.append(d)
     return max(dates).isoformat() if dates else repli
 
 
 def traiter_source(src, controle: bool, echecs: list[str]) -> dict:
     compte = {"documents": 0, "sections": 0, "neuves": 0, "modifiees": 0, "retirees": 0, "inchangees": 0}
-    racine = Path(src.racine).expanduser()          # « ~/… » au registre
+    racine = Path(src.racine).expanduser()  # « ~/… » au registre
     src.chemin.mkdir(parents=True, exist_ok=True)
     manifeste = json.loads(src.manifeste.read_text(encoding="utf-8")) if src.manifeste.exists() else {}
     vus: set[str] = set()
@@ -135,7 +136,10 @@ def traiter_source(src, controle: bool, echecs: list[str]) -> dict:
         compte["documents"] += 1
         texte = f.read_text(encoding="utf-8", errors="replace")
         lignes = texte.split("\n")
-        titre_doc = next((RE_TITRE.match(l).group(2) for l in lignes if RE_TITRE.match(l) and RE_TITRE.match(l).group(1) == "#"), f.stem)
+        titre_doc = next(
+            (RE_TITRE.match(l).group(2) for l in lignes if RE_TITRE.match(l) and RE_TITRE.match(l).group(1) == "#"),
+            f.stem,
+        )
         mtime = dt.date.fromtimestamp(f.stat().st_mtime).isoformat()
         parts: list[tuple[str, int, int]] = []
         for t, a, b in sections(lignes, niveau):
@@ -158,28 +162,47 @@ def traiter_source(src, controle: bool, echecs: list[str]) -> dict:
             ancien = manifeste.get(nom)
             titre = f"{titre_doc} — {t}" if t and t != titre_doc else titre_doc
             date_sec = date_de(corps, mtime)
-            if (ancien and ancien.get("empreinte") == empreinte and ancien.get("date") == date_sec
-                    and (src.chemin / nom).exists()):
+            if (
+                ancien
+                and ancien.get("empreinte") == empreinte
+                and ancien.get("date") == date_sec
+                and (src.chemin / nom).exists()
+            ):
                 compte["inchangees"] += 1
                 continue
             champs = {
-                "title": titre[:200], "subtitle": "", "author": src.nom, "date": date_sec,
-                "url": "", "plateforme": "Dossier local", "publication": src.nom, "complet": True,
+                "title": titre[:200],
+                "subtitle": "",
+                "author": src.nom,
+                "date": date_sec,
+                "url": "",
+                "plateforme": "Dossier local",
+                "publication": src.nom,
+                "complet": True,
                 "collected": ancien.get("collected", aujourdhui) if ancien else aujourdhui,
-                "source": f"dossier local {chemin_rel}", "fichier": chemin_rel,
-                "lignes": f"L{a + 1}-L{b}", "section": t[:160],
+                "source": f"dossier local {chemin_rel}",
+                "fichier": chemin_rel,
+                "lignes": f"L{a + 1}-L{b}",
+                "section": t[:160],
             }
             if not controle:
                 try:
                     fiche.ecrire(src.chemin / nom, champs, f"# {titre}\n\n{corps}\n")
-                except fiche.IdentiteDejaVue as deja:   # une autre fiche du graphe porte déjà ce document
+                except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
                     print(f"  déjà vue : {deja}")
                     continue
                 except ValueError as e:
                     echecs.append(f"{src.nom} : {nom} : {str(e)[:100]}")
                     continue
-            manifeste[nom] = {"file": nom, "title": titre, "date": champs["date"], "empreinte": empreinte,
-                              "fichier": chemin_rel, "lignes": champs["lignes"], "collected": champs["collected"]}
+            manifeste[nom] = {
+                "file": nom,
+                "title": titre,
+                "date": champs["date"],
+                "empreinte": empreinte,
+                "fichier": chemin_rel,
+                "lignes": champs["lignes"],
+                "collected": champs["collected"],
+            }
             compte["modifiees" if ancien else "neuves"] += 1
     # Les sections disparues retirent leur fiche : le graphe ne doit pas garder
     # un nœud sans texte derrière lui.
@@ -206,9 +229,11 @@ def main() -> int:
     echecs: list[str] = []
     for src in sources:
         c = traiter_source(src, args.controle, echecs)
-        print(f"  {src.nom} : {c['documents']} document(s), {c['sections']} section(s) → "
-              f"{c['neuves']} fiche(s) neuve(s), {c['modifiees']} réécrite(s), {c['inchangees']} inchangée(s), "
-              f"{c['retirees']} retirée(s)" + ("  (contrôle, rien d'écrit)" if args.controle else ""))
+        print(
+            f"  {src.nom} : {c['documents']} document(s), {c['sections']} section(s) → "
+            f"{c['neuves']} fiche(s) neuve(s), {c['modifiees']} réécrite(s), {c['inchangees']} inchangée(s), "
+            f"{c['retirees']} retirée(s)" + ("  (contrôle, rien d'écrit)" if args.controle else "")
+        )
     for e in echecs:
         print(f"  !! {e}", file=sys.stderr)
     return 1 if echecs else 0

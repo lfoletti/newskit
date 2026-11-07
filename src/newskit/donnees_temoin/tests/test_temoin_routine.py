@@ -21,15 +21,28 @@ from newskit import commun  # noqa: E402
 from newskit import temoin  # noqa: E402
 
 
-
 @pytest.fixture(scope="module")
 def passage(tmp_path_factory):
     avant = temoin.photo_du_reel()
     t = temoin.preparer(tmp_path_factory.mktemp("temoin") / "t")
-    (t.donnees / "cache" / "limite_atteinte").write_text(time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n", encoding="utf-8")
-    r = subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                        "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                       capture_output=True, text=True, timeout=900)
+    (t.donnees / "cache" / "limite_atteinte").write_text(
+        time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n", encoding="utf-8"
+    )
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
     return t, r, avant
 
 
@@ -49,8 +62,11 @@ def test_la_routine_collecte_compose_et_dresse_la_carte(passage):
     t, r, _ = passage
     sortie = r.stdout
     import re
+
     n = len(list(temoin.TEMOIN.joinpath("dossier").glob("*.md")))
-    m = re.search(r"Carnets des ruchers : (\d+) document\(s\), (\d+) section\(s\) → (\d+) fiche\(s\) neuve\(s\)", sortie)
+    m = re.search(
+        r"Carnets des ruchers : (\d+) document\(s\), (\d+) section\(s\) → (\d+) fiche\(s\) neuve\(s\)", sortie
+    )
     assert m and int(m[1]) == n and int(m[2]) == int(m[3]) >= n, sortie[-1500:]
     for etape in ("couche 1 du graphe", "structure des titres", "composition", "carte du domaine"):
         assert f"ok      {etape}" in sortie, etape
@@ -63,4 +79,4 @@ def test_les_etapes_au_modele_sont_sautees_et_rien_n_est_paye(passage):
     for etape in ("canon", "éclaireur", "couche 2 incrémentale", "thèmes émergents"):
         assert f"sauté   {etape} : limite d'usage atteinte" in r.stdout, etape
     assert "coût du passage : aucun appel au modèle consigné" in r.stdout
-    assert not t.manquantes.exists()                    # le faux claude n'a pas été appelé
+    assert not t.manquantes.exists()  # le faux claude n'a pas été appelé

@@ -24,8 +24,9 @@ from newskit import routine_hebdo as rh  # noqa: E402
 
 def _media(d: Path, **plus) -> Path:
     d.mkdir(parents=True, exist_ok=True)
-    (d / "config.yaml").write_text(yaml.safe_dump({"version": 1, "media": {"nom": "apiculture"}, **plus}),
-                                   encoding="utf-8")
+    (d / "config.yaml").write_text(
+        yaml.safe_dump({"version": 1, "media": {"nom": "apiculture"}, **plus}), encoding="utf-8"
+    )
     return d
 
 
@@ -49,8 +50,7 @@ def test_une_cle_qui_n_est_pas_un_chemin_est_refusee(tmp_path, v):
 
 def test_les_modules_lisent_le_registre_du_media(tmp_path):
     d = _media(tmp_path / "m", registre_des_graphes="etat/graphes.json")
-    code = ("from newskit import themes_emergents as te, nouveau_graphe as ng; print(te.REGISTRE_SKILL); "
-            "print(ng.SKILL)")
+    code = "from newskit import themes_emergents as te, nouveau_graphe as ng; print(te.REGISTRE_SKILL); print(ng.SKILL)"
     env = {k: v for k, v in os.environ.items() if not k.startswith("NEWSKIT_")} | {"NEWSKIT_DONNEES": str(d)}
     r = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr[-1500:]
@@ -64,6 +64,7 @@ def test_les_depots_prennent_les_sujets_du_registre_du_media(tmp_path, monkeypat
 
     class S:
         graphe = "ruchers"
+
     monkeypatch.setattr(cfg, "toutes", lambda *a, **k: [S()])
     monkeypatch.setattr(cfg, "graphe_declare", lambda nom: {"libelle": "Ruchers"})
     assert depots.graphes_candidats() == {"ruchers": "Ruchers ; ruche en paille"}

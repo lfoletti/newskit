@@ -45,56 +45,80 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.yaml du média
 from newskit.extrait import MOTS_EXTRAIT, _a_plat, atteste  # noqa: E402, F401 — la vérification d'extrait, partagée avec le puits
+
 # Chemins du graphe principal ; `--graphe` les remplace par ceux du graphe visé
 # (config_sources.chemins_du_graphe), depuis le 27.09.2026 (graphe financier).
 EMPREINTES = RACINE / "graphe" / "couche2" / "empreintes.json"
 LOTS = RACINE / "graphe" / "couche2" / "fiches"
-GRAPHE = None            # nom du graphe visé ; None = principal
-DOMAINE = ""             # le domaine du graphe principal, lu au registre après l'import de config_sources
-PLAFOND = 6                  # fiches par passage : ~5 min chacune, sous le délai d'une heure d'une étape de routine
-STOCK = 10                   # fiches du stock extraites par passage, en plus des arrivées du jour
-DELAI = 420                  # secondes par appel
+GRAPHE = None  # nom du graphe visé ; None = principal
+DOMAINE = ""  # le domaine du graphe principal, lu au registre après l'import de config_sources
+PLAFOND = 6  # fiches par passage : ~5 min chacune, sous le délai d'une heure d'une étape de routine
+STOCK = 10  # fiches du stock extraites par passage, en plus des arrivées du jour
+DELAI = 420  # secondes par appel
 MODELE = os.environ.get("SE_CLAUDE_MODELE") or media.modele("extraction")
-PARALLELE = int(os.environ.get("SE_PARALLELE", "4"))   # appels au modèle simultanés   # imposé le 27.09.2026 ; vide : le défaut de l'abonnement
+PARALLELE = int(
+    os.environ.get("SE_PARALLELE", "4")
+)  # appels au modèle simultanés   # imposé le 27.09.2026 ; vide : le défaut de l'abonnement
 
 from newskit import config_sources as cfg  # noqa: E402
-DOMAINE = cfg.graphe_declare(cfg.GRAPHE_PRINCIPAL)["domaine"]   # remplacé par celui du graphe visé (--graphe)
+
+DOMAINE = cfg.graphe_declare(cfg.GRAPHE_PRINCIPAL)["domaine"]  # remplacé par celui du graphe visé (--graphe)
 from newskit import couts  # noqa: E402
 from newskit import fiche  # noqa: E402
 from newskit.extraire_squelette import make_id  # noqa: E402
 
-LIMITE = "limite d'usage atteinte"      # début du diagnostic d'un appel non tenté ou refusé par la limite
+LIMITE = "limite d'usage atteinte"  # début du diagnostic d'un appel non tenté ou refusé par la limite
 
 FILE_TYPES = {"code", "document", "paper", "image", "rationale", "concept"}
-RELATIONS = {"calls", "implements", "references", "cites", "conceptually_related_to",
-             "shares_data_with", "semantically_similar_to", "rationale_for"}
+RELATIONS = {
+    "calls",
+    "implements",
+    "references",
+    "cites",
+    "conceptually_related_to",
+    "shares_data_with",
+    "semantically_similar_to",
+    "rationale_for",
+}
 CONFIANCES = {"EXTRACTED", "INFERRED", "AMBIGUOUS"}
 
 SCHEMA = {
     "type": "object",
     "properties": {
-        "nodes": {"type": "array", "items": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "string"}, "label": {"type": "string"},
-                "file_type": {"type": "string", "enum": sorted(FILE_TYPES)},
-                "rationale": {"type": ["string", "null"]},
-                "evidence": {"type": ["string", "null"]},
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "label": {"type": "string"},
+                    "file_type": {"type": "string", "enum": sorted(FILE_TYPES)},
+                    "rationale": {"type": ["string", "null"]},
+                    "evidence": {"type": ["string", "null"]},
+                },
+                "required": ["id", "label", "file_type"],
+                "additionalProperties": False,
             },
-            "required": ["id", "label", "file_type"], "additionalProperties": False}},
-        "edges": {"type": "array", "items": {
-            "type": "object",
-            "properties": {
-                "source": {"type": "string"}, "target": {"type": "string"},
-                "relation": {"type": "string", "enum": sorted(RELATIONS)},
-                "confidence": {"type": "string", "enum": sorted(CONFIANCES)},
-                "confidence_score": {"type": "number"},
-                "evidence": {"type": "string"},
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "relation": {"type": "string", "enum": sorted(RELATIONS)},
+                    "confidence": {"type": "string", "enum": sorted(CONFIANCES)},
+                    "confidence_score": {"type": "number"},
+                    "evidence": {"type": "string"},
+                },
+                "required": ["source", "target", "relation", "confidence", "confidence_score", "evidence"],
+                "additionalProperties": False,
             },
-            "required": ["source", "target", "relation", "confidence", "confidence_score", "evidence"],
-            "additionalProperties": False}},
+        },
     },
-    "required": ["nodes", "edges"], "additionalProperties": False,
+    "required": ["nodes", "edges"],
+    "additionalProperties": False,
 }
 
 
@@ -114,14 +138,18 @@ def empreinte(corps: str) -> str:
 
 def collectee_le(f: Path) -> str:
     """Le jour où la fiche est arrivée (champ `collected`), ou "" s'il manque."""
-    m = re.search(r'^collected: "?(\d{4}-\d{2}-\d{2})', f.read_text(encoding="utf-8", errors="replace")[:1500], flags=re.M)
+    m = re.search(
+        r'^collected: "?(\d{4}-\d{2}-\d{2})', f.read_text(encoding="utf-8", errors="replace")[:1500], flags=re.M
+    )
     return m.group(1) if m else ""
 
 
-PLAFOND_MAX = 80             # fiches par nuit au plus, quoi qu'il arrive (09.10.2026) ; `plafond_couche2_max` au registre
+PLAFOND_MAX = 80  # fiches par nuit au plus, quoi qu'il arrive (09.10.2026) ; `plafond_couche2_max` au registre
 
 
-def plafond_du_passage(retard: list[tuple[Path, str]], plancher: int, stock: int, aujourdhui: str, maximum: int = PLAFOND_MAX) -> int:
+def plafond_du_passage(
+    retard: list[tuple[Path, str]], plancher: int, stock: int, aujourdhui: str, maximum: int = PLAFOND_MAX
+) -> int:
     """Combien de fiches ce passage extrait (règle du porteur, 04.10.2026) : toutes les arrivées du jour,
     plus `stock` fiches du stock, et jamais moins que `plancher`. Un jour calme vide donc le stock par le
     plancher ; un jour chargé ne laisse aucune nouvelle en attente et avance quand même dans l'histoire.
@@ -142,7 +170,11 @@ def est_un_refus(diag: str, propre: dict | None, erreurs: list | None) -> bool:
     """Un refus du modèle sur ce contenu — pas une panne ni une limite d'usage. 08.10.2026 : des comptes rendus
     d'exploitation de failles (Project Zero, Trail of Bits) refusés à chaque passage, 0,20 $ l'appel, retentés chaque
     nuit. Une limite d'usage rend `duration_api_ms` à 0 : ce n'est pas un refus, la fiche sera retentée."""
-    if diag and '"stop_reason":"refusal"' in diag.replace(" ", "") and '"duration_api_ms":0' not in diag.replace(" ", ""):
+    if (
+        diag
+        and '"stop_reason":"refusal"' in diag.replace(" ", "")
+        and '"duration_api_ms":0' not in diag.replace(" ", "")
+    ):
         return True
     return propre is not None and not propre.get("nodes") and not erreurs
 
@@ -152,6 +184,7 @@ def corps_de(f: Path) -> tuple[dict, str]:
     (refus.corps_utilisable, mainteneur, 06.11.2026). L'empreinte se calcule sur ce texte : un refus remet la fiche en
     retard, et elle est reprise d'après le résumé."""
     from newskit import refus  # noqa: PLC0415
+
     champs, corps = fiche.lire_fichier(f)
     try:
         rel = str(f.relative_to(RACINE))
@@ -173,7 +206,9 @@ def fiches_en_retard() -> list[tuple[Path, str]]:
     connues = {**{k: v for k, v in refus_connus().items()}, **connues}
     out = []
     for d in cfg.dossiers_denses(GRAPHE):
-        for f in sorted((RACINE / d).rglob("*.md")):      # rglob : les textes de référence sont en sous-dossiers (09.10.2026)
+        for f in sorted(
+            (RACINE / d).rglob("*.md")
+        ):  # rglob : les textes de référence sont en sous-dossiers (09.10.2026)
             if f.name.startswith("_"):
                 continue
             _, corps = corps_de(f)
@@ -184,6 +219,7 @@ def fiches_en_retard() -> list[tuple[Path, str]]:
     # (choisir_jalons.py) : une référence très citée, ou citée par plusieurs articles
     # du graphe. L'extraction systématique des résumés noyait le graphe (02.10.2026).
     from newskit import choisir_jalons  # noqa: PLC0415
+
     nom = GRAPHE or cfg.GRAPHE_PRINCIPAL
     for chemin in sorted(v["chemin"] for v in choisir_jalons.jalons_detailles(nom).values()):
         f = RACINE / chemin
@@ -206,7 +242,7 @@ def fiches_en_retard() -> list[tuple[Path, str]]:
                 continue
             champs, corps = corps_de(f)
             if "thème «" not in str(champs.get("source") or ""):
-                continue                                    # papier cité, pas retenu par un thème
+                continue  # papier cité, pas retenu par un thème
             h = empreinte(corps)
             if connues.get(str(f.relative_to(RACINE))) != h:
                 out.append((f, h))
@@ -218,6 +254,7 @@ def fiches_en_retard() -> list[tuple[Path, str]]:
     # Un graphe à partage (GV4) n'extrait que ses fiches retenues : les autres ne deviennent jamais ses nœuds
     # (GV7, 02.11.2026 : 1 398 des 1 721 fiches en retard du graphe fusionné revenaient à un autre graphe).
     from newskit import partage_graphe  # noqa: PLC0415
+
     retenues = partage_graphe.fiches_du_graphe(nom)
     if retenues is not None:
         out = [(f, h) for f, h in out if str(f.relative_to(RACINE)) in retenues]
@@ -232,11 +269,13 @@ def prompt_pour(chemin: Path, champs: dict, corps: str) -> str:
     titre = champs.get("title", chemin.stem)
     # Un résumé arXiv tient en deux cents mots : la consigne de volume d'un article entier
     # y ferait inventer des notions. Moins de nœuds, et seulement ce que le résumé nomme.
-    volume = ("This document is only the ABSTRACT of a paper. Keep 4 to 10 nodes and 5 to 15 edges: the task, "
-              "the method and its named components, the datasets or benchmarks, and the systems it builds on "
-              "or compares to. Do not invent what the abstract does not name."
-              if champs.get("arxiv_id") else
-              "Keep 8 to 25 nodes and 10 to 40 edges: what a reader would want to find again, not every noun.")
+    volume = (
+        "This document is only the ABSTRACT of a paper. Keep 4 to 10 nodes and 5 to 15 edges: the task, "
+        "the method and its named components, the datasets or benchmarks, and the systems it builds on "
+        "or compares to. Do not invent what the abstract does not name."
+        if champs.get("arxiv_id")
+        else "Keep 8 to 25 nodes and 10 to 40 edges: what a reader would want to find again, not every noun."
+    )
     return f"""You are a knowledge-graph extraction step for a personal research corpus ({DOMAINE}). Read the document below and return ONLY a JSON object matching the required schema — no prose, no markdown fences.
 
 Document id (use it VERBATIM as a node id when an edge starts from the document itself): {fid}
@@ -267,8 +306,16 @@ def appeler_claude(prompt: str) -> tuple[dict | None, str]:
     """(extraction, diagnostic). Aucun outil : une réponse, un JSON."""
     if couts.en_limite():
         return None, LIMITE
-    args = [*couts.CLAUDE_P, "--output-format", "json", "--json-schema", json.dumps(SCHEMA),
-            "--no-session-persistence", "--tools", ""]   # pas --bare : il ignore la connexion de l'abonnement
+    args = [
+        *couts.CLAUDE_P,
+        "--output-format",
+        "json",
+        "--json-schema",
+        json.dumps(SCHEMA),
+        "--no-session-persistence",
+        "--tools",
+        "",
+    ]  # pas --bare : il ignore la connexion de l'abonnement
     if MODELE:
         args += ["--model", MODELE]
     t0 = time.time()
@@ -279,7 +326,9 @@ def appeler_claude(prompt: str) -> tuple[dict | None, str]:
         return None, f"délai de {DELAI} s dépassé"
     except FileNotFoundError:
         return None, "commande `claude` introuvable (Claude Code n'est pas sur le PATH)"
-    enveloppe = couts.enregistrer("extraction", GRAPHE, MODELE, r, time.time() - t0)   # chaque appel au registre des coûts
+    enveloppe = couts.enregistrer(
+        "extraction", GRAPHE, MODELE, r, time.time() - t0
+    )  # chaque appel au registre des coûts
     if r.returncode != 0:
         if couts.est_une_limite(enveloppe, r.stderr or "", r.returncode):
             return None, LIMITE + f" : {(r.stderr or r.stdout).strip()[:120]}"
@@ -305,7 +354,7 @@ def analyser_json(texte: str) -> tuple[dict | None, str]:
     i, j = t.find("{"), t.rfind("}")
     if 0 <= i < j:
         try:
-            return json.loads(t[i:j + 1]), "ok (JSON extrait du texte)"
+            return json.loads(t[i : j + 1]), "ok (JSON extrait du texte)"
         except json.JSONDecodeError as e:
             return None, f"JSON invalide : {e}"
     return None, "aucun JSON dans la réponse"
@@ -324,17 +373,24 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
     for n in ext.get("nodes", []) or []:
         nid = re.sub(r"[^a-z0-9_]", "_", str(n.get("id", "")).lower()).strip("_")
         if nid == fid:
-            continue                         # la fiche elle-même : le squelette la porte
+            continue  # la fiche elle-même : le squelette la porte
         if not nid.startswith("concept_") or len(nid) <= len("concept_"):
             nid = "concept_" + re.sub(r"[^a-z0-9_]+", "_", str(n.get("label", "")).lower()).strip("_")
             if nid == "concept_":
                 ecartes.append(f"nœud sans identifiant ni étiquette : {n}")
                 continue
         ft = n.get("file_type") if n.get("file_type") in FILE_TYPES else "concept"
-        noeud = {"id": nid, "label": str(n.get("label") or nid[len("concept_"):]).strip(),
-                 "file_type": ft, "source_file": source, "source_location": None,
-                 "source_url": champs.get("url") or None, "captured_at": champs.get("collected") or None,
-                 "author": champs.get("author") or None, "contributor": "Claude (abonnement, claude -p)"}
+        noeud = {
+            "id": nid,
+            "label": str(n.get("label") or nid[len("concept_") :]).strip(),
+            "file_type": ft,
+            "source_file": source,
+            "source_location": None,
+            "source_url": champs.get("url") or None,
+            "captured_at": champs.get("collected") or None,
+            "author": champs.get("author") or None,
+            "contributor": "Claude (abonnement, claude -p)",
+        }
         if n.get("rationale"):
             if atteste(n.get("evidence"), corps):
                 noeud["rationale"] = str(n["rationale"]).strip()
@@ -345,19 +401,28 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
     # La fiche elle-même, comme dans les douze lots : le validateur de graphify
     # exige que chaque extrémité d'arête soit un nœud du lot, et la composition
     # fond ce nœud dans celui du squelette (« sur une fiche, le squelette fait foi »).
-    fiche_noeud = {"id": fid, "label": str(champs.get("title") or chemin.stem), "file_type": "document",
-                   "source_file": source, "source_location": None, "source_url": champs.get("url") or None,
-                   "captured_at": champs.get("collected") or None, "author": champs.get("author") or None,
-                   "contributor": "Claude (abonnement, claude -p)"}
+    fiche_noeud = {
+        "id": fid,
+        "label": str(champs.get("title") or chemin.stem),
+        "file_type": "document",
+        "source_file": source,
+        "source_location": None,
+        "source_url": champs.get("url") or None,
+        "captured_at": champs.get("collected") or None,
+        "author": champs.get("author") or None,
+        "contributor": "Claude (abonnement, claude -p)",
+    }
     aretes: list[dict] = []
     vues: set[tuple[str, str, str]] = set()
     for e in ext.get("edges", []) or []:
         s = re.sub(r"[^a-z0-9_]", "_", str(e.get("source", "")).lower()).strip("_")
         t = re.sub(r"[^a-z0-9_]", "_", str(e.get("target", "")).lower()).strip("_")
         if s not in noeuds and s != fid:
-            ecartes.append(f"arête depuis un nœud inconnu : {s}"); continue
+            ecartes.append(f"arête depuis un nœud inconnu : {s}")
+            continue
         if t not in noeuds and t != fid:
-            ecartes.append(f"arête vers un nœud inconnu : {t}"); continue
+            ecartes.append(f"arête vers un nœud inconnu : {t}")
+            continue
         if s == t or (s, t, e.get("relation")) in vues:
             continue
         if not atteste(e.get("evidence"), corps):
@@ -376,13 +441,23 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
         elif score == 0.5 or not 0.55 <= score <= 0.95:
             score = 0.75
         vues.add((s, t, rel))
-        aretes.append({"source": s, "target": t, "relation": rel, "confidence": conf,
-                       "confidence_score": score, "evidence": str(e["evidence"]).strip(),
-                       "source_file": source, "source_location": None, "weight": 1.0, "contributor": "Claude (abonnement, claude -p)"})
+        aretes.append(
+            {
+                "source": s,
+                "target": t,
+                "relation": rel,
+                "confidence": conf,
+                "confidence_score": score,
+                "evidence": str(e["evidence"]).strip(),
+                "source_file": source,
+                "source_location": None,
+                "weight": 1.0,
+                "contributor": "Claude (abonnement, claude -p)",
+            }
+        )
     touche_la_fiche = any(fid in (e["source"], e["target"]) for e in aretes)
     noeuds_finaux = ([fiche_noeud] if touche_la_fiche else []) + list(noeuds.values())
-    return {"nodes": noeuds_finaux, "edges": aretes, "hyperedges": [],
-            "input_tokens": 0, "output_tokens": 0}, ecartes
+    return {"nodes": noeuds_finaux, "edges": aretes, "hyperedges": [], "input_tokens": 0, "output_tokens": 0}, ecartes
 
 
 def valider(ext: dict) -> list[str]:
@@ -398,8 +473,11 @@ def main() -> int:
     ap.add_argument("--etat", action="store_true", help="dit ce qui est en retard, n'appelle rien")
     ap.add_argument("--plafond", type=int, default=None, help="fiches par passage (défaut : registre, sinon 6)")
     ap.add_argument("--graphe", help="nom d'un graphe du registre (défaut : le principal)")
-    ap.add_argument("--seulement", help="expression rationnelle sur le chemin : n'extraire que les fiches en retard qui y répondent "
-                                        "(rattrapage ciblé, à la main — 09.10.2026 : les deux versions de l'AI Act pour la diachronie)")
+    ap.add_argument(
+        "--seulement",
+        help="expression rationnelle sur le chemin : n'extraire que les fiches en retard qui y répondent "
+        "(rattrapage ciblé, à la main — 09.10.2026 : les deux versions de l'AI Act pour la diachronie)",
+    )
     args = ap.parse_args()
     global EMPREINTES, LOTS, GRAPHE, DOMAINE
     if args.graphe and args.graphe != cfg.GRAPHE_PRINCIPAL:
@@ -415,13 +493,20 @@ def main() -> int:
     if args.plafond is None:
         # Le registre donne le plancher (`plafond_couche2`) et la part du stock (`stock_couche2`) ;
         # le plafond du jour s'en déduit. `--plafond` l'impose tel quel, pour un rattrapage à la main.
-        args.plafond = plafond_du_passage(retard, int(decl.get("plafond_couche2") or PLAFOND),
-                                          int(decl.get("stock_couche2", STOCK)), time.strftime("%Y-%m-%d"),
-                                          int(decl.get("plafond_couche2_max", PLAFOND_MAX)))
+        args.plafond = plafond_du_passage(
+            retard,
+            int(decl.get("plafond_couche2") or PLAFOND),
+            int(decl.get("stock_couche2", STOCK)),
+            time.strftime("%Y-%m-%d"),
+            int(decl.get("plafond_couche2_max", PLAFOND_MAX)),
+        )
     if not retard:
         print("  couche 2 à jour : aucune fiche dense nouvelle ou modifiée")
         return 0
-    print(f"  {len(retard)} fiche(s) dense(s) en retard" + (f", {args.plafond} traitées ce passage" if len(retard) > args.plafond else ""))
+    print(
+        f"  {len(retard)} fiche(s) dense(s) en retard"
+        + (f", {args.plafond} traitées ce passage" if len(retard) > args.plafond else "")
+    )
     if args.etat:
         for f, _ in retard:
             print(f"    - {f.relative_to(RACINE)}")
@@ -434,8 +519,9 @@ def main() -> int:
 
     def noter_refus(rel: str, h: str) -> None:
         refus[rel] = h
-        (EMPREINTES.parent / "refus.json").write_text(json.dumps({k: refus[k] for k in sorted(refus)}, indent=1,
-                                                                 ensure_ascii=False), encoding="utf-8")
+        (EMPREINTES.parent / "refus.json").write_text(
+            json.dumps({k: refus[k] for k in sorted(refus)}, indent=1, ensure_ascii=False), encoding="utf-8"
+        )
 
     # Une place par appel simultané : un appel n'en prend une qu'après que le fil principal a traité (écrit) le
     # résultat qui l'occupait. Sans elles, le pool enchaînait l'appel suivant avant l'écriture du lot précédent, et
@@ -455,7 +541,7 @@ def main() -> int:
     # appels se chevauchent. Les lots et les empreintes sont écrits par le fil principal.
     limites = 0
     with ThreadPoolExecutor(max_workers=PARALLELE) as pool:
-        futurs = {pool.submit(lire, f): (f, h) for f, h in retard[:args.plafond]}
+        futurs = {pool.submit(lire, f): (f, h) for f, h in retard[: args.plafond]}
         for fut in as_completed(futurs):
             try:
                 f, h = futurs[fut]
@@ -485,25 +571,35 @@ def main() -> int:
                     echecs += 1
                     if est_un_refus("", propre, erreurs):
                         noter_refus(rel, h)
-                    print(f"  !! {rel} : extraction refusée ({len(propre['nodes'])} nœuds, "
-                          f"{len(erreurs)} erreur(s) de schéma{', ex. ' + erreurs[0][:80] if erreurs else ''})", file=sys.stderr)
+                    print(
+                        f"  !! {rel} : extraction refusée ({len(propre['nodes'])} nœuds, "
+                        f"{len(erreurs)} erreur(s) de schéma{', ex. ' + erreurs[0][:80] if erreurs else ''})",
+                        file=sys.stderr,
+                    )
                     continue
                 lot = LOTS / f"{identifiant_de_fiche(f, champs)}.json"
                 lot.write_text(json.dumps(propre, indent=1, ensure_ascii=False), encoding="utf-8")
                 connues[rel] = h
                 EMPREINTES.parent.mkdir(parents=True, exist_ok=True)
-                EMPREINTES.write_text(json.dumps({k: connues[k] for k in sorted(connues)}, indent=1, ensure_ascii=False),
-                                      encoding="utf-8")
+                EMPREINTES.write_text(
+                    json.dumps({k: connues[k] for k in sorted(connues)}, indent=1, ensure_ascii=False), encoding="utf-8"
+                )
                 faites += 1
-                print(f"  ok  {rel} : {len(propre['nodes'])} nœuds, {len(propre['edges'])} arêtes"
-                      f"{', ' + str(len(ecartes)) + ' écart(s)' if ecartes else ''} ({duree:.0f} s)", flush=True)
+                print(
+                    f"  ok  {rel} : {len(propre['nodes'])} nœuds, {len(propre['edges'])} arêtes"
+                    f"{', ' + str(len(ecartes)) + ' écart(s)' if ecartes else ''} ({duree:.0f} s)",
+                    flush=True,
+                )
             finally:
-                places.release()       # le résultat traité, une place s'ouvre
+                places.release()  # le résultat traité, une place s'ouvre
     reste = len(retard) - faites
     print(f"  -> {faites} extraite(s), {echecs} échec(s), {reste} encore en retard")
     if limites:
-        print(f"  ARRÊT : {LIMITE} — {limites} fiche(s) non extraite(s) ce passage, reprises au suivant "
-              f"({couts.marque_en_cours() or 'limite constatée dans ce processus'})", file=sys.stderr)
+        print(
+            f"  ARRÊT : {LIMITE} — {limites} fiche(s) non extraite(s) ce passage, reprises au suivant "
+            f"({couts.marque_en_cours() or 'limite constatée dans ce processus'})",
+            file=sys.stderr,
+        )
         return 2
     return 1 if echecs else 0
 

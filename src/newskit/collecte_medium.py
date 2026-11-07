@@ -50,6 +50,7 @@ import urllib.request
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 CACHE = RACINE / "cache" / "medium"
 HISTORIQUE = "https://medium.com/me/lists/reading-history"
 
@@ -59,8 +60,7 @@ from newskit import fiche  # noqa: E402
 # Le même User-Agent que le vérificateur de session : le laissez-passer
 # Cloudflare peut être lié à celui qui a passé le défi, et c'est avec
 # celui-ci que l'historique a été reçu.
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/120 Safari/537.36")
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 
 ECHECS: list[str] = []
 
@@ -71,10 +71,15 @@ class Refus(Exception):
 
 def get(url: str, cookie: str) -> tuple[int, str, str]:
     """(code, url finale, corps). Lève Refus sur une page de défi ou une erreur HTTP."""
-    req = urllib.request.Request(url, headers={
-        "User-Agent": UA, "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "en", "Cookie": cookie,
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": UA,
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "en",
+            "Cookie": cookie,
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             corps = r.read().decode("utf-8", "replace")
@@ -82,8 +87,10 @@ def get(url: str, cookie: str) -> tuple[int, str, str]:
     except urllib.error.HTTPError as e:
         corps = e.read(20000).decode("utf-8", "replace")
         if "challenge-platform" in corps or e.code == 403:
-            raise Refus(f"{url} : HTTP {e.code}, page de défi Cloudflare — le laissez-passer "
-                        f"cf_clearance ne passe plus ; redéposer la session") from None
+            raise Refus(
+                f"{url} : HTTP {e.code}, page de défi Cloudflare — le laissez-passer "
+                f"cf_clearance ne passe plus ; redéposer la session"
+            ) from None
         raise Refus(f"{url} : HTTP {e.code} ({e.reason})") from None
     if "challenge-platform" in corps[:20000] and "cdn-cgi" in corps[:20000]:
         raise Refus(f"{url} : page de défi Cloudflare rendue avec un code {code}")
@@ -118,7 +125,8 @@ def liens_d_articles(html: str) -> list[str]:
         if h.startswith("/"):
             h = "https://medium.com" + h
         if h not in vus:
-            vus.add(h); out.append(h)
+            vus.add(h)
+            out.append(h)
     return out
 
 
@@ -132,22 +140,25 @@ def posts_de_l_historique(st: dict) -> list[dict]:
         co = v.get("collection") or {}
         auteur = st.get(cr.get("__ref", ""), {}) if isinstance(cr, dict) else {}
         coll = st.get(co.get("__ref", ""), {}) if isinstance(co, dict) else {}
-        out.append({
-            "id": v.get("id") or k.split(":", 1)[1],
-            "titre": v.get("title") or "",
-            "url": v.get("mediumUrl") or "",
-            "slug": v.get("uniqueSlug") or "",
-            "publie_ms": v.get("firstPublishedAt") or 0,
-            "verrouille": bool(v.get("isLocked")),
-            "lecture_min": v.get("readingTime") or 0,
-            "auteur": auteur.get("name") or "",
-            "publication": coll.get("name") or "",
-            "domaine_publication": coll.get("domain") or "",
-        })
+        out.append(
+            {
+                "id": v.get("id") or k.split(":", 1)[1],
+                "titre": v.get("title") or "",
+                "url": v.get("mediumUrl") or "",
+                "slug": v.get("uniqueSlug") or "",
+                "publie_ms": v.get("firstPublishedAt") or 0,
+                "verrouille": bool(v.get("isLocked")),
+                "lecture_min": v.get("readingTime") or 0,
+                "auteur": auteur.get("name") or "",
+                "publication": coll.get("name") or "",
+                "domaine_publication": coll.get("domain") or "",
+            }
+        )
     return out
 
 
 # --- De l'état Apollo d'un article à une fiche ------------------------------
+
 
 def identifiant(url: str) -> str:
     """L'identifiant d'un article Medium, les 8 à 12 hexadécimaux qui finissent son chemin."""
@@ -171,29 +182,33 @@ def appliquer_markups(texte: str, markups: list[dict]) -> str:
     n = len(u) // 2
     # Chaque markup devient une paire (ouvrant, fermant) à insérer ; on insère de
     # la fin vers le début pour ne pas décaler les positions restantes.
-    insertions: list[tuple[int, int, str]] = []   # (position, priorité, texte)
+    insertions: list[tuple[int, int, str]] = []  # (position, priorité, texte)
     for m in markups:
         d, f = int(m.get("start") or 0), int(m.get("end") or 0)
         if not (0 <= d < f <= n):
             continue
         t = m.get("type")
         if t == "A" and m.get("href"):
-            insertions.append((d, 1, "[")); insertions.append((f, 0, f"]({m['href']})"))
+            insertions.append((d, 1, "["))
+            insertions.append((f, 0, f"]({m['href']})"))
         elif t == "STRONG":
-            insertions.append((d, 2, "**")); insertions.append((f, 0, "**"))
+            insertions.append((d, 2, "**"))
+            insertions.append((f, 0, "**"))
         elif t == "EM":
-            insertions.append((d, 3, "*")); insertions.append((f, 0, "*"))
+            insertions.append((d, 3, "*"))
+            insertions.append((f, 0, "*"))
         elif t == "CODE":
-            insertions.append((d, 4, "`")); insertions.append((f, 0, "`"))
+            insertions.append((d, 4, "`"))
+            insertions.append((f, 0, "`"))
     if not insertions:
         return texte
     morceaux = []
     pos = 0
     for position, _, ins in sorted(insertions, key=lambda x: (x[0], x[1])):
-        morceaux.append(u[2 * pos:2 * position].decode("utf-16-le", "replace"))
+        morceaux.append(u[2 * pos : 2 * position].decode("utf-16-le", "replace"))
         morceaux.append(ins)
         pos = position
-    morceaux.append(u[2 * pos:].decode("utf-16-le", "replace"))
+    morceaux.append(u[2 * pos :].decode("utf-16-le", "replace"))
     rendu = "".join(morceaux)
     # Un enrichissement qui englobe l'espace finale (« **Logs: **When ») ne se
     # rend pas en markdown : la marque fermante passe avant l'espace.
@@ -227,13 +242,14 @@ def paragraphes_en_markdown(paragraphes: list[dict], titre: str = "", sous_titre
             liste_prec = t
             continue
         if liste_prec:
-            out.append(""); liste_prec = None
+            out.append("")
+            liste_prec = None
         if t in ("H1", "H2", "H3", "H4"):
             if _plat(texte) in deja and not [l for l in out if l and not l.startswith("#")]:
-                continue                      # titre ou sous-titre, déjà en tête de fiche
+                continue  # titre ou sous-titre, déjà en tête de fiche
             out += [("## " if t != "H4" else "### ") + texte, ""]
         elif t == "PRE":
-            lang = ((p.get("codeBlockMetadata") or {}).get("lang") or "")
+            lang = (p.get("codeBlockMetadata") or {}).get("lang") or ""
             out += [f"```{lang}", (p.get("text") or "").rstrip(), "```", ""]
         elif t in ("BQ", "PQ"):
             out += ["> " + texte.replace("\n", "\n> "), ""]
@@ -256,7 +272,7 @@ def article_depuis_etat(st: dict, post_id: str) -> dict | None:
     if not isinstance(p, dict):
         return None
     contenu = next((v for k, v in p.items() if k.startswith("content(") and isinstance(v, dict)), {})
-    refs = ((contenu.get("bodyModel") or {}).get("paragraphs") or [])
+    refs = (contenu.get("bodyModel") or {}).get("paragraphs") or []
     paragraphes = [st.get(r.get("__ref", ""), {}) for r in refs if isinstance(r, dict)]
     cr = p.get("creator") or {}
     co = p.get("collection") or {}
@@ -283,8 +299,7 @@ def retenu(post: dict, mots_cles: list[str]) -> bool:
     """Le filtre du registre, sur le titre, la publication et les étiquettes."""
     if not mots_cles:
         return True
-    champ = " ".join([post.get("titre") or "", post.get("publication") or "",
-                      " ".join(post.get("tags") or [])]).lower()
+    champ = " ".join([post.get("titre") or "", post.get("publication") or "", " ".join(post.get("tags") or [])]).lower()
     for mc in mots_cles:
         mc = mc.lower().strip()
         if not mc:
@@ -303,11 +318,20 @@ def ecrire_fiche(src, art: dict) -> tuple[str, bool, int]:
     complet = not art["apercu_seul"] and (art["mots_annonces"] == 0 or mots >= 0.8 * art["mots_annonces"])
     slug = re.sub(r"^https?://[^/]+/", "", art["url"]).strip("/").replace("@", "").replace("/", "__")[:90]
     chemin = src.chemin / f"{art['date'] or '0000-00-00'}_{slug}.md"
-    champs = {"title": art["titre"], "subtitle": art["sous_titre"], "author": art["auteur"],
-              "date": art["date"], "url": art["url"], "plateforme": "Medium",
-              "publication": art["publication"], "source": "Medium (abonnement)",
-              "wordcount_annonce": art["mots_annonces"], "words": mots, "complet": complet,
-              "collected": time.strftime("%Y-%m-%d")}
+    champs = {
+        "title": art["titre"],
+        "subtitle": art["sous_titre"],
+        "author": art["auteur"],
+        "date": art["date"],
+        "url": art["url"],
+        "plateforme": "Medium",
+        "publication": art["publication"],
+        "source": "Medium (abonnement)",
+        "wordcount_annonce": art["mots_annonces"],
+        "words": mots,
+        "complet": complet,
+        "collected": time.strftime("%Y-%m-%d"),
+    }
     tete = "# " + art["titre"] + "\n\n" + (f"*{art['sous_titre']}*\n\n" if art["sous_titre"] else "")
     fiche.ecrire(chemin, champs, tete + corps)
     return chemin.name, complet, mots
@@ -325,9 +349,14 @@ def manifeste_initial(src) -> dict:
             continue
         pid = identifiant(champs.get("url") or "")
         if pid:
-            m[pid] = {"file": f.name, "title": champs.get("title", ""), "date": champs.get("date", ""),
-                      "url": champs.get("url", ""), "complet": bool(champs.get("complet", True)),
-                      "words": int(champs.get("words") or 0)}
+            m[pid] = {
+                "file": f.name,
+                "title": champs.get("title", ""),
+                "date": champs.get("date", ""),
+                "url": champs.get("url", ""),
+                "complet": bool(champs.get("complet", True)),
+                "words": int(champs.get("words") or 0),
+            }
     return m
 
 
@@ -342,7 +371,8 @@ def collecter(src, cookie: str, tout: bool) -> int:
     try:
         _, _, html = get(HISTORIQUE, cookie)
     except Refus as e:
-        ECHECS.append(str(e)); print(f"  !! {e}", file=sys.stderr)
+        ECHECS.append(str(e))
+        print(f"  !! {e}", file=sys.stderr)
         return 1
     posts = posts_de_l_historique(etat_apollo(html) or {})
     if not posts:
@@ -352,20 +382,25 @@ def collecter(src, cookie: str, tout: bool) -> int:
     neufs = [p for p in posts if p["id"] not in manifest]
     ecartes = [p for p in neufs if not retenu(p, mots_cles)]
     a_lire = [p for p in neufs if retenu(p, mots_cles)]
-    print(f"{src.nom}: {len(posts)} lectures dans l'historique, {len(neufs)} nouvelles, "
-          f"{len(a_lire)} retenues, {len(ecartes)} hors mots-clés")
+    print(
+        f"{src.nom}: {len(posts)} lectures dans l'historique, {len(neufs)} nouvelles, "
+        f"{len(a_lire)} retenues, {len(ecartes)} hors mots-clés"
+    )
     for p in ecartes:
         print(f"    écarté : {p['titre'][:70]!r} — {p['publication'] or p['auteur']}")
     if neufs and len(neufs) == len(posts):
-        print("  à voir : toute la première page de l'historique est nouvelle ; des lectures plus "
-              "anciennes ont pu passer entre deux collectes (la page n'en montre que 15).")
+        print(
+            "  à voir : toute la première page de l'historique est nouvelle ; des lectures plus "
+            "anciennes ont pu passer entre deux collectes (la page n'en montre que 15)."
+        )
     anomalies = 0
     for p in a_lire:
         time.sleep(2)
         try:
             _, finale, html = get(f"https://medium.com/p/{p['id']}", cookie)
         except Refus as e:
-            ECHECS.append(str(e)); print(f"  !! {e}", file=sys.stderr)
+            ECHECS.append(str(e))
+            print(f"  !! {e}", file=sys.stderr)
             continue
         art = article_depuis_etat(etat_apollo(html) or {}, p["id"])
         if not art or not art["paragraphes"]:
@@ -378,20 +413,31 @@ def collecter(src, cookie: str, tout: bool) -> int:
             art["url"] = p["url"] or finale.split("?")[0]
         try:
             nom, complet, mots = ecrire_fiche(src, art)
-        except fiche.IdentiteDejaVue as deja:          # le même article, déjà venu par une autre source du graphe
+        except fiche.IdentiteDejaVue as deja:  # le même article, déjà venu par une autre source du graphe
             print(f"  déjà vue : {deja}")
             continue
-        manifest[p["id"]] = {"file": nom, "title": art["titre"], "date": art["date"], "url": art["url"],
-                             "complet": complet, "words": mots, "reserve": art["reserve"]}
+        manifest[p["id"]] = {
+            "file": nom,
+            "title": art["titre"],
+            "date": art["date"],
+            "url": art["url"],
+            "complet": complet,
+            "words": mots,
+            "reserve": art["reserve"],
+        }
         mf.write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
         etat = "complet" if complet else "APERÇU"
-        print(f"  {etat:<8} {nom}  {mots} mots" + (f" / {art['mots_annonces']} annoncés" if art["mots_annonces"] else ""))
+        print(
+            f"  {etat:<8} {nom}  {mots} mots" + (f" / {art['mots_annonces']} annoncés" if art["mots_annonces"] else "")
+        )
         if not complet:
             anomalies += 1
     if anomalies:
-        print(f"  ALERTE : {anomalies} article(s) restent en aperçu malgré la session — session expirée "
-              f"ou abonnement qui ne couvre pas la publication. Éprouver : config_sources.py verifier",
-              file=sys.stderr)
+        print(
+            f"  ALERTE : {anomalies} article(s) restent en aperçu malgré la session — session expirée "
+            f"ou abonnement qui ne couvre pas la publication. Éprouver : config_sources.py verifier",
+            file=sys.stderr,
+        )
     print(f"  -> {len(manifest)} fiches Medium au manifeste")
     return 1 if (anomalies or ECHECS) else 0
 
@@ -408,14 +454,20 @@ def sonder(cookie: str) -> int:
     st = etat_apollo(html) or {}
     posts = posts_de_l_historique(st)
     liens = liens_d_articles(html)
-    print(f"  ok     historique : HTTP {code}, {len(html)} octets"
-          + (f", redirigé vers {finale[:80]}" if finale != HISTORIQUE else ""))
-    print(f"         état Apollo : {'présent, ' + str(len(st)) + ' entrées' if st else 'absent'}"
-          f" ; articles dans l'état : {len(posts)} ({sum(p['verrouille'] for p in posts)} réservés) ; "
-          f"liens d'articles : {len(liens)}")
+    print(
+        f"  ok     historique : HTTP {code}, {len(html)} octets"
+        + (f", redirigé vers {finale[:80]}" if finale != HISTORIQUE else "")
+    )
+    print(
+        f"         état Apollo : {'présent, ' + str(len(st)) + ' entrées' if st else 'absent'}"
+        f" ; articles dans l'état : {len(posts)} ({sum(p['verrouille'] for p in posts)} réservés) ; "
+        f"liens d'articles : {len(liens)}"
+    )
     for p in posts[:4]:
-        print(f"           {p['titre'][:60]!r} — {p['publication'] or p['auteur']} — "
-              f"{'réservé' if p['verrouille'] else 'libre'} — {p['url'][:70]}")
+        print(
+            f"           {p['titre'][:60]!r} — {p['publication'] or p['auteur']} — "
+            f"{'réservé' if p['verrouille'] else 'libre'} — {p['url'][:70]}"
+        )
     if not posts:
         print("  à voir : aucun article dans l'état de la page ; le fichier gardé le dira.")
         return 1
@@ -450,11 +502,13 @@ def sonder(cookie: str) -> int:
         post = next((v for k, v in sta.items() if k.startswith("Post:")), {})
         mots = sum(len(str(v.get("text") or "").split()) for v in paras)
         print(f"  ok     article {etiquette} : {cible[:80]}")
-        print(f"         HTTP {code}, {len(html)} octets"
-              + (f", fini sur {finale[:70]}" if finale != cible else "")
-              + f" ; état Apollo : {'présent' if sta else 'absent'} ; paragraphes : {len(paras)} "
-              f"({mots} mots) ; annoncé : {p['lecture_min']:.0f} min ; <article> : "
-              f"{'oui' if '<article' in html else 'non'} ; gardé dans {nom}")
+        print(
+            f"         HTTP {code}, {len(html)} octets"
+            + (f", fini sur {finale[:70]}" if finale != cible else "")
+            + f" ; état Apollo : {'présent' if sta else 'absent'} ; paragraphes : {len(paras)} "
+            f"({mots} mots) ; annoncé : {p['lecture_min']:.0f} min ; <article> : "
+            f"{'oui' if '<article' in html else 'non'} ; gardé dans {nom}"
+        )
     print("\n  Prochaine étape : l'analyseur s'écrit sur ces fichiers.")
     return 0
 
@@ -477,8 +531,10 @@ def main() -> int:
     if "--update" in sys.argv:
         code = collecter(src, cookie, tout="--tout" in sys.argv)
         if ECHECS:
-            print(f"  ALERTE : {len(ECHECS)} requête(s) n'ont pas abouti ; ce ne sont pas des lectures "
-                  f"absentes.", file=sys.stderr)
+            print(
+                f"  ALERTE : {len(ECHECS)} requête(s) n'ont pas abouti ; ce ne sont pas des lectures absentes.",
+                file=sys.stderr,
+            )
             for e in ECHECS[:5]:
                 print(f"    {e}", file=sys.stderr)
         return code

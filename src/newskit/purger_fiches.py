@@ -8,6 +8,7 @@ Usage :
     python3 -m newskit.purger_fiches <chemin de fiche> [...]
     python3 -m newskit.purger_fiches --publicites      # les fiches que fiche.publicitaire juge publicitaires
 """
+
 from __future__ import annotations
 
 import gzip
@@ -49,7 +50,7 @@ def purger_graphe(d: dict, fiches: set[str]) -> tuple[int, int]:
             continue
         if str(n.get("source_file") or "") in fiches:
             if n["id"] not in source_de or not source_de[n["id"]]:
-                continue                                   # la notion ne tenait que par la fiche retirée
+                continue  # la notion ne tenait que par la fiche retirée
             n["source_file"] = source_de[n["id"]]
         garder.append(n)
     retires = len(d["nodes"]) - len(garder)
@@ -103,6 +104,7 @@ def purger(fiches: set[str]) -> None:
 
 def publicites() -> set[str]:
     from newskit import fiche  # noqa: PLC0415
+
     out = set()
     for p in (RACINE / "sources").rglob("*.md"):
         if p.name.startswith("_"):

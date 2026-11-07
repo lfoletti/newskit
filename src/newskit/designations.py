@@ -16,6 +16,7 @@ place en tête du texte versé.
 
     python3 -m newskit.designations --court aiact [--controle]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,8 +32,8 @@ from pathlib import Path
 from newskit.commun import RACINE  # noqa: E402
 
 FICHIER = "_designations.json"
-RARE = 8                 # un terme défini employé par plus de RARE parties ne désigne rien
-MOTS = 8                 # mots propres par partie
+RARE = 8  # un terme défini employé par plus de RARE parties ne désigne rien
+MOTS = 8  # mots propres par partie
 CELLAR = "http://publications.europa.eu/resource/celex/{}"
 
 # court : (nom usuel, sigles, acte). Les seuls mots écrits à la main : comment on appelle la loi.
@@ -40,12 +41,14 @@ NOMS = {
     "aiact": ("AI Act", ["RIA", "AIA"], "règlement (UE) 2024/1689"),
     "aiact-2024": ("AI Act", ["RIA", "AIA"], "règlement (UE) 2024/1689"),
 }
-VIDES = set("""aux avec cette ceux celle celles dans des elle elles entre être leur leurs lors même mêmes notamment
+VIDES = set(
+    """aux avec cette ceux celle celles dans des elle elles entre être leur leurs lors même mêmes notamment
 ou par parmi pour qui que quel quelle quels quelles sans selon son ses sont sous sur tout tous toute toutes une
 afin ainsi alors article articles autre autres avant chaque comme compte conformément dont été font lorsque paragraphe
 paragraphes point points présent présente peut peuvent premier première règlement visé visés visée visées cas date
 fins mesure mesures prévu prévus prévue prévues application applicable compris doivent ledit ladite lesdits lesdites
-concerné concernés concernée concernées égard ensemble également toutefois plus moins jusqu partir""".split())
+concerné concernés concernée concernées égard ensemble également toutefois plus moins jusqu partir""".split()
+)
 DEF_FR = re.compile(r"(\d+)\)\s*«\s*([^»]+?)\s*»")
 DEF_EN = re.compile(r"\((\d+)\)\s*‘([^’]+)’")
 MOT = re.compile(r"[a-zà-ÿœæ]{5,}")
@@ -69,29 +72,39 @@ def construire(court: str, html_fr: str, en: dict[str, str], rare: int = RARE, m
     """{rang : ligne de désignations}. `en` : le texte anglais de chaque partie, par rang (« art-099 »)."""
     nom, sigles, acte = NOMS[court]
     from newskit import collecte_textes  # noqa: PLC0415
+
     fr = {p["rang"]: p for p in collecte_textes.decouper_eurlex(html_fr)}
     definis = {}
     termes_fr = dict(DEF_FR.findall(fr.get("art-003", {}).get("corps", "")))
     for n, terme_en in DEF_EN.findall(en.get("art-003", "")):
         if n in termes_fr:
             definis[n] = (termes_fr[n], terme_en)
-    emplois = {n: [r for r, t in en.items() if r != "art-003" and re.search(rf"\b{re.escape(e)}s?\b", t, re.I)]
-               for n, (_, e) in definis.items()}
+    emplois = {
+        n: [r for r, t in en.items() if r != "art-003" and re.search(rf"\b{re.escape(e)}s?\b", t, re.I)]
+        for n, (_, e) in definis.items()
+    }
     sacs = {r: Counter(_mots(p.get("corps", ""))) for r, p in fr.items()}
     df = Counter(m for s in sacs.values() for m in s)
     sortie = {}
     for rang in sorted(set(en) | set(fr)):
         genre, n = _rang_lisible(rang)
         if genre == "art":
-            formes = [f"article {n} de l'{nom}", *(f"art. {n} {s}" for s in sigles), f"{nom} Art. {n}",
-                      f"article {n} du {acte}"]
+            formes = [
+                f"article {n} de l'{nom}",
+                *(f"art. {n} {s}" for s in sigles),
+                f"{nom} Art. {n}",
+                f"article {n} du {acte}",
+            ]
         else:
             formes = [f"annexe {n} de l'{nom}", f"{nom} Annex {n}", f"annexe {n} du {acte}"]
         parts = [f"Désignations : {', '.join(formes)}."]
         if rang in fr:
             parts.append(f"Titre français : {_titre_fr(fr[rang])}.")
-        termes = [f"{f} ({e})" for k, (f, e) in sorted(definis.items(), key=lambda x: int(x[0]))
-                  if rang in emplois[k] and len(emplois[k]) <= rare]
+        termes = [
+            f"{f} ({e})"
+            for k, (f, e) in sorted(definis.items(), key=lambda x: int(x[0]))
+            if rang in emplois[k] and len(emplois[k]) <= rare
+        ]
         if termes:
             parts.append(f"Termes définis : {', '.join(termes)}.")
         if sacs.get(rang):
@@ -130,10 +143,13 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     from newskit import collecte_textes  # noqa: PLC0415
     from newskit import fiche  # noqa: PLC0415
+
     decl = next(t for liste in collecte_textes.TEXTES.values() for t in liste if t.get("court") == a.court)
     celex = "3" + re.search(r"CELEX:[03](\d{4}R\d{4})", decl["url"]).group(1)
-    req = urllib.request.Request(CELLAR.format(celex), headers={**collecte_textes.UA, "Accept-Language": "fra",
-                                                                 "Accept": "application/xhtml+xml, text/html;q=0.8"})
+    req = urllib.request.Request(
+        CELLAR.format(celex),
+        headers={**collecte_textes.UA, "Accept-Language": "fra", "Accept": "application/xhtml+xml, text/html;q=0.8"},
+    )
     with urllib.request.urlopen(req, timeout=120) as r:
         html_fr = r.read().decode("utf-8", "replace")
     (dossier,) = {f.parent for f in RACINE.glob(f"sources/*/textes/{a.court}/*.md")}

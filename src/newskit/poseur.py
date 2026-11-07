@@ -89,13 +89,14 @@ def sujets_du_jour(graphe: str, n: int, jour: int | None = None) -> list[str]:
     tour = [sujets[(debut + k) % len(sujets)] for k in range(min(n, len(sujets)))]
     # Un sujet neuf (thème émergent entré parmi les sujets) passe en tête ses premières nuits (09.10.2026).
     neufs = [s for s in te.nouveaux_en_cours(graphe) if s in sujets][:1]
-    return (neufs + [s for s in tour if s not in neufs])[:max(n, 1)]
+    return (neufs + [s for s in tour if s not in neufs])[: max(n, 1)]
 
 
 def tirer(graphe: str, sujets: list[str], n: int, exclues: set[str], delai: int) -> list[dict]:
     """Des questions agnostiques, tirées comme celles du banc (porteur, 07.10.2026) : le poseur comble ce que le banc
     mesure. Seules les pages lisibles sont gardées, puisqu'une question manquée doit pouvoir entrer au graphe."""
     from newskit import collecte_rss as cr  # noqa: PLC0415
+
     mots_min = cfg.eclaireur(graphe)["mots_min"]
     tirees = banc.composer_agnostique(graphe, n + 4, delai, exclues)
     out, illisibles = [], []
@@ -135,8 +136,9 @@ def combler(graphe: str, manquees: list[dict], interdites: set[str]) -> dict[str
             out[q["url"]] = f"  ⊘   page du banc, non ingérée : {q['url'][:90]}"
             continue
         page = {"url": q["url"], "titre": "", "point": 0}
-        out[q["url"]] = eclaireur.ingerer(graphe, page, [("question du poseur", q["question"])], bornes, connues,
-                                          memoire, aujourdhui)
+        out[q["url"]] = eclaireur.ingerer(
+            graphe, page, [("question du poseur", q["question"])], bornes, connues, memoire, aujourdhui
+        )
     eclaireur.DOSSIER.mkdir(parents=True, exist_ok=True)
     eclaireur.MEMOIRE.write_text(json.dumps(memoire, ensure_ascii=False, indent=1), encoding="utf-8")
     return out
@@ -145,8 +147,14 @@ def combler(graphe: str, manquees: list[dict], interdites: set[str]) -> dict[str
 def reposer(graphe: str, lignes: list[dict], n: int, delai: int) -> int:
     """Repose les questions manquées des jours précédents dont la page a été ingérée. Rend le nombre comblé."""
     aujourdhui = time.strftime("%Y-%m-%d")
-    a_reposer = [l for l in lignes if l.get("verdict") not in ("juste", "en_attente") and l.get("ingeree")
-                 and not l.get("reposee") and l.get("date", "") < aujourdhui][:n]
+    a_reposer = [
+        l
+        for l in lignes
+        if l.get("verdict") not in ("juste", "en_attente")
+        and l.get("ingeree")
+        and not l.get("reposee")
+        and l.get("date", "") < aujourdhui
+    ][:n]
     if not a_reposer:
         return 0
     qs = [{k: l[k] for k in ("question", "attendu", "citation")} for l in a_reposer]
@@ -188,18 +196,32 @@ def passage(graphe: str, controle: bool = False) -> int:
     aujourdhui = time.strftime("%Y-%m-%d")
     # Les questions tirées sont écrites avant d'être posées (08.10.2026) : les tirer coûte des recherches web, et un
     # passage interrompu les perdait toutes. Verdict « en_attente » tant qu'elles ne sont pas posées.
-    neuves = [{"date": aujourdhui, "question": q["question"], "attendu": q["attendu"], "citation": q["citation"],
-               "url": q["url"], "verdict": "en_attente", "reponse": "", "ingeree": False} for q in questions]
+    neuves = [
+        {
+            "date": aujourdhui,
+            "question": q["question"],
+            "attendu": q["attendu"],
+            "citation": q["citation"],
+            "url": q["url"],
+            "verdict": "en_attente",
+            "reponse": "",
+            "ingeree": False,
+        }
+        for q in questions
+    ]
     ecrire_journal(graphe, lignes + neuves)
     if couts.en_limite():
-        print(f"  ARRÊT : limite d'usage atteinte, {len(questions)} question(s) tirée(s) mais non posée(s) "
-              f"({couts.marque_en_cours() or 'ce processus'})", file=sys.stderr)
+        print(
+            f"  ARRÊT : limite d'usage atteinte, {len(questions)} question(s) tirée(s) mais non posée(s) "
+            f"({couts.marque_en_cours() or 'ce processus'})",
+            file=sys.stderr,
+        )
         return 2
     reponses, verdicts, compte = poser(graphe, questions, bornes["delai"])
     for q, l in zip(questions, neuves):
         l["verdict"] = verdicts.get(q["i"], "ne_sait_pas")
         l["reponse"] = (reponses.get(q["i"]) or {}).get("reponse", "")
-    ecrire_journal(graphe, lignes + neuves)                 # posées et jugées : écrit avant l'ingestion des pages
+    ecrire_journal(graphe, lignes + neuves)  # posées et jugées : écrit avant l'ingestion des pages
     manquees = [q for q in questions if verdicts.get(q["i"]) != "juste"]
     rapport = combler(graphe, manquees, interdites)
     for q, l in zip(questions, neuves):
@@ -212,9 +234,11 @@ def passage(graphe: str, controle: bool = False) -> int:
     ecrire_journal(graphe, lignes)
     justes = sum(verdicts.get(q["i"]) == "juste" for q in questions)
     ingerees = sum(r.startswith("  ok") for r in rapport.values())
-    cout = float(compte.get("cout_usd") or 0)          # un compte plat (banc.compter) : les réponses du graphe
-    print(f"  {graphe} : {len(questions)} question(s) posée(s), {justes} juste(s), {len(manquees)} manquée(s), "
-          f"{ingerees} page(s) ingérée(s)" + (f", {cout:.2f} $ pour les réponses" if cout else ""))
+    cout = float(compte.get("cout_usd") or 0)  # un compte plat (banc.compter) : les réponses du graphe
+    print(
+        f"  {graphe} : {len(questions)} question(s) posée(s), {justes} juste(s), {len(manquees)} manquée(s), "
+        f"{ingerees} page(s) ingérée(s)" + (f", {cout:.2f} $ pour les réponses" if cout else "")
+    )
     return 0
 
 
@@ -227,11 +251,15 @@ def etat(graphe: str) -> int:
     reposees = [l for l in manquees if l.get("reposee")]
     comblees = [l for l in reposees if l.get("verdict_repose") == "juste"]
     jours = sorted({l["date"] for l in lignes})
-    print(f"  {graphe} : {len(lignes)} question(s) posée(s) en {len(jours)} jour(s) ({jours[0]} → {jours[-1]}), "
-          f"{len(lignes) - len(manquees)} juste(s) d'emblée, {len(manquees)} manquée(s), "
-          f"{sum(bool(l.get('ingeree')) for l in manquees)} page(s) ingérée(s)")
+    print(
+        f"  {graphe} : {len(lignes)} question(s) posée(s) en {len(jours)} jour(s) ({jours[0]} → {jours[-1]}), "
+        f"{len(lignes) - len(manquees)} juste(s) d'emblée, {len(manquees)} manquée(s), "
+        f"{sum(bool(l.get('ingeree')) for l in manquees)} page(s) ingérée(s)"
+    )
     if reposees:
-        print(f"    reposées : {len(reposees)}, comblées : {len(comblees)} ({round(100 * len(comblees) / len(reposees))} %)")
+        print(
+            f"    reposées : {len(reposees)}, comblées : {len(comblees)} ({round(100 * len(comblees) / len(reposees))} %)"
+        )
     return 0
 
 
@@ -242,7 +270,7 @@ def main() -> int:
     ap.add_argument("--etat", action="store_true", help="le bilan du journal")
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
-    banc.CONTEXTE.update(poste="poseur", graphe=g)      # registre des coûts : les appels du poseur sous son nom
+    banc.CONTEXTE.update(poste="poseur", graphe=g)  # registre des coûts : les appels du poseur sous son nom
     return etat(g) if a.etat else passage(g, a.controle)
 
 

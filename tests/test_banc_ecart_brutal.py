@@ -20,8 +20,15 @@ N = 10
 
 
 def _banc(base: Path) -> Path:
-    det = [{"i": i, "type": "ag_recent", "question": f"q{i}",
-            **{c: {"reponse": "r", "verdict": "juste"} for c in banc.CONDITIONS}} for i in range(N)]
+    det = [
+        {
+            "i": i,
+            "type": "ag_recent",
+            "question": f"q{i}",
+            **{c: {"reponse": "r", "verdict": "juste"} for c in banc.CONDITIONS},
+        }
+        for i in range(N)
+    ]
     r = banc.recompter({"methode": "agnostique", "details": det, "graphe_repose_etat": "0"})
     p = base / "banc.json"
     p.write_text(json.dumps(r), encoding="utf-8")
@@ -39,8 +46,10 @@ def pose(tmp_path, monkeypatch):
     monkeypatch.setattr(banc, "repondre", lambda g, c, qs, b: {d["i"]: {"reponse": "r2"} for d in qs})
 
     def juste(n_justes):
-        monkeypatch.setattr(banc, "juger", lambda qs, rep, delai: {d["i"]: ("juste" if d["i"] < n_justes else "faux")
-                                                                  for d in qs})
+        monkeypatch.setattr(
+            banc, "juger", lambda qs, rep, delai: {d["i"]: ("juste" if d["i"] < n_justes else "faux") for d in qs}
+        )
+
     return tmp_path, p, juste
 
 
@@ -49,7 +58,7 @@ def test_une_chute_de_100_a_60_n_est_pas_publiee(pose, capsys):
     avant = p.read_text(encoding="utf-8")
     juste(6)
     assert banc.reposer_recentes("g") is None
-    assert p.read_text(encoding="utf-8") == avant                      # banc.json et son état de pose intacts
+    assert p.read_text(encoding="utf-8") == avant  # banc.json et son état de pose intacts
     assert not (base / "banc_historique.jsonl").exists()
     (garde,) = (base / "bancs").glob("*_ecart_brutal.json")
     assert json.loads(garde.read_text(encoding="utf-8"))["conditions"]["graphe"]["juste"] == 0.6

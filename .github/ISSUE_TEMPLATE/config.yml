@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Faille de sécurité
+  - name: Security vulnerability
     url: https://github.com/lfoletti/newskit/security/advisories/new
-    about: Signaler une faille en privé. Pas d'issue publique.
+    about: Report a vulnerability privately. No public issue.
+  - name: Question or discussion
+    url: https://github.com/lfoletti/newskit/discussions
+    about: Ask a question, share a use, or discuss an idea before opening an issue.

@@ -18,6 +18,7 @@ Chaque exportation est un dossier autonome `onnx/` (model.onnx, tokenizer.json, 
 `verifier` est la mesure avant la mise en service : écart maximal des vecteurs, et accord du classement du reclasseur
 sur de vrais candidats (synthese.passages_hybrides) ; publier_index.py envoie les dossiers `onnx/` au serveur.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,12 +36,22 @@ OPSET = 17
 
 def _exporter(module, exemples: tuple, sortie: Path, sorties: list[str]) -> None:
     import torch  # noqa: PLC0415
+
     sortie.parent.mkdir(parents=True, exist_ok=True)
     axes = {"input_ids": {0: "lot", 1: "seq"}, "attention_mask": {0: "lot", 1: "seq"}}
     axes.update({s: {0: "lot"} for s in sorties})
     with torch.inference_mode():
-        torch.onnx.export(module, exemples, str(sortie), input_names=["input_ids", "attention_mask"], output_names=sorties,
-                          dynamic_axes=axes, opset_version=OPSET, dynamo=False, do_constant_folding=True)
+        torch.onnx.export(
+            module,
+            exemples,
+            str(sortie),
+            input_names=["input_ids", "attention_mask"],
+            output_names=sorties,
+            dynamic_axes=axes,
+            opset_version=OPSET,
+            dynamo=False,
+            do_constant_folding=True,
+        )
 
 
 def exporter_encodeur(graphe: str) -> Path:
@@ -48,6 +59,7 @@ def exporter_encodeur(graphe: str) -> Path:
     import torch  # noqa: PLC0415
     from sentence_transformers import SentenceTransformer  # noqa: PLC0415
     from transformers import AutoModel  # noqa: PLC0415
+
     d = sy.modele_affine(graphe)
     if not d:
         sys.exit(f"aucun modèle affiné retenu pour {graphe} (cache/encodeur/{graphe}/retenu)")
@@ -59,7 +71,8 @@ def exporter_encodeur(graphe: str) -> Path:
 
     class Enc(torch.nn.Module):
         def __init__(self) -> None:
-            super().__init__(); self.m = m
+            super().__init__()
+            self.m = m
 
         def forward(self, input_ids, attention_mask):
             h = self.m(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
@@ -73,10 +86,22 @@ def exporter_encodeur(graphe: str) -> Path:
     _exporter(Enc(), (ids, mask), out / "model.onnx", ["embedding"])
     shutil.copy(d / "tokenizer.json", out / "tokenizer.json")
     tcfg = json.loads((d / "tokenizer_config.json").read_text(encoding="utf-8"))
-    (out / "config.json").write_text(json.dumps({
-        "genre": "encodeur", "nom": d.name, "max_seq_length": int(st.max_seq_length),
-        "pad_token": tcfg.get("pad_token", "<pad>"), "dimension": int(st.get_sentence_embedding_dimension()),
-        "exporte_le": time.strftime("%Y-%m-%d"), "opset": OPSET}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "config.json").write_text(
+        json.dumps(
+            {
+                "genre": "encodeur",
+                "nom": d.name,
+                "max_seq_length": int(st.max_seq_length),
+                "pad_token": tcfg.get("pad_token", "<pad>"),
+                "dimension": int(st.get_sentence_embedding_dimension()),
+                "exporte_le": time.strftime("%Y-%m-%d"),
+                "opset": OPSET,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"  encodeur {d.name} exporté : {out} ({(out / 'model.onnx').stat().st_size / 1e6:.0f} Mo)")
     return out
 
@@ -89,12 +114,14 @@ def exporter_reclasseur(nom: str = sy.RECLASSEUR) -> Path:
     """Le modèle croisé → cache/reclasseur/<nom>/onnx/ : un logit par paire (question, passage) ; seul l'ordre compte."""
     import torch  # noqa: PLC0415
     from transformers import AutoModelForSequenceClassification, AutoTokenizer  # noqa: PLC0415
+
     tok = AutoTokenizer.from_pretrained(nom)
     m = AutoModelForSequenceClassification.from_pretrained(nom, attn_implementation="eager").eval()
 
     class Rc(torch.nn.Module):
         def __init__(self) -> None:
-            super().__init__(); self.m = m
+            super().__init__()
+            self.m = m
 
         def forward(self, input_ids, attention_mask):
             return self.m(input_ids=input_ids, attention_mask=attention_mask).logits[:, 0]
@@ -106,9 +133,21 @@ def exporter_reclasseur(nom: str = sy.RECLASSEUR) -> Path:
     tok.save_pretrained(str(out / "_tok"))
     shutil.copy(out / "_tok" / "tokenizer.json", out / "tokenizer.json")
     shutil.rmtree(out / "_tok")
-    (out / "config.json").write_text(json.dumps({
-        "genre": "reclasseur", "nom": nom, "max_length": 512, "pad_token": tok.pad_token or "<pad>",
-        "exporte_le": time.strftime("%Y-%m-%d"), "opset": OPSET}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "config.json").write_text(
+        json.dumps(
+            {
+                "genre": "reclasseur",
+                "nom": nom,
+                "max_length": 512,
+                "pad_token": tok.pad_token or "<pad>",
+                "exporte_le": time.strftime("%Y-%m-%d"),
+                "opset": OPSET,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"  reclasseur {nom} exporté : {out} ({(out / 'model.onnx').stat().st_size / 1e6:.0f} Mo)")
     return out
 
@@ -120,6 +159,7 @@ def alleger(dossier: Path) -> None:
     mêmes trois premiers du reclasseur 10/10. La quantification dynamique de tout le modèle (int8 partout) est refusée :
     voisins communs 81 %, ordre de tête du reclasseur perdu 10 fois sur 10."""
     from onnxruntime.quantization import QuantType, quantize_dynamic  # noqa: PLC0415
+
     src, tmp = dossier / "model.onnx", dossier / "model.int8.onnx"
     quantize_dynamic(str(src), str(tmp), weight_type=QuantType.QUInt8, op_types_to_quantize=["Gather"])
     tmp.replace(src)
@@ -133,19 +173,27 @@ def verifier(graphe: str, combien: int = 40) -> bool:
     """Torch contre ONNX sur des paragraphes réels de l'index : vecteurs (écart maximal, similarité minimale) et
     reclassement (ordre identique des candidats pour quelques questions des bancs). Faux si l'écart dépasse la tolérance."""
     import numpy as np  # noqa: PLC0415
+
     ix = sy.index(graphe)
     if not ix:
         sys.exit(f"index absent pour {graphe} (synthese.py indexer)")
-    textes = [t for t in ix[1] if t][: combien]
+    textes = [t for t in ix[1] if t][:combien]
     bon = True
     d = sy.modele_affine(graphe)
     if d and (d / "onnx" / "model.onnx").exists():
-        t0 = time.time(); A = np.array(list(sy._EncodeurAffine(d).embed(textes))); ta = time.time() - t0
-        t0 = time.time(); B = np.array(list(sy._EncodeurONNX(d / "onnx").embed(textes))); tb = time.time() - t0
-        ecart = float(np.abs(A - B).max()); sim = float((A * B).sum(1).min())
+        t0 = time.time()
+        A = np.array(list(sy._EncodeurAffine(d).embed(textes)))
+        ta = time.time() - t0
+        t0 = time.time()
+        B = np.array(list(sy._EncodeurONNX(d / "onnx").embed(textes)))
+        tb = time.time() - t0
+        ecart = float(np.abs(A - B).max())
+        sim = float((A * B).sum(1).min())
         leger = json.loads((d / "onnx" / "config.json").read_text(encoding="utf-8")).get("plongements") == "int8"
-        print(f"  encodeur{' (plongements int8)' if leger else ''} : {len(textes)} paragraphes, écart max {ecart:.2e}, "
-              f"similarité min {sim:.5f} ; torch {ta:.1f} s, onnx {tb:.1f} s")
+        print(
+            f"  encodeur{' (plongements int8)' if leger else ''} : {len(textes)} paragraphes, écart max {ecart:.2e}, "
+            f"similarité min {sim:.5f} ; torch {ta:.1f} s, onnx {tb:.1f} s"
+        )
         bon &= sim > 0.98 if leger else ecart < 1e-3
     else:
         print("  encodeur : pas d'exportation ONNX à vérifier")
@@ -156,21 +204,33 @@ def verifier(graphe: str, combien: int = 40) -> bool:
             if f.exists():
                 try:
                     j = json.loads(f.read_text(encoding="utf-8"))
-                    questions = [q.get("question") or q.get("q") for q in (j if isinstance(j, list) else j.get("questions", []))][:5]
+                    questions = [
+                        q.get("question") or q.get("q") for q in (j if isinstance(j, list) else j.get("questions", []))
+                    ][:5]
                 except (ValueError, AttributeError):
                     pass
-        questions = [q for q in questions if q] or ["Quelles sont les obligations des fournisseurs de modèles à usage général ?"]
-        rt = sy.reclasseur(); ro = sy._ReclasseurONNX(rc)
+        questions = [q for q in questions if q] or [
+            "Quelles sont les obligations des fournisseurs de modèles à usage général ?"
+        ]
+        rt = sy.reclasseur()
+        ro = sy._ReclasseurONNX(rc)
         accords, top3, tt, to = 0, 0, 0.0, 0.0
         for q in questions:
-            cands = [t[:1500] for t in textes[:sy.CANDIDATS_RECLASSEUR]]
+            cands = [t[:1500] for t in textes[: sy.CANDIDATS_RECLASSEUR]]
             paires = [(q, t) for t in cands]
-            t0 = time.time(); st = np.asarray(rt.predict(paires, batch_size=16, show_progress_bar=False)); tt += time.time() - t0
-            t0 = time.time(); so = ro.predict(paires); to += time.time() - t0
+            t0 = time.time()
+            st = np.asarray(rt.predict(paires, batch_size=16, show_progress_bar=False))
+            tt += time.time() - t0
+            t0 = time.time()
+            so = ro.predict(paires)
+            to += time.time() - t0
             a, b = np.argsort(-st), np.argsort(-so)
-            accords += int((a == b).all()); top3 += int(set(a[:3]) == set(b[:3]))
-        print(f"  reclasseur : {len(questions)} questions × {len(cands)} candidats, ordre identique {accords}/{len(questions)}, "
-              f"mêmes 3 premiers {top3}/{len(questions)} ; torch {tt:.1f} s, onnx {to:.1f} s")
+            accords += int((a == b).all())
+            top3 += int(set(a[:3]) == set(b[:3]))
+        print(
+            f"  reclasseur : {len(questions)} questions × {len(cands)} candidats, ordre identique {accords}/{len(questions)}, "
+            f"mêmes 3 premiers {top3}/{len(questions)} ; torch {tt:.1f} s, onnx {to:.1f} s"
+        )
         bon &= top3 == len(questions)
     else:
         print("  reclasseur : pas d'exportation ONNX à vérifier")
@@ -180,11 +240,16 @@ def verifier(graphe: str, combien: int = 40) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("encodeur"); p.add_argument("--graphe", required=True)
-    p = sub.add_parser("reclasseur"); p.add_argument("--modele", default=sy.RECLASSEUR)
+    p = sub.add_parser("encodeur")
+    p.add_argument("--graphe", required=True)
+    p = sub.add_parser("reclasseur")
+    p.add_argument("--modele", default=sy.RECLASSEUR)
     p = sub.add_parser("alleger", help="plongements en int8 (Gather seul) dans les exportations existantes")
-    p.add_argument("--graphe", required=True); p.add_argument("--sans-reclasseur", action="store_true")
-    p = sub.add_parser("verifier"); p.add_argument("--graphe", required=True); p.add_argument("--combien", type=int, default=40)
+    p.add_argument("--graphe", required=True)
+    p.add_argument("--sans-reclasseur", action="store_true")
+    p = sub.add_parser("verifier")
+    p.add_argument("--graphe", required=True)
+    p.add_argument("--combien", type=int, default=40)
     a = ap.parse_args()
     if a.cmd == "encodeur":
         exporter_encodeur(a.graphe)

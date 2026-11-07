@@ -24,6 +24,7 @@ Comment :
 
 Chaque appel est consigné au registre des coûts (poste « alias »). Le coupe-circuit s'applique.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,20 +42,29 @@ from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.y
 from newskit import couts  # noqa: E402
 from newskit import themes_emergents as te  # noqa: E402
 
-SEUIL = 0.93                  # cosinus de l'encodeur à partir duquel deux libellés sont candidats
-PLAFOND = 300                 # paires soumises au modèle par passage
-LOT = 40                      # paires par appel
+SEUIL = 0.93  # cosinus de l'encodeur à partir duquel deux libellés sont candidats
+PLAFOND = 300  # paires soumises au modèle par passage
+LOT = 40  # paires par appel
 MODELE = media.modele("lecture")  # trancher « même notion ? » ne demande pas le plus gros modèle
-VOISINS = 3                   # voisins donnés en contexte pour chaque nœud
-FR = re.compile(r"\b(de|des|du|la|le|les|et|sur|pour|données|protection|règlement|autorité|décision|droit|loi|européen|"
-                r"européenne|traitement|responsable|délégué|amende|système|systèmes|modèle|modèles|risque|risques)\b|[éèêàçùîô]", re.I)
-EN = re.compile(r"\b(of|the|and|for|data|protection|regulation|authority|decision|law|guidelines|european|act|processing|"
-                r"controller|officer|fine|rights|risk|assessment|system|systems|model|models|approach|based)\b", re.I)
+VOISINS = 3  # voisins donnés en contexte pour chaque nœud
+FR = re.compile(
+    r"\b(de|des|du|la|le|les|et|sur|pour|données|protection|règlement|autorité|décision|droit|loi|européen|"
+    r"européenne|traitement|responsable|délégué|amende|système|systèmes|modèle|modèles|risque|risques)\b|[éèêàçùîô]",
+    re.I,
+)
+EN = re.compile(
+    r"\b(of|the|and|for|data|protection|regulation|authority|decision|law|guidelines|european|act|processing|"
+    r"controller|officer|fine|rights|risk|assessment|system|systems|model|models|approach|based)\b",
+    re.I,
+)
 # Un libellé étranger (03.11.2026) : une lettre ou un mot-outil d'une autre langue, ou une majorité de mots en
 # minuscules absents du vocabulaire anglais (le dictionnaire de la machine, plus les mots des libellés anglais du graphe).
 ACCENTS = re.compile(r"[ąęłńśźżćőűøåæœäöüßéèêàçùîôâûëïÿãõñ]", re.I)
-MOTS_OUTILS = re.compile(r"\b(de|des|du|la|le|les|et|sur|pour|une|aux|der|die|das|und|für|von|mit|zur|het|een|van|voor|op|"
-                         r"jako|oraz|się|dla|przez|della|degli|che|per|il|los|las|del|para|el|y|w|z|i|na|en)\b", re.I)
+MOTS_OUTILS = re.compile(
+    r"\b(de|des|du|la|le|les|et|sur|pour|une|aux|der|die|das|und|für|von|mit|zur|het|een|van|voor|op|"
+    r"jako|oraz|się|dla|przez|della|degli|che|per|il|los|las|del|para|el|y|w|z|i|na|en)\b",
+    re.I,
+)
 # Le vocabulaire anglais : web2 (Webster's Second International, 1934, domaine public ; 234 936 mots), livré avec le
 # moteur. La liste du système (/usr/share/dict/words) manque sous Linux : le même graphe jugeait autrement (07.11.2026).
 DICTIONNAIRE = CODE / "vocabulaire_web2.txt.gz"
@@ -71,13 +81,27 @@ def vocabulaire() -> set[str]:
 
 def _forme_anglaise(w: str, voc: set[str]) -> bool:
     formes = {w, w.replace("isation", "ization"), w.replace("our", "or")}
-    if w.endswith("ies"): formes.add(w[:-3] + "y")
-    if w.endswith("es"): formes.add(w[:-2])
-    if w.endswith("s"): formes.add(w[:-1])
-    if w.endswith("ed"): formes |= {w[:-2], w[:-1]}
-    if w.endswith("ing"): formes |= {w[:-3], w[:-3] + "e"}
-    if w.endswith("ling"): formes.add(w[:-4])
-    return any(x in voc for x in formes if len(x) > 2) or w in ("data", "online", "deepfake", "deepfakes", "cybersecurity", "chatbot", "chatbots")
+    if w.endswith("ies"):
+        formes.add(w[:-3] + "y")
+    if w.endswith("es"):
+        formes.add(w[:-2])
+    if w.endswith("s"):
+        formes.add(w[:-1])
+    if w.endswith("ed"):
+        formes |= {w[:-2], w[:-1]}
+    if w.endswith("ing"):
+        formes |= {w[:-3], w[:-3] + "e"}
+    if w.endswith("ling"):
+        formes.add(w[:-4])
+    return any(x in voc for x in formes if len(x) > 2) or w in (
+        "data",
+        "online",
+        "deepfake",
+        "deepfakes",
+        "cybersecurity",
+        "chatbot",
+        "chatbots",
+    )
 
 
 def etranger(l: str, voc: set[str] | None = None) -> bool:
@@ -95,10 +119,22 @@ def etranger(l: str, voc: set[str] | None = None) -> bool:
     return bool(mots) and sum(not _forme_anglaise(w, voc) for w in mots) * 2 > len(mots)
 
 
-TRADUCTION = media.modele("traduction")   # donner le nom anglais d'une notion : un petit modèle suffit
+TRADUCTION = media.modele("traduction")  # donner le nom anglais d'une notion : un petit modèle suffit
 LOT_TRADUCTION = 80
-SCHEMA_TRADUCTION = {"type": "object", "required": ["libelles"], "properties": {"libelles": {"type": "array", "items": {
-    "type": "object", "required": ["i", "anglais"], "properties": {"i": {"type": "integer"}, "anglais": {"type": "string"}}}}}}
+SCHEMA_TRADUCTION = {
+    "type": "object",
+    "required": ["libelles"],
+    "properties": {
+        "libelles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["i", "anglais"],
+                "properties": {"i": {"type": "integer"}, "anglais": {"type": "string"}},
+            },
+        }
+    },
+}
 
 
 def traduire(graphe: str, d: dict, memo: dict, plafond: int = 4000) -> int:
@@ -109,36 +145,63 @@ def traduire(graphe: str, d: dict, memo: dict, plafond: int = 4000) -> int:
     voc = set(vocabulaire())
     for n in d["nodes"]:
         l = str(n.get("label") or "")
-        if str(n.get("id", "")).startswith("concept_") and EN.search(l) and not ACCENTS.search(l) and not MOTS_OUTILS.search(l):
+        if (
+            str(n.get("id", "")).startswith("concept_")
+            and EN.search(l)
+            and not ACCENTS.search(l)
+            and not MOTS_OUTILS.search(l)
+        ):
             voc |= set(re.findall(r"[a-z]{3,}", l.lower()))
-    a_faire = [(n["id"], str(n["label"])) for n in d["nodes"]
-               if str(n.get("id", "")).startswith("concept_") and n["id"] not in memo["anglais"] and n["id"] not in memo["alias"]
-               and etranger(n.get("label"), voc)][:plafond]
+    a_faire = [
+        (n["id"], str(n["label"]))
+        for n in d["nodes"]
+        if str(n.get("id", "")).startswith("concept_")
+        and n["id"] not in memo["anglais"]
+        and n["id"] not in memo["alias"]
+        and etranger(n.get("label"), voc)
+    ][:plafond]
     faits = 0
     decl = cfg.graphe_declare(graphe) or {}
-    sujet = decl.get("libelle") or decl.get("domaine") or graphe     # le graphe traduit, jamais un thème du moteur (N5)
+    sujet = decl.get("libelle") or decl.get("domaine") or graphe  # le graphe traduit, jamais un thème du moteur (N5)
     for k0 in range(0, len(a_faire), LOT_TRADUCTION):
         if couts.en_limite():
             print("  ARRÊT : limite d'usage atteinte, les libellés restants attendent", file=sys.stderr)
             break
-        lot = a_faire[k0:k0 + LOT_TRADUCTION]
+        lot = a_faire[k0 : k0 + LOT_TRADUCTION]
         rep = te.appeler_claude(
             f"Voici des libellés de notions du graphe de connaissances « {sujet} », dans plusieurs langues. "
             "Pour chacun, donne le nom anglais qu'un spécialiste emploierait (le terme établi, au singulier, sans article). "
             "Un nom propre (personne, organisation, tribunal, loi ou autorité nationale), un sigle ou le titre officiel d'un "
-            "texte reste tel quel.\n\n" + "\n".join(f"{i}. {l}" for i, (_, l) in enumerate(lot))
+            "texte reste tel quel.\n\n"
+            + "\n".join(f"{i}. {l}" for i, (_, l) in enumerate(lot))
             + '\n\nRéponds en JSON : {"libelles": [{"i": <indice>, "anglais": "<nom anglais>"}, …]}.',
-            SCHEMA_TRADUCTION, TRADUCTION, poste="alias-traduction", graphe=graphe)
+            SCHEMA_TRADUCTION,
+            TRADUCTION,
+            poste="alias-traduction",
+            graphe=graphe,
+        )
         for x in (rep or {}).get("libelles", []):
             i, en = x.get("i"), str(x.get("anglais") or "").strip()
             if isinstance(i, int) and 0 <= i < len(lot) and en:
-                memo["anglais"][lot[i][0]] = en; faits += 1
+                memo["anglais"][lot[i][0]] = en
+                faits += 1
     return faits
 
 
-SCHEMA = {"type": "object", "required": ["paires"], "properties": {"paires": {"type": "array", "items": {
-    "type": "object", "required": ["i", "meme"],
-    "properties": {"i": {"type": "integer"}, "meme": {"type": "boolean"}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["paires"],
+    "properties": {
+        "paires": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["i", "meme"],
+                "properties": {"i": {"type": "integer"}, "meme": {"type": "boolean"}},
+            },
+        }
+    },
+}
 
 
 def chemin_alias(graphe: str) -> Path:
@@ -162,7 +225,8 @@ def racine(alias: dict[str, str], n: str) -> str:
     """Le canonique au bout de la chaîne (a → b → c donne c), sans boucle."""
     vus = set()
     while n in alias and n not in vus:
-        vus.add(n); n = alias[n]
+        vus.add(n)
+        n = alias[n]
     return n
 
 
@@ -196,7 +260,8 @@ def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, s
     labels = [str(n.get("label") or "").strip() for n in concepts]
     deg = collections.Counter()
     for l in d["links"]:
-        deg[l["source"]] += 1; deg[l["target"]] += 1
+        deg[l["source"]] += 1
+        deg[l["target"]] += 1
     deja = set(memo["alias"]) | {x for k in memo["refuses"] for x in k.split("|")}
     tranchees = set(memo["refuses"]) | {f"{a}|{b}" for a, b in memo["alias"].items()}
 
@@ -235,6 +300,7 @@ def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, s
     try:
         import numpy as np  # noqa: PLC0415
         from newskit import synthese as s  # noqa: PLC0415
+
         enc = s.encodeur()
     except Exception as e:  # noqa: BLE001
         print(f"  (encodeur indisponible : {str(e)[:100]} ; règle du sigle seule)", file=sys.stderr)
@@ -243,9 +309,10 @@ def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, s
         V = np.array(list(enc.embed(labels, batch_size=256)), dtype=np.float32)
         V /= np.linalg.norm(V, axis=1, keepdims=True) + 1e-9
         for i0 in range(0, len(V), 2000):
-            S = V[i0:i0 + 2000] @ V.T
+            S = V[i0 : i0 + 2000] @ V.T
             for a, b in zip(*np.where(S >= SEUIL)):
-                a = int(a) + i0; b = int(b)
+                a = int(a) + i0
+                b = int(b)
                 if a >= b or norm(labels[a]) == norm(labels[b]):
                     continue
                 if ids[a] in memo["alias"] or ids[b] in memo["alias"]:
@@ -268,7 +335,8 @@ def degres_des_lots(graphe: str) -> collections.Counter:
             except (OSError, json.JSONDecodeError):
                 continue
             for e in d.get("edges", []):
-                deg[e.get("source")] += 1; deg[e.get("target")] += 1
+                deg[e.get("source")] += 1
+                deg[e.get("target")] += 1
     return deg
 
 
@@ -302,7 +370,8 @@ def contexte(d: dict) -> tuple[dict[str, str], dict[str, list[str]], collections
     deg = collections.Counter()
     for l in d["links"]:
         a, b = l["source"], l["target"]
-        deg[a] += 1; deg[b] += 1
+        deg[a] += 1
+        deg[b] += 1
         if len(vois[a]) < 12:
             vois[a].append(label.get(b, b))
         if len(vois[b]) < 12:
@@ -347,8 +416,9 @@ def rechoisir(memo: dict, label: dict, deg: collections.Counter) -> int:
     return changes
 
 
-def trancher(graphe: str, paires: list[tuple[str, str, float, str]], label: dict, vois: dict, decl: dict,
-             poste: str = "alias") -> dict[str, bool]:
+def trancher(
+    graphe: str, paires: list[tuple[str, str, float, str]], label: dict, vois: dict, decl: dict, poste: str = "alias"
+) -> dict[str, bool]:
     """{clé de paire: même notion ?} par lots, Sonnet. Une paire sans réponse n'est pas tranchée (revient au passage suivant).
     `poste` : celui du registre des coûts (« alias » en production ; le banc d'essai de `banc_decision.py` rejoue sous le sien)."""
     verdicts: dict[str, bool] = {}
@@ -356,11 +426,13 @@ def trancher(graphe: str, paires: list[tuple[str, str, float, str]], label: dict
         if couts.en_limite():
             print("  ARRÊT : limite d'usage atteinte, les paires restantes attendent", file=sys.stderr)
             break
-        lot = paires[k0:k0 + LOT]
+        lot = paires[k0 : k0 + LOT]
         lignes = []
         for i, (a, b, _, _) in enumerate(lot):
-            lignes.append(f"  {i}. A = « {label[a]} » (voisins : {' ; '.join(vois.get(a, [])[:VOISINS]) or '—'})\n"
-                          f"     B = « {label[b]} » (voisins : {' ; '.join(vois.get(b, [])[:VOISINS]) or '—'})")
+            lignes.append(
+                f"  {i}. A = « {label[a]} » (voisins : {' ; '.join(vois.get(a, [])[:VOISINS]) or '—'})\n"
+                f"     B = « {label[b]} » (voisins : {' ; '.join(vois.get(b, [])[:VOISINS]) or '—'})"
+            )
         rep = te.appeler_claude(
             f"Domaine : « {decl['libelle']} ». Dans un graphe de connaissances, deux nœuds A et B portent les libellés ci-dessous, "
             "avec quelques voisins pour le contexte. Pour chaque paire, dis si A et B désignent EXACTEMENT la même notion — la même "
@@ -368,16 +440,24 @@ def trancher(graphe: str, paires: list[tuple[str, str, float, str]], label: dict
             "ponctuation, singulier/pluriel. Ce n'est PAS la même notion quand l'un est un parent ou une généralisation de l'autre, "
             "un sous-cas, une variante datée ou versionnée, un document, un événement ou une décision QUI PORTE SUR la notion, "
             "un article de loi distinct, ou quand une précision entre parenthèses change le sens (une autre loi, un autre contexte). "
-            "Dans le doute, non.\n\n" + "\n".join(lignes)
+            "Dans le doute, non.\n\n"
+            + "\n".join(lignes)
             + '\n\nRéponds en JSON : {"paires": [{"i": <indice>, "meme": <true|false>}, …]}.',
-            SCHEMA, MODELE, poste=poste, graphe=graphe)
+            SCHEMA,
+            MODELE,
+            poste=poste,
+            graphe=graphe,
+        )
         for x in (rep or {}).get("paires", []):
             i = x.get("i")
             if isinstance(i, int) and 0 <= i < len(lot):
                 a, b = lot[i][0], lot[i][1]
                 verdicts["|".join(sorted((a, b)))] = bool(x.get("meme"))
-        print(f"  lot {k0 // LOT + 1} : {sum(1 for i in range(len(lot)) if verdicts.get('|'.join(sorted((lot[i][0], lot[i][1]))))) } fusion(s) "
-              f"sur {len(lot)} paire(s)", flush=True)
+        print(
+            f"  lot {k0 // LOT + 1} : {sum(1 for i in range(len(lot)) if verdicts.get('|'.join(sorted((lot[i][0], lot[i][1])))))} fusion(s) "
+            f"sur {len(lot)} paire(s)",
+            flush=True,
+        )
     return verdicts
 
 
@@ -397,9 +477,13 @@ def passage(graphe: str, controle: bool, plafond: int) -> int:
     deg0 = degres_des_lots(graphe)
     for n in list(deg0):
         label.setdefault(n, memo["libelles"].get(n, n))
-    deg = collections.Counter({n: deg0.get(n, deg[n]) for n in set(deg) | set(deg0)})   # degrés d'origine quand ils existent
-    print(f"  {graphe} : {len(paires)} paire(s) candidate(s) non tranchée(s) ; table : {len(memo['alias'])} alias, "
-          f"{len(memo['refuses'])} refus")
+    deg = collections.Counter(
+        {n: deg0.get(n, deg[n]) for n in set(deg) | set(deg0)}
+    )  # degrés d'origine quand ils existent
+    print(
+        f"  {graphe} : {len(paires)} paire(s) candidate(s) non tranchée(s) ; table : {len(memo['alias'])} alias, "
+        f"{len(memo['refuses'])} refus"
+    )
     for a, b, sc, raison in paires[:12]:
         print(f"    {sc:.2f} {raison:8} {label[a]} ({deg[a]})  ↔  {label[b]} ({deg[b]})")
     memo.pop("degres", None)
@@ -425,7 +509,8 @@ def passage(graphe: str, controle: bool, plafond: int) -> int:
         if ca == cb:
             continue
         memo["alias"][cb] = ca
-        memo["libelles"][ca] = label.get(ca, ca); memo["libelles"][cb] = label.get(cb, cb)
+        memo["libelles"][ca] = label.get(ca, ca)
+        memo["libelles"][cb] = label.get(cb, cb)
         fusions += 1
         print(f"    alias  {label[cb]}  →  {label[ca]}")
     # Les chaînes sont aplaties : chaque secondaire pointe directement sur sa racine ; puis la racine de chaque groupe
@@ -436,9 +521,11 @@ def passage(graphe: str, controle: bool, plafond: int) -> int:
     if rechoisis:
         print(f"  {rechoisis} groupe(s) dont le libellé canonique change")
     ecrire_alias(graphe, memo)
-    print(f"  {graphe} : {fusions} alias ajouté(s), {sum(1 for k in verdicts if not verdicts[k])} paire(s) refusée(s), "
-          f"{len(paires) - len(verdicts)} non tranchée(s) ; table : {len(memo['alias'])} alias. "
-          f"Appliqués à la prochaine composition (fusionner_graphe.py).")
+    print(
+        f"  {graphe} : {fusions} alias ajouté(s), {sum(1 for k in verdicts if not verdicts[k])} paire(s) refusée(s), "
+        f"{len(paires) - len(verdicts)} non tranchée(s) ; table : {len(memo['alias'])} alias. "
+        f"Appliqués à la prochaine composition (fusionner_graphe.py)."
+    )
     return 0
 
 
@@ -447,7 +534,9 @@ def main() -> int:
     ap.add_argument("--graphe", default=cfg.GRAPHE_PRINCIPAL)
     ap.add_argument("--controle", action="store_true", help="les candidats, sans appel")
     ap.add_argument("--etat", action="store_true", help="la table d'alias")
-    ap.add_argument("--plafond", type=int, default=PLAFOND, help=f"paires soumises au modèle par passage (défaut {PLAFOND})")
+    ap.add_argument(
+        "--plafond", type=int, default=PLAFOND, help=f"paires soumises au modèle par passage (défaut {PLAFOND})"
+    )
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
     if a.etat:

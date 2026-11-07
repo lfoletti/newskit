@@ -34,6 +34,7 @@ from newskit import fiche  # contrat de frontmatter, source unique de vérité
 from newskit.commun import archiver_gz, normaliser_identifiant  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 DOSSIERS_CORPUS = ["sources", "recherche"]
 SORTIE = RACINE / "graphe" / "squelette.json"
 
@@ -45,14 +46,35 @@ DOMAINES_IMAGE = {"substackcdn.com", "media.licdn.com", "substack-post-media.s3.
 # Autopromotion des auteurs et pages de service : ce ne sont pas des arêtes de
 # connaissance. Mesuré sur le corpus : ~2 500 occurrences.
 DOMAINES_PROMO = {
-    "linktr.ee", "forms.gle", "docs.google.com", "instagram.com", "www.instagram.com",
-    "twitter.com", "x.com", "youtube.com", "www.youtube.com", "youtu.be",
-    "open.spotify.com", "amazon.com", "www.amazon.com", "amzn.to", "bit.ly",
-    "rb.gy", "mng.bz", "lnkd.in", "t.co", "buff.ly", "patreon.com", "ko-fi.com",
+    "linktr.ee",
+    "forms.gle",
+    "docs.google.com",
+    "instagram.com",
+    "www.instagram.com",
+    "twitter.com",
+    "x.com",
+    "youtube.com",
+    "www.youtube.com",
+    "youtu.be",
+    "open.spotify.com",
+    "amazon.com",
+    "www.amazon.com",
+    "amzn.to",
+    "bit.ly",
+    "rb.gy",
+    "mng.bz",
+    "lnkd.in",
+    "t.co",
+    "buff.ly",
+    "patreon.com",
+    "ko-fi.com",
     # AI Secret (graphe d'actualité) : ses liens de suivi et ses publications sœurs,
     # présents dans chaque billet — les nœuds « externes » les plus connectés
     # du graphe étaient ces quatre sites, mesuré le 27.09.2026.
-    "go.aisecret.us", "bayarealetters.com", "roboticsherald.com", "marketingsecret.us",
+    "go.aisecret.us",
+    "bayarealetters.com",
+    "roboticsherald.com",
+    "marketingsecret.us",
     "thehardwire.com",
 }
 # Chemins de service Substack et consorts. Les pages sont reconnues par leur
@@ -63,10 +85,27 @@ SEGMENTS_SERVICE = ("/api/v1/", "/api/v1")
 
 # Paramètres de suivi à retirer avant tout appariement.
 PARAMS_SUIVI = {
-    "ref",   # ?ref=<domaine> sur chaque lien sortant d'une lettre Ghost
-    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-    "r", "si", "nd", "dlsi", "trackingid", "triedredirect", "action", "usp",
-    "gi", "sa", "ust", "source", "originalsubdomain", "trk", "feature",
+    "ref",  # ?ref=<domaine> sur chaque lien sortant d'une lettre Ghost
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "r",
+    "si",
+    "nd",
+    "dlsi",
+    "trackingid",
+    "triedredirect",
+    "action",
+    "usp",
+    "gi",
+    "sa",
+    "ust",
+    "source",
+    "originalsubdomain",
+    "trk",
+    "feature",
 }
 
 # Enveloppes qui masquent la vraie cible.
@@ -116,7 +155,7 @@ def liens_du_texte(corps: str, premiere_ligne: int):
         for m in RE_LIEN_MD.finditer(ligne):
             texte_lien, url = m.group(1).strip(), m.group(3)
             reste = reste.replace(m.group(0), " ")
-            if not texte_lien:          # [](...) == image
+            if not texte_lien:  # [](...) == image
                 continue
             if url.startswith("http"):
                 yield url, numero
@@ -143,7 +182,7 @@ def nettoyer(url: str) -> str:
     url = url.rstrip(".,;:!?*)…'\"")
     try:
         p = urlsplit(url)
-    except ValueError:          # un crochet dans l'adresse (regex citée dans un billet de METR, 03.10.2026) : pas une URL
+    except ValueError:  # un crochet dans l'adresse (regex citée dans un billet de METR, 03.10.2026) : pas une URL
         return ""
     hote = p.netloc.lower()
     if hote.startswith("www."):
@@ -240,8 +279,11 @@ def normaliser_auteurs(brut: str) -> list[str]:
     if not brut or not brut.strip():
         return []
     segments = [s.strip() for s in re.split(r",| et | and |&|;", brut) if s.strip()]
-    noms = [s for s in segments if s.lower().rstrip(".").replace(" ", "") not in
-            {x.replace(".", "").replace(" ", "") for x in SUFFIXES_TITRE}]
+    noms = [
+        s
+        for s in segments
+        if s.lower().rstrip(".").replace(" ", "") not in {x.replace(".", "").replace(" ", "") for x in SUFFIXES_TITRE}
+    ]
     return [re.sub(r"\s+", " ", n) for n in noms if len(n) > 1]
 
 
@@ -294,7 +336,7 @@ def triplets_who_is_who(chemin: Path, id_article: str):
         if not m:
             continue
         sujet, relation, objet, niveau = m.group(1), m.group(2), m.group(3), m.group(4) or "C"
-        pire = sorted(niveau.split("/"))[-1]      # A/B -> B
+        pire = sorted(niveau.split("/"))[-1]  # A/B -> B
         yield sujet.strip(), relation.strip(), objet.strip(), CERTITUDE[pire], numero
 
 
@@ -325,26 +367,40 @@ class Squelette:
     def noeud(self, nid: str, label: str, file_type: str, kind: str, source_file: str, **extra) -> str:
         """Déclare un nœud s'il n'existe pas. La première déclaration fait foi."""
         if nid not in self.noeuds:
-            self.noeuds[nid] = {"id": nid, "label": label, "file_type": file_type,
-                                "kind": kind, "source_file": source_file, **extra}
+            self.noeuds[nid] = {
+                "id": nid,
+                "label": label,
+                "file_type": file_type,
+                "kind": kind,
+                "source_file": source_file,
+                **extra,
+            }
         return nid
 
-    def arete(self, src: str, dst: str, relation: str, source_file: str, ligne,
-              confiance: str = "EXTRACTED") -> None:
+    def arete(self, src: str, dst: str, relation: str, source_file: str, ligne, confiance: str = "EXTRACTED") -> None:
         if src == dst:
             return
-        self.aretes.append({"source": src, "target": dst, "relation": relation,
-                            "confidence": confiance, "source_file": source_file,
-                            "source_location": f"L{ligne}", "weight": 1.0,
-                            "_origin": "squelette"})
+        self.aretes.append(
+            {
+                "source": src,
+                "target": dst,
+                "relation": relation,
+                "confidence": confiance,
+                "source_file": source_file,
+                "source_location": f"L{ligne}",
+                "weight": 1.0,
+                "_origin": "squelette",
+            }
+        )
         self.stats[relation] += 1
 
     def extraction(self) -> dict:
         return {"nodes": list(self.noeuds.values()), "edges": self.aretes}
 
 
-def charger_corpus(avertissements: list[str], dossiers: list[str] | None = None,
-                   fichiers: list[Path] | None = None) -> dict[Path, dict]:
+def charger_corpus(
+    avertissements: list[str], dossiers: list[str] | None = None, fichiers: list[Path] | None = None
+) -> dict[Path, dict]:
     """Lit toutes les fiches et donne à chacune son identité de nœud.
 
     L'identité est le chemin relatif sans extension, exactement ce que graphify
@@ -358,6 +414,7 @@ def charger_corpus(avertissements: list[str], dossiers: list[str] | None = None,
     publication, sinon « qui atteste ce dépôt ? » désignerait le modèle.
     """
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     dossiers_modele = tuple(f"sources/{s.dossier}/" for s in cfg.toutes("Modèle"))
 
     def ordre_de_lecture(c: Path) -> tuple[int, str]:
@@ -366,9 +423,11 @@ def charger_corpus(avertissements: list[str], dossiers: list[str] | None = None,
 
     # `fichiers` : la liste exacte d'un graphe à partage fiche par fiche (partage_graphe.py, GV4), au lieu de ses dossiers.
     chemins = sorted(
-        fichiers if fichiers is not None else
-        (c for d in (dossiers or DOSSIERS_CORPUS) for c in (RACINE / d).rglob("*.md")
-         if not c.name.startswith("_")),
+        fichiers
+        if fichiers is not None
+        else (
+            c for d in (dossiers or DOSSIERS_CORPUS) for c in (RACINE / d).rglob("*.md") if not c.name.startswith("_")
+        ),
         key=ordre_de_lecture,
     )
     fiches: dict[Path, dict] = {}
@@ -420,12 +479,22 @@ def declarer_papiers(g: Squelette, fiches: dict[Path, dict]) -> None:
     for chemin, f in fiches.items():
         if f["arxiv_id"]:
             c = f["champs"]
-            g.noeud(f["id"], c.get("title") or chemin.stem, "paper", "papier", f["rel"],
-                    date=c.get("date", ""), collected=c.get("collected", ""),
-                    url=c.get("url", ""), complet=c.get("complet", False),
-                    plateforme="arXiv", words=c.get("words", 0),
-                    categories=c.get("categories", ""), arxiv_id=f["arxiv_id"],
-                    source_corpus=c.get("source", ""))
+            g.noeud(
+                f["id"],
+                c.get("title") or chemin.stem,
+                "paper",
+                "papier",
+                f["rel"],
+                date=c.get("date", ""),
+                collected=c.get("collected", ""),
+                url=c.get("url", ""),
+                complet=c.get("complet", False),
+                plateforme="arXiv",
+                words=c.get("words", 0),
+                categories=c.get("categories", ""),
+                arxiv_id=f["arxiv_id"],
+                source_corpus=c.get("source", ""),
+            )
 
 
 def declarer_fiche(g: Squelette, chemin: Path, f: dict, avertissements: list[str]) -> str:
@@ -435,19 +504,41 @@ def declarer_fiche(g: Squelette, chemin: Path, f: dict, avertissements: list[str
     if titre == "Medium":
         avertissements.append(f"titre non extrait, à corriger : {rel}")
     est_papier = bool(f["arxiv_id"])
-    g.noeud(aid, titre, "paper" if est_papier else "document",
-            "papier" if est_papier else "article", rel,
-            date=c.get("date", ""), collected=c.get("collected", ""),
-            url=c.get("url", ""), complet=c.get("complet", True),
-            plateforme=c.get("plateforme", ""),
-            audience=c.get("audience", ""), words=c.get("words", 0),
-            edition=c.get("edition"), source_corpus=c.get("source", ""),
-            categories=c.get("categories", ""), arxiv_id=f["arxiv_id"],
-            # Texte de référence : famille, version, statut (en vigueur, remplacée), fiche remplaçante, partie —
-            # posés dans l'en-tête par diachronie.annoter_fiches ; absents d'une fiche ordinaire (09.10.2026).
-            **{k: c[k] for k in ("texte", "version", "statut", "remplacee_par", "partie",
-                                 # le fil (newskit.fil, 03.11.2026) : titre, résumé et complément en français
-                                 "titre_fr", "resume_fr", "complement_fr") if c.get(k)})
+    g.noeud(
+        aid,
+        titre,
+        "paper" if est_papier else "document",
+        "papier" if est_papier else "article",
+        rel,
+        date=c.get("date", ""),
+        collected=c.get("collected", ""),
+        url=c.get("url", ""),
+        complet=c.get("complet", True),
+        plateforme=c.get("plateforme", ""),
+        audience=c.get("audience", ""),
+        words=c.get("words", 0),
+        edition=c.get("edition"),
+        source_corpus=c.get("source", ""),
+        categories=c.get("categories", ""),
+        arxiv_id=f["arxiv_id"],
+        # Texte de référence : famille, version, statut (en vigueur, remplacée), fiche remplaçante, partie —
+        # posés dans l'en-tête par diachronie.annoter_fiches ; absents d'une fiche ordinaire (09.10.2026).
+        **{
+            k: c[k]
+            for k in (
+                "texte",
+                "version",
+                "statut",
+                "remplacee_par",
+                "partie",
+                # le fil (newskit.fil, 03.11.2026) : titre, résumé et complément en français
+                "titre_fr",
+                "resume_fr",
+                "complement_fr",
+            )
+            if c.get(k)
+        },
+    )
     g.stats["papier_en_fiche" if est_papier else "article"] += 1
 
     auteurs = normaliser_auteurs(c.get("author", ""))
@@ -463,14 +554,16 @@ def declarer_fiche(g: Squelette, chemin: Path, f: dict, avertissements: list[str
 
     pub = (c.get("publication") or "").strip()
     if pub:
-        nid = g.noeud(make_id("publication", pub), pub, "concept", "publication", rel,
-                      plateforme=c.get("plateforme", ""))
+        nid = g.noeud(
+            make_id("publication", pub), pub, "concept", "publication", rel, plateforme=c.get("plateforme", "")
+        )
         g.arete(aid, nid, "publie_dans", rel, 1)
     return aid
 
 
-def relier_liens(g: Squelette, f: dict, aid: str, index: dict[str, str],
-                 promo: set[str], citants: dict[str, set[str]]) -> None:
+def relier_liens(
+    g: Squelette, f: dict, aid: str, index: dict[str, str], promo: set[str], citants: dict[str, set[str]]
+) -> None:
     """Une arête par lien sortant, selon ce que la cible est.
 
     L'ordre des essais est une décision, pas un hasard. L'appariement interne
@@ -502,14 +595,22 @@ def relier_liens(g: Squelette, f: dict, aid: str, index: dict[str, str],
 
         ida = canon_arxiv(url)
         if ida:
-            lier(g.noeud(make_id("arxiv", ida), f"arXiv:{ida}", "paper", "papier", rel,
-                         url=f"https://arxiv.org/abs/{ida}"), "cite_papier", ligne)
+            lier(
+                g.noeud(
+                    make_id("arxiv", ida), f"arXiv:{ida}", "paper", "papier", rel, url=f"https://arxiv.org/abs/{ida}"
+                ),
+                "cite_papier",
+                ligne,
+            )
             continue
 
         depot = canon_github(url)
         if depot:
-            lier(g.noeud(make_id("github", depot), depot, "code", "depot", rel,
-                         url=f"https://github.com/{depot}"), "cite_depot", ligne)
+            lier(
+                g.noeud(make_id("github", depot), depot, "code", "depot", rel, url=f"https://github.com/{depot}"),
+                "cite_depot",
+                ligne,
+            )
             continue
 
         if url in promo:
@@ -520,8 +621,7 @@ def relier_liens(g: Squelette, f: dict, aid: str, index: dict[str, str],
         # Un lien vu une seule fois reste dans le texte, il n'entre pas dans le
         # graphe — cela écarte le bruit sans qu'aucun modèle ait à juger.
         if len(citants[url]) >= 2:
-            lier(g.noeud(make_id("externe", url), url, "document", "externe", rel, url=url),
-                 "cite_externe", ligne)
+            lier(g.noeud(make_id("externe", url), url, "document", "externe", rel, url=url), "cite_externe", ligne)
         else:
             g.stats["liens_externes_uniques_ecartes"] += 1
 
@@ -548,6 +648,7 @@ def construire(graphe: str | None = None) -> tuple[dict, dict, list[str]]:
     les graines exogènes (who-is-who) n'entrent que dans le principal.
     """
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     avertissements: list[str] = []
     graphe = graphe or cfg.GRAPHE_PRINCIPAL
     # Le registre attribue chaque dossier à un graphe ; le principal ne lit
@@ -555,6 +656,7 @@ def construire(graphe: str | None = None) -> tuple[dict, dict, list[str]]:
     # Contrôlé le 27.09.2026 : aucune fiche hors de tout graphe, aucune dans deux.
     dossiers = cfg.dossiers_du_graphe(graphe)
     from newskit import partage_graphe  # noqa: PLC0415
+
     retenues = partage_graphe.fiches_du_graphe(graphe)
     fiches = charger_corpus(avertissements, dossiers, list(retenues.values()) if retenues is not None else None)
     index = construire_index(fiches)
@@ -584,6 +686,7 @@ def main() -> int:
     args = ap.parse_args()
 
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     sortie = cfg.chemins_du_graphe(args.graphe or cfg.GRAPHE_PRINCIPAL)["squelette"]
     extraction, stats, avertissements = construire(args.graphe)
 
@@ -615,8 +718,7 @@ def main() -> int:
         sortie.parent.mkdir(parents=True, exist_ok=True)
         sortie.write_text(json.dumps(extraction, ensure_ascii=False, indent=1), encoding="utf-8")
         gz = archiver_gz(sortie)
-        print(f"\n  écrit : {sortie.relative_to(RACINE)}"
-              f"  (+ {gz.name}, {gz.stat().st_size / 1e6:.1f} Mo, versionné)")
+        print(f"\n  écrit : {sortie.relative_to(RACINE)}  (+ {gz.name}, {gz.stat().st_size / 1e6:.1f} Mo, versionné)")
     return 0
 
 

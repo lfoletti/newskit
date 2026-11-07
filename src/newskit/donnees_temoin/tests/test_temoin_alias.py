@@ -23,9 +23,21 @@ from newskit import temoin  # noqa: E402
 
 
 def _passe(t):
-    return subprocess.run([sys.executable, str(t.code / "newskit" / "routine_hebdo.py"), "--graphe", temoin.GRAPHE,
-                           "--sans-commit", "--sans-courriel"], env=temoin.environnement(t), cwd=t.donnees,
-                          capture_output=True, text=True, timeout=900)
+    return subprocess.run(
+        [
+            sys.executable,
+            str(t.code / "newskit" / "routine_hebdo.py"),
+            "--graphe",
+            temoin.GRAPHE,
+            "--sans-commit",
+            "--sans-courriel",
+        ],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
 
 
 def _graphe(t):
@@ -39,21 +51,42 @@ def recompose(tmp_path_factory):
     noeuds = _graphe(t)["nodes"]
     libelles = [x["label"].casefold() for x in noeuds]
     # Des notions dont le libellé n'est contenu dans aucun autre : seul `aussi` peut mener de A à B.
-    concepts = sorted((x for x in noeuds if x.get("file_type") == "concept" and x["id"].startswith("concept_")
-                       and sum(x["label"].casefold() in l for l in libelles) == 1), key=lambda x: x["id"])
+    concepts = sorted(
+        (
+            x
+            for x in noeuds
+            if x.get("file_type") == "concept"
+            and x["id"].startswith("concept_")
+            and sum(x["label"].casefold() in l for l in libelles) == 1
+        ),
+        key=lambda x: x["id"],
+    )
     a, b, c = concepts[0], concepts[1], concepts[2]
-    table = {"alias": {a["id"]: b["id"], c["id"]: a["id"], "notion_qui_n_existe_pas": b["id"],
-                       concepts[3]["id"]: "cible_qui_n_existe_pas"}}
+    table = {
+        "alias": {
+            a["id"]: b["id"],
+            c["id"]: a["id"],
+            "notion_qui_n_existe_pas": b["id"],
+            concepts[3]["id"]: "cible_qui_n_existe_pas",
+        }
+    }
     (t.donnees / "graphe" / "alias.json").write_text(json.dumps(table), encoding="utf-8")
-    (t.donnees / "cache" / "limite_atteinte").write_text(time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n",
-                                                         encoding="utf-8")
+    (t.donnees / "cache" / "limite_atteinte").write_text(
+        time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n", encoding="utf-8"
+    )
     r = _passe(t)
     return t, r, _graphe(t), a, b, c, concepts[3]
 
 
 def _lire(t, *args):
-    return subprocess.run([sys.executable, str(t.code / "newskit" / "interroger_graphe.py"), *args],
-                          env=temoin.environnement(t), cwd=t.donnees, capture_output=True, text=True, timeout=120)
+    return subprocess.run(
+        [sys.executable, str(t.code / "newskit" / "interroger_graphe.py"), *args],
+        env=temoin.environnement(t),
+        cwd=t.donnees,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
 
 
 def test_l_alias_et_la_chaine_sont_fondus_dans_la_cible(recompose):
@@ -67,7 +100,7 @@ def test_l_alias_et_la_chaine_sont_fondus_dans_la_cible(recompose):
 
 def test_l_alias_sans_cible_est_compte_et_dit(recompose):
     _, r, g, *_, d = recompose
-    assert d["id"] in {x["id"] for x in g["nodes"]}                     # rien n'est fondu dans le vide
+    assert d["id"] in {x["id"] for x in g["nodes"]}  # rien n'est fondu dans le vide
     assert "1 alias sans cible" in r.stdout, r.stdout[-2500:]
 
 

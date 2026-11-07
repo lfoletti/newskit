@@ -15,6 +15,7 @@ de frapper toutes les cinq minutes un site qui refuse (EDPB : 503 pendant deux j
 L'état vit dans cache/sante_sources.json. Les dépendances (audit, lecture, robots.txt, alerte, contrôle du contenu) sont
 passées par l'appelant, collecte_rss.py.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -28,10 +29,10 @@ from typing import Callable
 from newskit.commun import RACINE  # noqa: E402
 
 ETAT = RACINE / "cache" / "sante_sources.json"
-SEUIL = 6                    # échecs consécutifs d'un hôte avant l'audit (environ trois quarts d'heure de collecte)
-AUDITS_PAR_PASSE = 2         # un audit dure de 10 à 40 s : le passage de cinq minutes reste court
-IMITATION_AUTO = True        # décision du mainteneur, 06.11.2026
-AUDIT_H = 24                 # un même hôte n'est pas audité plus d'une fois par jour
+SEUIL = 6  # échecs consécutifs d'un hôte avant l'audit (environ trois quarts d'heure de collecte)
+AUDITS_PAR_PASSE = 2  # un audit dure de 10 à 40 s : le passage de cinq minutes reste court
+IMITATION_AUTO = True  # décision du mainteneur, 06.11.2026
+AUDIT_H = 24  # un même hôte n'est pas audité plus d'une fois par jour
 REPOS_H, REPOS_MAX_H = 1, 24
 ALERTE_JOURS = 7
 F = "%Y-%m-%d %H:%M"
@@ -95,9 +96,17 @@ def succes(url: str, maintenant: str, flux: bool) -> None:
         ecrire_etat(e)
 
 
-def echec(url: str, maintenant: str, *, flux: bool, auditer: Callable[[str], dict], lire: Callable[[str, bool], bytes],
-          robots_exclut_ia: Callable[[str], bool], alerter: Callable[[str, str], object],
-          utilisable: Callable[[bytes, bool], bool]) -> str:
+def echec(
+    url: str,
+    maintenant: str,
+    *,
+    flux: bool,
+    auditer: Callable[[str], dict],
+    lire: Callable[[str, bool], bytes],
+    robots_exclut_ia: Callable[[str], bool],
+    alerter: Callable[[str, str], object],
+    utilisable: Callable[[bytes, bool], bool],
+) -> str:
     """Note l'échec d'une lecture ; au seuil, audite et répare. Rend la voie trouvée, « repos » ou ""."""
     global _audits_du_passage
     e = lire_etat()
@@ -113,7 +122,7 @@ def echec(url: str, maintenant: str, *, flux: bool, auditer: Callable[[str], dic
         _audits_du_passage += 1
         e["imite"].pop(hote(url), None)
         a = auditer(url) or {}
-        if a:                       # un audit raté (accesspath illisible) ne compte pas comme l'audit du jour
+        if a:  # un audit raté (accesspath illisible) ne compte pas comme l'audit du jour
             h["audit_le"] = maintenant
             h["audit"] = {k: a.get(k) for k in ("tier", "tls", "rationale")}
         voie = _reparer(e, url, a, flux, lire, robots_exclut_ia, utilisable)
@@ -130,14 +139,19 @@ def echec(url: str, maintenant: str, *, flux: bool, auditer: Callable[[str], dic
         h["alerte_le"] = maintenant
     ecrire_etat(e)
     a = h.get("audit") or {}
-    print(f"  ~~ sap {cle(url, flux)} : sans voie, au repos jusqu'à {h['repos']} (tier {a.get('tier')}, "
-          f"{str(a.get('rationale') or '')[:120]})", file=sys.stderr)
+    print(
+        f"  ~~ sap {cle(url, flux)} : sans voie, au repos jusqu'à {h['repos']} (tier {a.get('tier')}, "
+        f"{str(a.get('rationale') or '')[:120]})",
+        file=sys.stderr,
+    )
     if alerte:
-        alerter(f"source injoignable sans réparation : {hote(url)}",
-                f"Adresse : {url}\n{h['echecs']} échecs consécutifs depuis {h.get('premier_echec')}.\n"
-                f"Audit sap du {h.get('audit_le')} : tier {a.get('tier')}, empreinte TLS {a.get('tls')}.\n"
-                f"{a.get('rationale') or ''}\n"
-                f"L'hôte se repose jusqu'à {h['repos']} ; l'audit se refait au plus une fois par jour.\n")
+        alerter(
+            f"source injoignable sans réparation : {hote(url)}",
+            f"Adresse : {url}\n{h['echecs']} échecs consécutifs depuis {h.get('premier_echec')}.\n"
+            f"Audit sap du {h.get('audit_le')} : tier {a.get('tier')}, empreinte TLS {a.get('tls')}.\n"
+            f"{a.get('rationale') or ''}\n"
+            f"L'hôte se repose jusqu'à {h['repos']} ; l'audit se refait au plus une fois par jour.\n",
+        )
     return "repos"
 
 

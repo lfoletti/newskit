@@ -78,13 +78,12 @@ from newskit import commun  # noqa: E402
 from newskit import config_sources as cfg  # noqa: E402
 
 BOITE = Path.home() / ".secrets" / "boite_sessions.env"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/120 Safari/537.36")
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 COOKIES_GHOST = ("ghost-members-ssr", "ghost-members-ssr.sig")
 COOKIES_SUBSTACK = ("connect.sid", "substack.sid")
-COMPTE_SUBSTACK = "substack_compte"             # la session du compte, au registre
-DOSSIERS_BOITE = ("INBOX", "Spam", "Junk")      # un message de connexion est parfois classé indésirable
-ATTENTE = 180           # secondes à attendre le message
+COMPTE_SUBSTACK = "substack_compte"  # la session du compte, au registre
+DOSSIERS_BOITE = ("INBOX", "Spam", "Junk")  # un message de connexion est parfois classé indésirable
+ATTENTE = 180  # secondes à attendre le message
 PAS = 10
 
 
@@ -100,8 +99,10 @@ def declaration(nom: str) -> dict:
     if not s:
         raise Echec(f"session « {nom} » absente du registre")
     if s.get("ouverture") not in ("ghost", "substack") or not s.get("site") or not s.get("fichier"):
-        raise Echec(f"session « {nom} » : le registre ne déclare pas d'ouverture par script "
-                    f"(ouverture: ghost ou substack, site, fichier: true)")
+        raise Echec(
+            f"session « {nom} » : le registre ne déclare pas d'ouverture par script "
+            f"(ouverture: ghost ou substack, site, fichier: true)"
+        )
     if s["ouverture"] == "substack" and not s.get("publication"):
         raise Echec(f"session « {nom} » : `publication` (le sous-domaine Substack) manque au registre")
     return s
@@ -129,12 +130,20 @@ def lire_boite(chemin: Path = BOITE) -> dict:
 def _requete(url: str, donnees: dict | None = None, ouvreur=None) -> tuple[int, str]:
     corps = json.dumps(donnees).encode("utf-8") if donnees is not None else None
     site = "{0.scheme}://{0.netloc}".format(urlsplit(url))
-    req = urllib.request.Request(url, data=corps, headers={
-        "User-Agent": UA, "Accept": "application/json, text/plain, */*", "Accept-Language": "en",
-        "Origin": site, "Referer": site + "/",
-        **({"Content-Type": "application/json"} if corps is not None else {})})
+    req = urllib.request.Request(
+        url,
+        data=corps,
+        headers={
+            "User-Agent": UA,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en",
+            "Origin": site,
+            "Referer": site + "/",
+            **({"Content-Type": "application/json"} if corps is not None else {}),
+        },
+    )
     try:
-        with (ouvreur.open(req, timeout=30) if ouvreur else urllib.request.urlopen(req, timeout=30)) as r:
+        with ouvreur.open(req, timeout=30) if ouvreur else urllib.request.urlopen(req, timeout=30) as r:
             return r.status, r.read(200_000).decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return e.code, e.read(600).decode("utf-8", "replace")
@@ -161,9 +170,16 @@ def demander_lien(site: str, adresse: str, creer: bool) -> None:
 
 def demander_lien_substack(site: str, publication: str, adresse: str) -> None:
     """Demande à Substack d'envoyer le message de connexion pour cette publication."""
-    code, corps = _requete("https://substack.com/api/v1/email-login",
-                           {"email": adresse, "redirect": site + "/", "for_pub": publication,
-                            "captcha_response": None, "can_create_user": False})
+    code, corps = _requete(
+        "https://substack.com/api/v1/email-login",
+        {
+            "email": adresse,
+            "redirect": site + "/",
+            "for_pub": publication,
+            "captcha_response": None,
+            "can_create_user": False,
+        },
+    )
     if code != 200:
         raison = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", corps))[:200]
         if "captcha" in corps.lower():
@@ -230,7 +246,7 @@ def attendre_lien(boite: dict, site: str, depuis: float, attente: int = ATTENTE,
                 jour = time.strftime("%d-%b-%Y", time.gmtime(depuis - 86400))
                 for dossier in DOSSIERS_BOITE:
                     if im.select(f'"{dossier}"')[0] != "OK":
-                        continue                        # ce dossier n'existe pas chez cet hébergeur
+                        continue  # ce dossier n'existe pas chez cet hébergeur
                     _, donnees = im.search(None, "SINCE", jour)
                     for num in reversed(donnees[0].split()[-25:]):
                         _, contenu = im.fetch(num, "(BODY.PEEK[])")
@@ -241,7 +257,7 @@ def attendre_lien(boite: dict, site: str, depuis: float, attente: int = ATTENTE,
                         except (TypeError, ValueError):
                             recu = depuis
                         if recu < depuis - 120:
-                            continue                    # un lien d'une demande précédente : périmé
+                            continue  # un lien d'une demande précédente : périmé
                         lien = lire(brut, site)
                         if lien:
                             im.store(num, "+FLAGS", "\\Seen")
@@ -251,9 +267,11 @@ def attendre_lien(boite: dict, site: str, depuis: float, attente: int = ATTENTE,
         except OSError as e:
             derniere_erreur = str(e)[:120]
         time.sleep(PAS)
-    raise Echec(f"aucun message de {urlsplit(site).netloc} dans la boîte après {attente} s"
-                + (f" (dernière erreur réseau : {derniere_erreur})" if derniere_erreur else "")
-                + " : le compte existe-t-il à cette adresse ? (--creer pour le créer)")
+    raise Echec(
+        f"aucun message de {urlsplit(site).netloc} dans la boîte après {attente} s"
+        + (f" (dernière erreur réseau : {derniere_erreur})" if derniere_erreur else "")
+        + " : le compte existe-t-il à cette adresse ? (--creer pour le créer)"
+    )
 
 
 def suivre_lien(lien: str, site: str = "", attendus: tuple[str, ...] = COOKIES_GHOST) -> str:
@@ -267,8 +285,9 @@ def suivre_lien(lien: str, site: str = "", attendus: tuple[str, ...] = COOKIES_G
     code, _ = _requete(lien, ouvreur=ouvreur)
     en_tete = en_tete_du_pot(pot, site, attendus)
     if not en_tete:
-        raise Echec(f"le lien a répondu {code} sans poser le cookie de session ({attendus[0]}) : "
-                    f"lien périmé ou déjà utilisé")
+        raise Echec(
+            f"le lien a répondu {code} sans poser le cookie de session ({attendus[0]}) : lien périmé ou déjà utilisé"
+        )
     garder_compte_substack(pot)
     return en_tete
 
@@ -276,8 +295,7 @@ def suivre_lien(lien: str, site: str = "", attendus: tuple[str, ...] = COOKIES_G
 def en_tete_du_pot(pot, site: str, attendus: tuple[str, ...]) -> str:
     """L'en-tête `cookie` des cookies attendus posés pour le domaine du site, "" si le premier manque."""
     hote = urlsplit(site).netloc
-    cookies = {c.name: c.value for c in pot
-               if c.name in attendus and (not hote or hote.endswith(c.domain.lstrip(".")))}
+    cookies = {c.name: c.value for c in pot if c.name in attendus and (not hote or hote.endswith(c.domain.lstrip(".")))}
     if attendus[0] not in cookies:
         return ""
     return "; ".join(f"{n}={cookies[n]}" for n in attendus if n in cookies)
@@ -296,12 +314,32 @@ def deriver_substack(site: str, publication: str) -> str:
     if not compte or not compte.startswith("substack.sid="):
         return ""
     pot = http.cookiejar.CookieJar()
-    pot.set_cookie(http.cookiejar.Cookie(
-        0, "substack.sid", compte.split("=", 1)[1], None, False, ".substack.com", True, True, "/", True,
-        True, None, False, None, None, {}))
+    pot.set_cookie(
+        http.cookiejar.Cookie(
+            0,
+            "substack.sid",
+            compte.split("=", 1)[1],
+            None,
+            False,
+            ".substack.com",
+            True,
+            True,
+            "/",
+            True,
+            True,
+            None,
+            False,
+            None,
+            None,
+            {},
+        )
+    )
     ouvreur = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(pot))
     from urllib.parse import quote  # noqa: PLC0415
-    _requete(f"https://substack.com/sign-in?redirect={quote(site + '/', safe='')}&for_pub={publication}", ouvreur=ouvreur)
+
+    _requete(
+        f"https://substack.com/sign-in?redirect={quote(site + '/', safe='')}&for_pub={publication}", ouvreur=ouvreur
+    )
     return en_tete_du_pot(pot, site, ("connect.sid",))
 
 
@@ -332,22 +370,33 @@ def ouvrir(nom: str, creer: bool = False, attente: int = ATTENTE) -> str:
                     print(f"  {nom} : session dérivée du compte Substack, sans message — sonde : {verdict}")
                     return verdict
                 if essai == 2:
-                    raise Echec(f"session dérivée du compte, mais la sonde dit : {verdict} "
-                                f"(l'abonnement couvre-t-il cette publication ?)")
+                    raise Echec(
+                        f"session dérivée du compte, mais la sonde dit : {verdict} "
+                        f"(l'abonnement couvre-t-il cette publication ?)"
+                    )
             if essai == 2:
                 raise Echec("le compte Substack vient d'être rouvert, mais ne donne pas de session à cette publication")
             depuis = time.time()
-            demander_lien_substack(ref["site"].rstrip("/"), ref["publication"], commun.adresse(ref.get("adresse")) or adresse)
-            print(f"  {nom} : compte Substack à rouvrir — message demandé pour {ref['publication']}, "
-                  f"attente (au plus {attente} s)")
-            suivre_lien(attendre_lien(boite, ref["site"], depuis, attente, lien_substack_du_message),
-                        ref["site"].rstrip("/"), COOKIES_SUBSTACK)
-        lire, attendus = lien_substack_du_message, COOKIES_SUBSTACK     # jamais atteint : la boucle rend ou lève
+            demander_lien_substack(
+                ref["site"].rstrip("/"), ref["publication"], commun.adresse(ref.get("adresse")) or adresse
+            )
+            print(
+                f"  {nom} : compte Substack à rouvrir — message demandé pour {ref['publication']}, "
+                f"attente (au plus {attente} s)"
+            )
+            suivre_lien(
+                attendre_lien(boite, ref["site"], depuis, attente, lien_substack_du_message),
+                ref["site"].rstrip("/"),
+                COOKIES_SUBSTACK,
+            )
+        lire, attendus = lien_substack_du_message, COOKIES_SUBSTACK  # jamais atteint : la boucle rend ou lève
     else:
         demander_lien(site, adresse, creer)
         lire, attendus = lien_du_message, COOKIES_GHOST
-    print(f"  {nom} : lien {'d’inscription' if creer else 'de connexion'} demandé à {urlsplit(site).netloc}, "
-          f"attente du message (au plus {attente} s)")
+    print(
+        f"  {nom} : lien {'d’inscription' if creer else 'de connexion'} demandé à {urlsplit(site).netloc}, "
+        f"attente du message (au plus {attente} s)"
+    )
     cookie = suivre_lien(attendre_lien(boite, site, depuis, attente, lire), site, attendus)
     cfg.ecrire_session_fichier(nom, cookie)
     verdict = cfg.eprouver(nom).get("verdict", "?")

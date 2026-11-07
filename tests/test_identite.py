@@ -23,10 +23,12 @@ from newskit import fiche  # noqa: E402
 
 # --- Inventaire de classe des champs ---------------------------------------
 
+
 def test_chaque_champ_du_contrat_est_classe_identite_ou_non():
     assert not fiche.IDENTITE & fiche.NON_IDENTITE
-    assert set(fiche.ORDRE) == fiche.IDENTITE | fiche.NON_IDENTITE, (
-        "champ non classé : " + ", ".join(sorted(set(fiche.ORDRE) - fiche.IDENTITE - fiche.NON_IDENTITE)))
+    assert set(fiche.ORDRE) == fiche.IDENTITE | fiche.NON_IDENTITE, "champ non classé : " + ", ".join(
+        sorted(set(fiche.ORDRE) - fiche.IDENTITE - fiche.NON_IDENTITE)
+    )
 
 
 def test_papier_arxiv_n_est_pas_une_identite():
@@ -37,30 +39,61 @@ def test_papier_arxiv_n_est_pas_une_identite():
 # --- Les clés, en table -----------------------------------------------------
 
 TABLE = [
-    ({"url": "HTTPS://Example.ORG/a/?utm_source=x&b=1"}, {"url:https://example.org/a?b=1", "article:https://example.org/a?b=1"}),
+    (
+        {"url": "HTTPS://Example.ORG/a/?utm_source=x&b=1"},
+        {"url:https://example.org/a?b=1", "article:https://example.org/a?b=1"},
+    ),
     ({"url": "https://example.org/a/"}, {"url:https://example.org/a", "article:https://example.org/a"}),
-    ({"url": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70"}, {"url:https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70",
-                                                                       "article:https://www.fedlex.admin.ch/eli/cc/2022/491#art_70"}),
-    ({"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679"},
-     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
-      "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679"}),
-    ({"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32016R0679"},
-     {"url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
-      "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679"}),
-    ({"url": "https://www.youtube.com/watch?v=abc"}, {"url:https://www.youtube.com/watch?v=abc", "article:https://www.youtube.com/watch?v=abc"}),
-    ({"url": "https://arxiv.org/abs/2401.01234v2"}, {"url:https://arxiv.org/abs/2401.01234v2", "article:https://arxiv.org/abs/2401.01234v2",
-                                               "arxiv:2401.01234"}),
-    ({"url": "https://arxiv.org/pdf/2401.01234"}, {"url:https://arxiv.org/pdf/2401.01234", "article:https://arxiv.org/pdf/2401.01234",
-                                             "arxiv:2401.01234"}),
+    (
+        {"url": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70"},
+        {
+            "url:https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_70",
+            "article:https://www.fedlex.admin.ch/eli/cc/2022/491#art_70",
+        },
+    ),
+    (
+        {"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679"},
+        {
+            "url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
+            "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679",
+        },
+    ),
+    (
+        {"url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32016R0679"},
+        {
+            "url:https://eur-lex.europa.eu/legal-content/EN/TXT?uri=CELEX%3A32016R0679",
+            "article:https://eur-lex.europa.eu/legal-content/TXT?uri=CELEX%3A32016R0679",
+        },
+    ),
+    (
+        {"url": "https://www.youtube.com/watch?v=abc"},
+        {"url:https://www.youtube.com/watch?v=abc", "article:https://www.youtube.com/watch?v=abc"},
+    ),
+    (
+        {"url": "https://arxiv.org/abs/2401.01234v2"},
+        {"url:https://arxiv.org/abs/2401.01234v2", "article:https://arxiv.org/abs/2401.01234v2", "arxiv:2401.01234"},
+    ),
+    (
+        {"url": "https://arxiv.org/pdf/2401.01234"},
+        {"url:https://arxiv.org/pdf/2401.01234", "article:https://arxiv.org/pdf/2401.01234", "arxiv:2401.01234"},
+    ),
     ({"url": "", "arxiv_id": "2401.01234v3"}, {"arxiv:2401.01234"}),
     ({"url": "", "arxiv_id": "hep-th/9901001"}, {"arxiv:hep-th/9901001"}),
     ({"url": "", "doi": "10.48550/arXiv.2401.01234"}, {"doi:10.48550/arxiv.2401.01234", "arxiv:2401.01234"}),
     ({"url": "", "doi": "10.5334/TISMIR.286"}, {"doi:10.5334/tismir.286"}),
     ({"url": "", "doi": "https://doi.org/10.5334/tismir.286"}, {"doi:10.5334/tismir.286"}),
-    ({"url": "https://doi.org/10.5334/tismir.286"}, {"url:https://doi.org/10.5334/tismir.286", "article:https://doi.org/10.5334/tismir.286",
-                                                  "doi:10.5334/tismir.286"}),
-    ({"url": "https://rm.coe.int/1680afae3c", "partie": "art-009"}, {"url:https://rm.coe.int/1680afae3c|partie:art-009",
-                                                                  "article:https://rm.coe.int/1680afae3c|partie:art-009"}),
+    (
+        {"url": "https://doi.org/10.5334/tismir.286"},
+        {
+            "url:https://doi.org/10.5334/tismir.286",
+            "article:https://doi.org/10.5334/tismir.286",
+            "doi:10.5334/tismir.286",
+        },
+    ),
+    (
+        {"url": "https://rm.coe.int/1680afae3c", "partie": "art-009"},
+        {"url:https://rm.coe.int/1680afae3c|partie:art-009", "article:https://rm.coe.int/1680afae3c|partie:art-009"},
+    ),
     ({"url": ""}, set()),
     ({"url": "file:///tmp/a.md"}, set()),
     ({}, set()),
@@ -90,19 +123,24 @@ REECRIVAINS = {
 
 
 def _ecrivains() -> set[str]:
-    return {p.stem for p in (RACINE_CODE / "src" / "newskit").glob("*.py")
-            if p.stem != "fiche" and re.search(r"\bfiche\.ecrire\(", p.read_text(encoding="utf-8"))}
+    return {
+        p.stem
+        for p in (RACINE_CODE / "src" / "newskit").glob("*.py")
+        if p.stem != "fiche" and re.search(r"\bfiche\.ecrire\(", p.read_text(encoding="utf-8"))
+    }
 
 
 def test_chaque_ecrivain_traite_l_identite_deja_vue_ou_dit_pourquoi():
-    traite = {m for m in _ecrivains()
-              if "IdentiteDejaVue" in (RACINE_CODE / "src" / "newskit" / f"{m}.py").read_text(encoding="utf-8")}
+    traite = {
+        m
+        for m in _ecrivains()
+        if "IdentiteDejaVue" in (RACINE_CODE / "src" / "newskit" / f"{m}.py").read_text(encoding="utf-8")
+    }
     raisons = {m for m, r in REECRIVAINS.items() if r}
-    assert _ecrivains() == traite | raisons, (
-        "écrivain sans traitement ni raison : " + ", ".join(sorted(_ecrivains() - traite - raisons)))
+    assert _ecrivains() == traite | raisons, "écrivain sans traitement ni raison : " + ", ".join(
+        sorted(_ecrivains() - traite - raisons)
+    )
     assert not raisons - _ecrivains(), "raison pour un module qui n'écrit plus de fiche"
-
-
 
 
 # --- Amont : racine temporaire, registre factice ----------------------------
@@ -120,8 +158,16 @@ def racine(tmp_path, monkeypatch):
 
 
 def _champs(**k):
-    return {"title": "Un papier", "subtitle": "", "author": "X", "date": "2024-01-02", "url": "",
-            "publication": "arXiv", "collected": "2026-11-06", **k}
+    return {
+        "title": "Un papier",
+        "subtitle": "",
+        "author": "X",
+        "date": "2024-01-02",
+        "url": "",
+        "publication": "arXiv",
+        "collected": "2026-11-06",
+        **k,
+    }
 
 
 CORPS = "# Un papier\n\n" + "Un texte de fiche assez long pour passer le contrôle du corps. " * 8
@@ -134,13 +180,15 @@ def test_amont_un_meme_papier_par_deux_voies_donne_une_seule_fiche(racine):
     with pytest.raises(fiche.IdentiteDejaVue) as e:
         fiche.ecrire(b, _champs(url="https://example.org/b", doi="10.48550/arXiv.2401.01234"), CORPS)
     assert e.value.existante == a.resolve() and e.value.cle == "arxiv:2401.01234" and not b.exists()
-    fiche.ecrire(a, _champs(url="https://arxiv.org/abs/2401.01234v1", title="Un papier, réécrit"), CORPS)   # réécriture libre
+    fiche.ecrire(
+        a, _champs(url="https://arxiv.org/abs/2401.01234v1", title="Un papier, réécrit"), CORPS
+    )  # réécriture libre
     assert "réécrit" in a.read_text(encoding="utf-8")
     c = racine / "sources" / "inclut" / "c.md"
     with pytest.raises(fiche.IdentiteDejaVue):
-        fiche.ecrire(c, _champs(arxiv_id="2401.01234v2"), CORPS)                  # le graphe qui inclut voit A
+        fiche.ecrire(c, _champs(arxiv_id="2401.01234v2"), CORPS)  # le graphe qui inclut voit A
     d = racine / "sources" / "z" / "d.md"
-    fiche.ecrire(d, _champs(url="https://arxiv.org/abs/2401.01234v1"), CORPS)     # graphe sans lien : accepté
+    fiche.ecrire(d, _champs(url="https://arxiv.org/abs/2401.01234v1"), CORPS)  # graphe sans lien : accepté
     assert d.exists()
 
 
@@ -198,7 +246,9 @@ def test_amont_la_reecriture_d_un_doublon_deja_sur_le_disque_reste_libre(racine)
     for n in ("a1.md", "a2.md"):
         p = racine / "sources" / "a" / n
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(fiche.rendre(fiche.normaliser(_champs(url="https://example.org/d"), CORPS), CORPS), encoding="utf-8")
+        p.write_text(
+            fiche.rendre(fiche.normaliser(_champs(url="https://example.org/d"), CORPS), CORPS), encoding="utf-8"
+        )
     fiche.oublier_index()
     for n in ("a1.md", "a2.md"):
         fiche.ecrire(racine / "sources" / "a" / n, _champs(url="https://example.org/d", title="Réécrite"), CORPS)
@@ -214,13 +264,19 @@ def test_amont_deux_versions_de_langue_d_un_article_donnent_une_seule_fiche(raci
 
 def test_amont_un_texte_de_reference_garde_ses_langues(racine):
     # Les textes de référence (dossiers `textes`) : leur langue est un choix du mainteneur (nLPD en français et en anglais).
-    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-en" / "art_1.md", _champs(url="https://lex.x/eli/1/en#art_1"), CORPS)
-    fiche.oublier_index()                                         # l'index relu des fichiers porte la clé `article:`
-    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-fr" / "art_1.md", _champs(url="https://lex.x/eli/1/fr#art_1"), CORPS)
+    fiche.ecrire(
+        racine / "sources" / "a" / "textes" / "loi-en" / "art_1.md", _champs(url="https://lex.x/eli/1/en#art_1"), CORPS
+    )
+    fiche.oublier_index()  # l'index relu des fichiers porte la clé `article:`
+    fiche.ecrire(
+        racine / "sources" / "a" / "textes" / "loi-fr" / "art_1.md", _champs(url="https://lex.x/eli/1/fr#art_1"), CORPS
+    )
     assert (racine / "sources" / "a" / "textes" / "loi-fr" / "art_1.md").exists()
 
 
 def test_amont_une_page_collectee_n_empeche_pas_le_texte_de_reference(racine):
     fiche.ecrire(racine / "sources" / "a" / "rss" / "loi-en.md", _champs(url="https://lex.x/eli/2/en"), CORPS)
-    fiche.ecrire(racine / "sources" / "a" / "textes" / "loi-fr" / "loi.md", _champs(url="https://lex.x/eli/2/fr"), CORPS)
+    fiche.ecrire(
+        racine / "sources" / "a" / "textes" / "loi-fr" / "loi.md", _champs(url="https://lex.x/eli/2/fr"), CORPS
+    )
     assert (racine / "sources" / "a" / "textes" / "loi-fr" / "loi.md").exists()

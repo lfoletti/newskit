@@ -28,6 +28,7 @@ from pathlib import Path
 from newskit import fiche  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 DOSSIERS = ["sources", "recherche"]
 
 
@@ -36,9 +37,7 @@ def main() -> int:
     ap.add_argument("--essai", action="store_true", help="montre les changements sans écrire")
     args = ap.parse_args()
 
-    chemins = sorted(
-        c for d in DOSSIERS for c in (RACINE / d).rglob("*.md") if not c.name.startswith("_")
-    )
+    chemins = sorted(c for d in DOSSIERS for c in (RACINE / d).rglob("*.md") if not c.name.startswith("_"))
     ajouts: Counter = Counter()
     modifiees = 0
     bloquantes: list[str] = []

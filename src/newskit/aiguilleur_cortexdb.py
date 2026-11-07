@@ -26,6 +26,7 @@ Le gardien d'un graphe seul (serveur_cortexdb.py) reste pour le Mac.
     python3 -m newskit.aiguilleur_cortexdb --graphes <g1>,<g2>
     KG_CORTEXDB_CLES_DOSSIER=cache/cortexdb/cles KG_CORTEXDB_BUDGET=6 python3 -m newskit.aiguilleur_cortexdb --graphes …
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,9 +54,9 @@ class Politique:
     def __init__(self, poids: dict[str, float], budget: float, calme: float, repos: float, chauds=frozenset()):
         self.poids, self.budget, self.calme, self.repos = poids, budget, calme, repos
         self.chauds = frozenset(chauds)
-        self.dernier: dict[str, float] = {}          # cerveaux actifs → instant de leur dernier octet
-        self.mesures: dict[str, float] = {}          # le pic mesuré du dernier passage, gardé après l'arrêt
-        self.neufs: set[str] = set()                 # démarrés, pas encore mesurés dans ce passage
+        self.dernier: dict[str, float] = {}  # cerveaux actifs → instant de leur dernier octet
+        self.mesures: dict[str, float] = {}  # le pic mesuré du dernier passage, gardé après l'arrêt
+        self.neufs: set[str] = set()  # démarrés, pas encore mesurés dans ce passage
 
     def demarre(self, g: str, t: float) -> None:
         self.dernier[g] = t
@@ -112,6 +113,7 @@ def chemin_declaration() -> Path:
 def partages_declares() -> dict:
     """Le bloc `partages` de la déclaration ; vide si elle manque (un cerveau partagé demandé n'est alors pas servi)."""
     import yaml  # noqa: PLC0415
+
     try:
         d = yaml.safe_load(chemin_declaration().read_text(encoding="utf-8")) or {}
     except FileNotFoundError:
@@ -119,7 +121,7 @@ def partages_declares() -> dict:
     return d.get("partages") or {}
 
 
-RESERVE = 1.5   # Go laissés sous la borne du service : l'encodeur (1 Go mesuré le 29.10.2026) et une marge
+RESERVE = 1.5  # Go laissés sous la borne du service : l'encodeur (1 Go mesuré le 29.10.2026) et une marge
 
 
 def budget_du_service(env, borne: int | None) -> float:
@@ -166,6 +168,7 @@ class Encodeurs:
 class Cerveau:
     """Un cerveau servi : un graphe de l'édition (reconstruit et envoyé du Mac) ou un cerveau partagé, que ses
     lecteurs remplissent par Thalamus (proposé, relu, puis servi) et qui ne vit que sur le serveur."""
+
     nom: str
     chemin: Path
     port: int
@@ -182,13 +185,20 @@ def declarer(graphes, partages, ports, decl, dossier_partages, dossier_cles, che
             raise ValueError(f"{g} : pas de cortexdb_port au registre")
         out.append(Cerveau(g, chemin_graphe(g), ports[g], Path(dossier_cles) / f"{g}.json" if dossier_cles else None))
     for n in partages:
-        if n not in decl:                    # renommé ou retiré depuis l'installation : les autres démarrent quand même
+        if n not in decl:  # renommé ou retiré depuis l'installation : les autres démarrent quand même
             print(f"cerveau partagé absent de deploiement/thalamus_droits.yaml, non servi : {n}", file=sys.stderr)
             continue
         if not dossier_cles:
             raise ValueError(f"{n} : un cerveau partagé s'écrit, il ne se sert pas sans clés (Thalamus)")
-        out.append(Cerveau(n, Path(dossier_partages) / f"{n}.db", int(decl[n]["port"]), Path(dossier_cles) / f"{n}.json",
-                           partage=True))
+        out.append(
+            Cerveau(
+                n,
+                Path(dossier_partages) / f"{n}.db",
+                int(decl[n]["port"]),
+                Path(dossier_cles) / f"{n}.json",
+                partage=True,
+            )
+        )
     vus: dict[int, str] = {}
     for c in out:
         if c.port in vus:
@@ -200,6 +210,7 @@ def declarer(graphes, partages, ports, decl, dossier_partages, dossier_cles, che
 def environnement_de(c: Cerveau, port: int, jeton: str, encodeur_url: str, dim: int) -> dict:
     """L'environnement de cortexdb ; un cerveau partagé ne sert un document proposé qu'une fois accepté."""
     from newskit import serveur_cortexdb as sc  # noqa: PLC0415
+
     env = sc.environnement(c.chemin, port, jeton, encodeur_url, dim, c.cles)
     if c.partage:
         env["CORTEXDB_REVIEW_GATE"] = "1"
@@ -229,21 +240,31 @@ class Aiguilleur:
     """`lancer(g, port)` démarre cortexdb de `g` sur `port` et rend le processus, prêt ; `a_relancer(g)` dit qu'un
     cerveau servi doit s'arrêter (cerveau prêt, clés changées)."""
 
-    def __init__(self, ports: dict[str, int], lancer, politique: Politique, tour: float = 5,
-                 a_relancer=None, attente: float = 300, horloge=time.monotonic, rss=rss_go):
+    def __init__(
+        self,
+        ports: dict[str, int],
+        lancer,
+        politique: Politique,
+        tour: float = 5,
+        a_relancer=None,
+        attente: float = 300,
+        horloge=time.monotonic,
+        rss=rss_go,
+    ):
         self.ports, self.lancer, self.pol, self.tour, self.rss = ports, lancer, politique, tour, rss
         self.a_relancer, self.attente, self.horloge = a_relancer or (lambda g: False), attente, horloge
         self.proc: dict[str, subprocess.Popen] = {}
         self.interne: dict[str, int] = {}
-        self.demarrage: dict[str, threading.Event] = {}   # cerveaux en cours d'ouverture, hors du verrou
+        self.demarrage: dict[str, threading.Event] = {}  # cerveaux en cours d'ouverture, hors du verrou
         self.liaisons: dict[str, set[_Liaison]] = {g: set() for g in ports}
         self.verrou = threading.RLock()
         self.fin = threading.Event()
         self.ecoutes: list[socket.socket] = []
-        self.chauffe: set[str] = set()                     # cerveaux chauds en cours de rechargement
+        self.chauffe: set[str] = set()  # cerveaux chauds en cours de rechargement
 
     def _chauffer(self) -> None:
         """Recharge, hors du verrou, chaque cerveau chaud qui n'est ni servi ni en cours d'ouverture."""
+
         def un(g):
             try:
                 self.assurer(g)
@@ -252,6 +273,7 @@ class Aiguilleur:
             finally:
                 with self.verrou:
                     self.chauffe.discard(g)
+
         with self.verrou:
             for g in sorted(self.pol.chauds & set(self.ports)):
                 if g not in self.proc and g not in self.demarrage and g not in self.chauffe and not self.fin.is_set():
@@ -262,7 +284,9 @@ class Aiguilleur:
         return sorted(self.proc)
 
     def _occupes(self) -> frozenset:
-        return frozenset(g for g, ls in self.liaisons.items() if any(l.en_attente() for l in list(ls))) | set(self.demarrage)
+        return frozenset(g for g, ls in self.liaisons.items() if any(l.en_attente() for l in list(ls))) | set(
+            self.demarrage
+        )
 
     def _arreter(self, g: str, pourquoi: str) -> None:
         p = self.proc.pop(g, None)
@@ -292,8 +316,8 @@ class Aiguilleur:
                         for v in victimes:
                             self._arreter(v, f"place pour {g}")
                         ouvrir = self.demarrage[g] = threading.Event()
-                        self.pol.demarre(g, self.horloge())      # sa place est prise pendant l'ouverture
-            if ouvrir is not None:                               # l'ouverture hors du verrou : les autres en parallèle
+                        self.pol.demarre(g, self.horloge())  # sa place est prise pendant l'ouverture
+            if ouvrir is not None:  # l'ouverture hors du verrou : les autres en parallèle
                 return self._ouvrir(g, ouvrir)
             if en_cours is not None:
                 en_cours.wait(max(0.0, fin - self.horloge()))
@@ -395,28 +419,39 @@ class Aiguilleur:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphes", required=True, help="graphes servis, séparés par des virgules")
-    ap.add_argument("--partages", default="", help="cerveaux partagés (deploiement/thalamus_droits.yaml), séparés par des virgules")
+    ap.add_argument(
+        "--partages", default="", help="cerveaux partagés (deploiement/thalamus_droits.yaml), séparés par des virgules"
+    )
     a = ap.parse_args()
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import lecture_cortexdb as lc  # noqa: PLC0415
     from newskit import serveur_cortexdb as sc  # noqa: PLC0415
     from newskit import synthese as sy  # noqa: PLC0415
+
     graphes = [g for g in a.graphes.split(",") if g]
     partages = [n for n in a.partages.split(",") if n]
     dossier_cles = os.environ.get("KG_CORTEXDB_CLES_DOSSIER")
     try:
-        liste = declarer(graphes, partages, {g: cfg.port_cortexdb(g) for g in graphes},
-                         partages_declares(),
-                         os.environ.get("KG_CERVEAUX_PARTAGES") or cc.DOSSIER / "partages", dossier_cles, cc.chemin_cerveau)
+        liste = declarer(
+            graphes,
+            partages,
+            {g: cfg.port_cortexdb(g) for g in graphes},
+            partages_declares(),
+            os.environ.get("KG_CERVEAUX_PARTAGES") or cc.DOSSIER / "partages",
+            dossier_cles,
+            cc.chemin_cerveau,
+        )
     except ValueError as e:
         print(e, file=sys.stderr)
         return 2
     cerveaux = {c.nom: c for c in liste}
     for c in liste:
         if c.partage:
-            c.chemin.parent.mkdir(parents=True, exist_ok=True)     # cortexdb crée le cerveau vide à la première ouverture
+            c.chemin.parent.mkdir(parents=True, exist_ok=True)  # cortexdb crée le cerveau vide à la première ouverture
     binaire = os.environ.get("KG_CORTEXDB_BINAIRE") or str(cc.BINAIRE)
-    jetons = {c.nom: (secrets.token_hex(16) if c.partage or not c.cles else sc.assurer_cle(c.cles, c.nom)) for c in liste}
+    jetons = {
+        c.nom: (secrets.token_hex(16) if c.partage or not c.cles else sc.assurer_cle(c.cles, c.nom)) for c in liste
+    }
     vu: dict[str, object] = {}
 
     def etat_cles(g):
@@ -450,8 +485,12 @@ def main() -> int:
             jetons[g] = sc.assurer_cle(c.cles, g)
         vu[g] = etat_cles(g)
         e = encodeurs.obtenir(cle_encodeur(g))
-        p = subprocess.Popen([binaire], env=environnement_de(c, port, jetons[g], e.url, e.dim),
-                             stdout=(cc.DOSSIER / f"{g}.serveur.log").open("a"), stderr=subprocess.STDOUT)
+        p = subprocess.Popen(
+            [binaire],
+            env=environnement_de(c, port, jetons[g], e.url, e.dim),
+            stdout=(cc.DOSSIER / f"{g}.serveur.log").open("a"),
+            stderr=subprocess.STDOUT,
+        )
         cc.attendre_port(port, cc.CHAUFFE)
         return p
 
@@ -468,14 +507,21 @@ def main() -> int:
     budget = budget_du_service(os.environ, sy.memoire_bornee())
     repos = float(os.environ.get("KG_CORTEXDB_REPOS", "300"))
     chauds = {g for g in os.environ.get("KG_CORTEXDB_CHAUDS", "").split(",") if g in cerveaux}
-    aig = Aiguilleur({c.nom: c.port for c in liste}, lancer,
-                     Politique({g: poids(g) for g in cerveaux}, budget=budget, calme=3, repos=repos, chauds=chauds), a_relancer=a_relancer)
+    aig = Aiguilleur(
+        {c.nom: c.port for c in liste},
+        lancer,
+        Politique({g: poids(g) for g in cerveaux}, budget=budget, calme=3, repos=repos, chauds=chauds),
+        a_relancer=a_relancer,
+    )
     signal.signal(signal.SIGTERM, lambda *_: aig.fin.set())
     signal.signal(signal.SIGINT, lambda *_: aig.fin.set())
-    for g in graphes:                                    # le pid de l'aiguilleur : la construction publie à côté
+    for g in graphes:  # le pid de l'aiguilleur : la construction publie à côté
         sc.ecrire_adresse(lc.fichier_adresse(g), f"127.0.0.1:{cerveaux[g].port}", jetons[g])
-    print(f"aiguilleur : {', '.join(f'{c.nom} {c.port}' + (' (partagé)' if c.partage else '') for c in liste)} ; "
-          f"budget {budget:.2f} Go, repos {repos:g} s, chauds {', '.join(sorted(chauds)) or 'aucun'}", flush=True)
+    print(
+        f"aiguilleur : {', '.join(f'{c.nom} {c.port}' + (' (partagé)' if c.partage else '') for c in liste)} ; "
+        f"budget {budget:.2f} Go, repos {repos:g} s, chauds {', '.join(sorted(chauds)) or 'aucun'}",
+        flush=True,
+    )
     try:
         aig.servir()
     finally:

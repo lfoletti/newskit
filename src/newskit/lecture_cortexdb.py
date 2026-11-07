@@ -11,6 +11,7 @@ Coupé par défaut : `graphes.<nom>.lecture_cortexdb: true` au registre, et le s
 (serveur_cortexdb.py), dont l'adresse et le jeton sont dans `cache/cortexdb/<g>.adresse` ; `KG_CORTEXDB_ADRESSE` et
 `KG_CORTEXDB_JETON` l'emportent (essais). Toute panne rend None, et `synthese.passages_pour` retombe sur l'index.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,8 +22,9 @@ from pathlib import Path
 from newskit import interroger_graphe as ig
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
-COLLECTION_FICHES = "graphrag_chunks"   # la collection par défaut d'ingest_document
-DELAI = 20                              # secondes par recherche : une réponse ne doit pas attendre un serveur muet
+
+COLLECTION_FICHES = "graphrag_chunks"  # la collection par défaut d'ingest_document
+DELAI = 20  # secondes par recherche : une réponse ne doit pas attendre un serveur muet
 
 
 def fichier_adresse(graphe: str) -> Path:
@@ -37,20 +39,26 @@ def lire_adresse(p: Path) -> tuple[str, str] | None:
         return None
 
 
-CLIENT_PILOTE = RACINE / "cache" / "pilote_cortexdb" / "venv"   # le client de ce Mac ; le serveur l'a dans son venv
+CLIENT_PILOTE = RACINE / "cache" / "pilote_cortexdb" / "venv"  # le client de ce Mac ; le serveur l'a dans son venv
 
 
 def _client():
     try:
         from cortexdb_client import CortexClient  # noqa: PLC0415
     except ImportError:
-        sys.path += [str(p) for p in sorted(CLIENT_PILOTE.glob(f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"))]
+        sys.path += [
+            str(p)
+            for p in sorted(
+                CLIENT_PILOTE.glob(f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages")
+            )
+        ]
         from cortexdb_client import CortexClient  # noqa: PLC0415
     return CortexClient
 
 
 def _proto():
     from cortexdb_client import proto  # noqa: PLC0415
+
     return proto
 
 
@@ -65,6 +73,7 @@ def _inverse() -> dict[str, str]:
     """Identifiant court → chemin, pour toutes les fiches sous `sources/` (puits_cortexdb.court) ; calculé une fois."""
     if not _INVERSE:
         from newskit import puits_cortexdb as pc  # noqa: PLC0415
+
         for f in (RACINE / "sources").rglob("*.md"):
             chemin = f.relative_to(RACINE).as_posix()
             _INVERSE[pc.court(chemin)] = chemin
@@ -114,13 +123,30 @@ def passages(client, question: str, budget: int) -> list[tuple[str, int, str]] |
     les rend déjà au-dessus des passages). None si une recherche échoue."""
     proto = _proto()
     try:
-        args = {"query": question, "retrieval_mode": "graph", "max_context_chars": budget, "max_context_chunks": 30,
-                "collection": COLLECTION_FICHES}
-        r = client.tools.CallTool(proto.CallToolRequest(name="search_graphrag_lexical", args_json=json.dumps(args)), timeout=DELAI)
-        mots = [(x.get("DocumentID") or "", x.get("Content") or "") for x in json.loads(r.result_json or "{}").get("Chunks") or []]
-        s = client.graphrag.SearchGraphRag(proto.SearchGraphRagRequest(query=question, collection=COLLECTION_FICHES,
-                                                                      retrieval_mode="graph", max_context_chars=budget,
-                                                                      max_context_chunks=30), timeout=DELAI)
+        args = {
+            "query": question,
+            "retrieval_mode": "graph",
+            "max_context_chars": budget,
+            "max_context_chunks": 30,
+            "collection": COLLECTION_FICHES,
+        }
+        r = client.tools.CallTool(
+            proto.CallToolRequest(name="search_graphrag_lexical", args_json=json.dumps(args)), timeout=DELAI
+        )
+        mots = [
+            (x.get("DocumentID") or "", x.get("Content") or "")
+            for x in json.loads(r.result_json or "{}").get("Chunks") or []
+        ]
+        s = client.graphrag.SearchGraphRag(
+            proto.SearchGraphRagRequest(
+                query=question,
+                collection=COLLECTION_FICHES,
+                retrieval_mode="graph",
+                max_context_chars=budget,
+                max_context_chunks=30,
+            ),
+            timeout=DELAI,
+        )
         sens = [(x.document_id, x.content) for x in s.chunks]
     except Exception as e:  # noqa: BLE001 — un serveur absent ou lent ne doit pas empêcher la réponse
         print(f"  (CortexDB : {type(e).__name__} {str(e)[:120]} ; passages de l'index)", file=sys.stderr)
@@ -128,8 +154,11 @@ def passages(client, question: str, budget: int) -> list[tuple[str, int, str]] |
     inverse = _inverse()
     # Un cerveau d'avant le 23.10.2026 porte le chemin lui-même ; un identifiant inconnu (une synthèse de la pyramide)
     # n'est pas un passage.
-    garder = lambda l: [(d if d.startswith("sources/") else inverse[d], t) for d, t in l  # noqa: E731
-                        if t and (d.startswith("sources/") or d in inverse)]
+    garder = lambda l: [
+        (d if d.startswith("sources/") else inverse[d], t)
+        for d, t in l  # noqa: E731
+        if t and (d.startswith("sources/") or d in inverse)
+    ]
     return [(d, situer(t, _paragraphes(d)), t) for d, t in au_budget(fusionner(garder(sens), garder(mots)), budget)]
 
 

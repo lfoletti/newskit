@@ -39,9 +39,9 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402
 
-ESSAIS = 2                   # recherches web sans effet avant « à trancher »
+ESSAIS = 2  # recherches web sans effet avant « à trancher »
 LONGUEUR = 300
-CERVEAU_LACUNES = "lacunes-signalees"     # nommé `manques` jusqu'au 05.11.2026 (mainteneur : « clarifier son rôle »)
+CERVEAU_LACUNES = "lacunes-signalees"  # nommé `manques` jusqu'au 05.11.2026 (mainteneur : « clarifier son rôle »)
 PAR_RELEVE = 100
 ACCES_RELEVE = Path.home() / ".secrets" / "th_releve.env"
 
@@ -67,8 +67,14 @@ def cle_de(termes: str) -> str:
     return re.sub(r"[^a-z0-9à-ÿ]+", " ", termes.lower()).strip()[:120]
 
 
-def noter(graphe: str, termes: str, outil: str = "chercher", origine: str = "local", question: str = "",
-          jour: str | None = None) -> bool:
+def noter(
+    graphe: str,
+    termes: str,
+    outil: str = "chercher",
+    origine: str = "local",
+    question: str = "",
+    jour: str | None = None,
+) -> bool:
     """Note une recherche sans réponse. Rend faux si elle est vide, déjà close ou écartée."""
     termes = " ".join(str(termes).split())[:LONGUEUR]
     k = cle_de(termes)
@@ -78,7 +84,7 @@ def noter(graphe: str, termes: str, outil: str = "chercher", origine: str = "loc
     if k in d["hors_sujet"] or k in d["a_trancher"]:
         return False
     jour = jour or time.strftime("%Y-%m-%d")
-    d["closes"].pop(k, None)                            # elle revient : le graphe n'y répond donc pas
+    d["closes"].pop(k, None)  # elle revient : le graphe n'y répond donc pas
     x = d["ouvertes"].setdefault(k, {"termes": termes, "vues": 0, "premier": jour, "essais": 0, "origines": []})
     x["vues"] += 1
     x["dernier"] = jour
@@ -94,15 +100,17 @@ def noter_sans_bruit(graphe: str, termes: str, outil: str = "chercher", origine:
     """Pour l'outil d'interrogation : noter ne doit jamais faire échouer une recherche."""
     try:
         noter(graphe, termes, outil, origine)
-    except Exception:                                   # noqa: BLE001 — le journal est un confort
+    except Exception:  # noqa: BLE001 — le journal est un confort
         pass
 
 
 def repond(G, termes: str) -> bool:
     """Le graphe a-t-il maintenant un nœud (hors auteurs) dont l'étiquette contient ces termes ?"""
     q = termes.casefold().strip()
-    return any(q in str(d.get("label") or n).casefold() and (d.get("kind") or d.get("file_type")) != "auteur"
-               for n, d in G.nodes(data=True))
+    return any(
+        q in str(d.get("label") or n).casefold() and (d.get("kind") or d.get("file_type")) != "auteur"
+        for n, d in G.nodes(data=True)
+    )
 
 
 def rejouer(graphe: str, G) -> int:
@@ -154,8 +162,18 @@ class Thalamus:
 
     def __init__(self, gateway: str, cle: str):
         self.url, self.cle, self.session, self.n = gateway.rstrip("/") + "/mcp", cle, None, 0
-        self._poster({"jsonrpc": "2.0", "id": self._id(), "method": "initialize",
-                      "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "newskit-releve", "version": "1"}}})
+        self._poster(
+            {
+                "jsonrpc": "2.0",
+                "id": self._id(),
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "newskit-releve", "version": "1"},
+                },
+            }
+        )
         self._poster({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     def _id(self) -> int:
@@ -164,7 +182,12 @@ class Thalamus:
 
     def _poster(self, msg: dict):
         import urllib.request  # noqa: PLC0415
-        h = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": "Bearer " + self.cle}
+
+        h = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Authorization": "Bearer " + self.cle,
+        }
         if self.session:
             h["Mcp-Session-Id"] = self.session
         with urllib.request.urlopen(urllib.request.Request(self.url, json.dumps(msg).encode(), h), timeout=120) as r:
@@ -173,7 +196,9 @@ class Thalamus:
         return json.loads(corps) if corps else None
 
     def __call__(self, outil: str, **args) -> dict:
-        r = self._poster({"jsonrpc": "2.0", "id": self._id(), "method": "tools/call", "params": {"name": outil, "arguments": args}})
+        r = self._poster(
+            {"jsonrpc": "2.0", "id": self._id(), "method": "tools/call", "params": {"name": outil, "arguments": args}}
+        )
         res = r.get("result") or {}
         texte = (res.get("content") or [{}])[0].get("text", "")
         if res.get("isError") or "error" in r:
@@ -228,11 +253,15 @@ def acces_releve(chemin: Path) -> tuple[str, str] | None:
 def relever_le_cerveau_des_lacunes() -> dict | None:
     acces = acces_releve(ACCES_RELEVE)
     if acces is None:
-        print(f"  cerveau lacunes-signalees non relevé : {ACCES_RELEVE} absent ; le copier de /etc/thalamus/remis/releve.env du VPS")
+        print(
+            f"  cerveau lacunes-signalees non relevé : {ACCES_RELEVE} absent ; le copier de /etc/thalamus/remis/releve.env du VPS"
+        )
         return None
     bilan = relever_lacunes_signalees(Thalamus(*acces))
-    print(f"  cerveau lacunes-signalees : {bilan['acceptes']} proposition(s) relevée(s), {bilan['notes']} lacune(s) notée(s), "
-          f"{bilan['refuses']} refusée(s)")
+    print(
+        f"  cerveau lacunes-signalees : {bilan['acceptes']} proposition(s) relevée(s), {bilan['notes']} lacune(s) notée(s), "
+        f"{bilan['refuses']} refusée(s)"
+    )
     return bilan
 
 
@@ -241,11 +270,14 @@ def relever() -> int:
     ligne, et les range par graphe."""
     try:
         relever_le_cerveau_des_lacunes()
-    except Exception as e:                               # noqa: BLE001 — la table du serveur se relève quand même
+    except Exception as e:  # noqa: BLE001 — la table du serveur se relève quand même
         print(f"  cerveau lacunes-signalees non relevé : {str(e)[:100]}")
     from newskit import depots  # noqa: PLC0415 — l'accès SSH à la base du VPS (~/.secrets/vps_kg.env)
-    lignes = depots.sql("SELECT id, graphe, outil, REPLACE(termes, '\\t', ' '), REPLACE(COALESCE(question, ''), '\\t', ' '), "
-                        "origine FROM lacunes WHERE releve_le IS NULL ORDER BY id LIMIT 500").splitlines()
+
+    lignes = depots.sql(
+        "SELECT id, graphe, outil, REPLACE(termes, '\\t', ' '), REPLACE(COALESCE(question, ''), '\\t', ' '), "
+        "origine FROM lacunes WHERE releve_le IS NULL ORDER BY id LIMIT 500"
+    ).splitlines()
     ids, n = [], 0
     for l in lignes:
         c = l.split("\t")
@@ -257,7 +289,9 @@ def relever() -> int:
         # (« signale », avec la question en contexte : serveur_mcp.signaler, 12.10.2026 ; kg-mcp retiré le 3.11.2026, la table
         # ne reçoit plus rien, ce relevé lit ce qui y reste).
         origine = "signale" if c[5] == "signale" else "serveur"
-        if graphe in cfg.graphes() and noter(graphe, c[3], c[2], origine, question=c[4] if origine == "signale" else ""):
+        if graphe in cfg.graphes() and noter(
+            graphe, c[3], c[2], origine, question=c[4] if origine == "signale" else ""
+        ):
             n += 1
     if ids:
         depots.sql(f"UPDATE lacunes SET releve_le = NOW() WHERE id IN ({', '.join(str(i) for i in ids)})")
@@ -267,10 +301,14 @@ def relever() -> int:
 
 def afficher(graphe: str) -> None:
     d = lire(graphe)
-    print(f"  {graphe} : {len(d['ouvertes'])} lacune(s) ouverte(s), {len(d['closes'])} close(s), "
-          f"{len(d['a_trancher'])} à trancher, {len(d['hors_sujet'])} hors sujet")
+    print(
+        f"  {graphe} : {len(d['ouvertes'])} lacune(s) ouverte(s), {len(d['closes'])} close(s), "
+        f"{len(d['a_trancher'])} à trancher, {len(d['hors_sujet'])} hors sujet"
+    )
     for k, x in sorted(d["ouvertes"].items(), key=lambda kx: -kx[1]["vues"]):
-        print(f"    ouverte    {x['termes'][:70]}  — vue {x['vues']} fois ({', '.join(x['origines'])}), {x.get('essais', 0)} essai(s)")
+        print(
+            f"    ouverte    {x['termes'][:70]}  — vue {x['vues']} fois ({', '.join(x['origines'])}), {x.get('essais', 0)} essai(s)"
+        )
     for k, x in d["a_trancher"].items():
         print(f"    à trancher {x['termes'][:70]}  — {x.get('motif', '')}")
 

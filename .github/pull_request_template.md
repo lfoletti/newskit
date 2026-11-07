@@ -1,26 +1,26 @@
-## Quoi
+## What
 
-<!-- Ce que fait le changement, en quelques phrases courtes. -->
+<!-- What the change does, in a few short sentences. English or French. -->
 
-## Pourquoi
+## Why
 
-<!-- Le besoin, ou l'issue qu'il ferme (Closes #N). -->
+<!-- The need, or the issue it closes (Closes #N). -->
 
 ## Tests
 
-<!-- Pour chaque règle nouvelle : le test qui la couvre, et la mutation qui le fait tomber. -->
+<!-- For each new rule: the test that covers it, and the mutation that makes it fail. -->
 
-| Règle | Test | Mutation |
+| Rule | Test | Mutation |
 | :- | :- | :- |
 |  |  |  |
 
 ## Failing first
 
-<!-- La commande, et les lignes FAILED qu'elle affiche sans le changement. -->
+<!-- The command, and the FAILED lines it prints without the change. -->
 
-## À cocher
+## Checklist
 
-- [ ] Les tests sont écrits avant le code, et tombent sans lui.
-- [ ] `python -m pytest` et `ruff check .` passent ; `newskit temoin nuit` finit par « témoin vert ».
-- [ ] Aucune clé, donnée privée ni nom propre à un média dans le diff ou les messages de commit.
-- [ ] La documentation dit ce qui a changé (README, skill, CHANGELOG).
+- [ ] Tests are written before the code, and fail without it.
+- [ ] `python -m pytest`, `ruff check .` and `ruff format --check .` pass; `newskit test` ends with « témoin vert ».
+- [ ] No key, private data or name specific to one media in the diff or the commit messages.
+- [ ] The documentation says what changed (README, skill, CHANGELOG).

@@ -22,15 +22,37 @@ def poser_le_media(d: Path) -> Path:
     fichiers = sorted(p.name for p in (ICI / "dossier").glob("*.md"))
     shutil.copytree(ICI / "dossier", d / "dossier_local", dirs_exist_ok=True)
     (d / "cache").mkdir(parents=True, exist_ok=True)
-    config = {"version": 1, "sources": "sources.yaml",
-              "media": {"nom": "banc-d-essai", "principal": GRAPHE, "graphe_du_site": GRAPHE,
-                        "domaine_principal": "urban gardening", "launchd": "local.banc-d-essai", "langue": "fr"},
-              "graphes": {GRAPHE: {"libelle": "Potagers urbains",
-                                   "domaine": "urban gardening: allotments, soil, seed exchange"}}}
-    sources = {"version": 1, "sources": [{"cle": "potagers_dossier", "plateforme": "Dossier local",
-                                          "nom": "Carnets des potagers", "dossier": "potagers/dossier",
-                                          "abonnement": "interne", "dense": True, "graphe": GRAPHE,
-                                          "racine": "dossier_local", "fichiers": fichiers}]}
+    config = {
+        "version": 1,
+        "sources": "sources.yaml",
+        "media": {
+            "nom": "banc-d-essai",
+            "principal": GRAPHE,
+            "graphe_du_site": GRAPHE,
+            "domaine_principal": "urban gardening",
+            "launchd": "local.banc-d-essai",
+            "langue": "fr",
+        },
+        "graphes": {
+            GRAPHE: {"libelle": "Potagers urbains", "domaine": "urban gardening: allotments, soil, seed exchange"}
+        },
+    }
+    sources = {
+        "version": 1,
+        "sources": [
+            {
+                "cle": "potagers_dossier",
+                "plateforme": "Dossier local",
+                "nom": "Carnets des potagers",
+                "dossier": "potagers/dossier",
+                "abonnement": "interne",
+                "dense": True,
+                "graphe": GRAPHE,
+                "racine": "dossier_local",
+                "fichiers": fichiers,
+            }
+        ],
+    }
     for nom, v in (("config.yaml", config), ("sources.yaml", sources)):
         (d / nom).write_text(yaml.safe_dump(v, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return d

@@ -51,16 +51,21 @@ from newskit import fiche  # noqa: E402
 
 EN_VIGUEUR, REMPLACEE = "en vigueur", "remplacée"
 CHAMPS = ("texte", "version", "statut", "remplacee_par", "partie")
-UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36", "Accept": "application/sparql-results+json"}
+UA = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/sparql-results+json",
+}
 
 
 # --- 1. Les versions déclarées et les fiches qui les portent -------------------------------------------------
+
 
 def familles(graphe: str) -> dict[str, list[dict]]:
     """Les textes de référence du graphe par famille, chaque famille triée de la version la plus ancienne à la plus
     récente ; chaque version reçoit son `statut` et, si elle est remplacée, le `court` de la version en vigueur."""
     from newskit.collecte_textes import TEXTES  # noqa: PLC0415
+
     out: dict[str, list[dict]] = defaultdict(list)
     for t in TEXTES.get(graphe) or []:
         out[t.get("famille") or t["court"]].append(dict(t))
@@ -109,7 +114,9 @@ def annoter_fiches(graphe: str, controle: bool = False) -> dict:
                     if not r:
                         compte["sans_remplacante"] += 1
                 compte[t["statut"]] += 1
-                if all(champs.get(k) == v for k, v in voulu.items()) and ("remplacee_par" in voulu or "remplacee_par" not in champs):
+                if all(champs.get(k) == v for k, v in voulu.items()) and (
+                    "remplacee_par" in voulu or "remplacee_par" not in champs
+                ):
                     compte["a_jour"] += 1
                     continue
                 champs = {k: v for k, v in champs.items() if k != "remplacee_par"} | voulu
@@ -121,10 +128,14 @@ def annoter_fiches(graphe: str, controle: bool = False) -> dict:
 
 # --- 2. L'actualité d'une notion, lue du graphe -------------------------------------------------------------
 
+
 def index_fiches(G) -> dict[str, dict]:
     """source_file → attributs du nœud de fiche (date, statut, texte, version…)."""
-    return {str(d["source_file"]): {**d, "_id": n} for n, d in G.nodes(data=True)
-            if d.get("kind") in ("article", "papier") and d.get("source_file")}
+    return {
+        str(d["source_file"]): {**d, "_id": n}
+        for n, d in G.nodes(data=True)
+        if d.get("kind") in ("article", "papier") and d.get("source_file")
+    }
 
 
 def attestations(G, n, idx: dict[str, dict] | None = None) -> list[dict]:
@@ -149,8 +160,13 @@ def attestations(G, n, idx: dict[str, dict] | None = None) -> list[dict]:
             continue
         a = {"fiche": f, "date": str(d.get("date") or ""), "plateforme": str(d.get("plateforme") or "")}
         if d.get("statut"):
-            a |= {"texte": d.get("texte"), "version": d.get("version"), "statut": d.get("statut"),
-                  "partie": d.get("partie"), "remplacee_par": d.get("remplacee_par") or ""}
+            a |= {
+                "texte": d.get("texte"),
+                "version": d.get("version"),
+                "statut": d.get("statut"),
+                "partie": d.get("partie"),
+                "remplacee_par": d.get("remplacee_par") or "",
+            }
         out.append(a)
     out.sort(key=lambda a: (a["date"], a["fiche"]))
     return out
@@ -186,8 +202,10 @@ def _extraite(G, idx: dict[str, dict], f: str) -> bool:
     d = idx.get(f)
     if not d:
         return False
-    return any(G.nodes[v].get("file_type") == "concept" and G.nodes[v].get("kind") not in ("auteur", "publication")
-               for v in G.neighbors(d["_id"]))
+    return any(
+        G.nodes[v].get("file_type") == "concept" and G.nodes[v].get("kind") not in ("auteur", "publication")
+        for v in G.neighbors(d["_id"])
+    )
 
 
 def _nommee_dans(G, n, f: str) -> bool:
@@ -195,6 +213,7 @@ def _nommee_dans(G, n, f: str) -> bool:
     donnent pas les mêmes libellés : une notion que l'extraction de la version en vigueur n'a pas relevée, mais que
     son texte nomme, n'est pas périmée — elle est attestée textuellement (09.10.2026)."""
     from newskit import interroger_graphe as ig  # noqa: PLC0415
+
     p = RACINE / f
     if not f or not p.exists():
         return False
@@ -207,6 +226,7 @@ def annoter_graphe(G) -> dict:
     """Pose `actualite` sur chaque notion du graphe (à la composition). Rend les comptes pour le journal."""
     from newskit import digerer_graphe as dg  # noqa: PLC0415
     from newskit import interroger_graphe as ig  # noqa: PLC0415
+
     idx = index_fiches(G)
     c = {"notions": 0, "reference": 0, "en_vigueur": 0, "remplacee_seulement": 0, "evolue": 0}
     for n, d in G.nodes(data=True):
@@ -232,15 +252,22 @@ def phrase(a: dict) -> str:
         return ""
     bouts = []
     if a.get("premiere") and a.get("derniere"):
-        bouts.append(f"attestée de {a['premiere']} à {a['derniere']}" if a["premiere"] != a["derniere"] else f"attestée le {a['derniere']}")
+        bouts.append(
+            f"attestée de {a['premiere']} à {a['derniere']}"
+            if a["premiere"] != a["derniere"]
+            else f"attestée le {a['derniere']}"
+        )
     if "en_vigueur" in a:
-        bouts.append("texte en vigueur" if a["en_vigueur"] else "SEULEMENT dans une version remplacée : à lire comme périmée")
+        bouts.append(
+            "texte en vigueur" if a["en_vigueur"] else "SEULEMENT dans une version remplacée : à lire comme périmée"
+        )
         if a.get("evolue"):
             bouts.append("évolue : " + ", ".join(f"{k} {' → '.join(v)}" for k, v in a["textes"].items() if len(v) >= 2))
     return " ; ".join(bouts)
 
 
 # --- 3. La veille des versions en ligne ---------------------------------------------------------------------
+
 
 def _sparql(point: str, requete: str) -> list[dict]:
     url = point + "?" + urllib.parse.urlencode({"query": requete, "format": "application/sparql-results+json"})
@@ -255,17 +282,26 @@ def versions_en_ligne(t: dict) -> list[str] | None:
     m = re.search(r"CELEX:[03](\d{4}[A-Z]\d{4})", t.get("url", ""))
     if t.get("forme") == "eurlex" and m:
         celex = "0" + m.group(1)
-        rows = _sparql("https://publications.europa.eu/webapi/rdf/sparql",
-                       "PREFIX cdm: <http://publications.europa.eu/ontology/cdm#> SELECT DISTINCT ?c WHERE "
-                       f"{{ ?w cdm:resource_legal_id_celex ?c . FILTER(STRSTARTS(STR(?c), \"{celex}-\")) }}")
-        dates = sorted({f"{d[:4]}-{d[4:6]}-{d[6:]}" for b in rows if (d := b["c"]["value"].rsplit("-", 1)[-1]).isdigit()})
+        rows = _sparql(
+            "https://publications.europa.eu/webapi/rdf/sparql",
+            "PREFIX cdm: <http://publications.europa.eu/ontology/cdm#> SELECT DISTINCT ?c WHERE "
+            f'{{ ?w cdm:resource_legal_id_celex ?c . FILTER(STRSTARTS(STR(?c), "{celex}-")) }}',
+        )
+        dates = sorted(
+            {f"{d[:4]}-{d[4:6]}-{d[6:]}" for b in rows if (d := b["c"]["value"].rsplit("-", 1)[-1]).isdigit()}
+        )
         return dates
-    m = re.search(r"fedlex\.(?:data\.)?admin\.ch/(?:filestore/fedlex\.data\.admin\.ch/)?(eli/cc/\d+/\d+)", t.get("lien") or t.get("url") or "")
+    m = re.search(
+        r"fedlex\.(?:data\.)?admin\.ch/(?:filestore/fedlex\.data\.admin\.ch/)?(eli/cc/\d+/\d+)",
+        t.get("lien") or t.get("url") or "",
+    )
     if t.get("forme") == "fedlex" and m:
         acte = f"https://fedlex.data.admin.ch/{m.group(1)}"
-        rows = _sparql("https://fedlex.data.admin.ch/sparqlendpoint",
-                       "PREFIX jolux: <http://data.legilux.public.lu/resource/ontology/jolux#> SELECT ?d WHERE "
-                       f"{{ ?c jolux:isMemberOf <{acte}> ; jolux:dateApplicability ?d }}")
+        rows = _sparql(
+            "https://fedlex.data.admin.ch/sparqlendpoint",
+            "PREFIX jolux: <http://data.legilux.public.lu/resource/ontology/jolux#> SELECT ?d WHERE "
+            f"{{ ?c jolux:isMemberOf <{acte}> ; jolux:dateApplicability ?d }}",
+        )
         return sorted({b["d"]["value"][:10] for b in rows})
     return None
 
@@ -285,19 +321,25 @@ def veille(graphe: str) -> list[str]:
             print(f"  {fam} : source non interrogeable, version déclarée {t['date']} à vérifier à la main")
             continue
         nouvelles = [d for d in en_ligne if d > max(declarees)]
-        print(f"  {fam} : déclarée {', '.join(sorted(declarees))} ; en ligne {', '.join(en_ligne) or '—'}"
-              + (f" ; NOUVELLE {', '.join(nouvelles)}" if nouvelles else ""))
+        print(
+            f"  {fam} : déclarée {', '.join(sorted(declarees))} ; en ligne {', '.join(en_ligne) or '—'}"
+            + (f" ; NOUVELLE {', '.join(nouvelles)}" if nouvelles else "")
+        )
         if nouvelles:
-            signaux.append(f"version nouvelle de {fam} ({t['nom'][:60]}) : {', '.join(nouvelles)} — déclarer la version "
-                           f"dans collecte_textes.TEXTES (famille « {fam} »), collecter, puis la précédente devient remplacée")
+            signaux.append(
+                f"version nouvelle de {fam} ({t['nom'][:60]}) : {', '.join(nouvelles)} — déclarer la version "
+                f"dans collecte_textes.TEXTES (famille « {fam} »), collecter, puis la précédente devient remplacée"
+            )
     return signaux
 
 
 # --- Ligne de commande ----------------------------------------------------------------------------------------
 
+
 def etat(graphe: str) -> None:
     from newskit import interroger_graphe as ig  # noqa: PLC0415
     from newskit import themes_emergents as te  # noqa: PLC0415
+
     print("Textes de référence déclarés, par famille :")
     for fam, versions in familles(graphe).items():
         print(f"  {fam:<20} " + " ; ".join(f"{t['date']} ({t['court']}, {t['statut']})" for t in versions))
@@ -323,12 +365,22 @@ def etat(graphe: str) -> None:
     if not c["notions"]:
         print("  (graphe composé avant la diachronie : recomposer pour poser `actualite` sur les notions)")
         return
-    print(f"\nNotions datées : {c['notions']} ; attestées par un texte de référence : {c['reference']}, dont en vigueur "
-          f"{c['en_vigueur']}, remplacée seulement {c['remplacee_seulement']}, évoluant entre deux versions {c['evolue']}")
+    print(
+        f"\nNotions datées : {c['notions']} ; attestées par un texte de référence : {c['reference']}, dont en vigueur "
+        f"{c['en_vigueur']}, remplacée seulement {c['remplacee_seulement']}, évoluant entre deux versions {c['evolue']}"
+    )
     if perimees:
-        print("  à lire comme périmées (version remplacée seulement) : " + ", ".join(sorted(perimees)[:15]) + (" …" if len(perimees) > 15 else ""))
+        print(
+            "  à lire comme périmées (version remplacée seulement) : "
+            + ", ".join(sorted(perimees)[:15])
+            + (" …" if len(perimees) > 15 else "")
+        )
     if evoluent:
-        print("  évoluent (synthèse chronologique) : " + ", ".join(sorted(evoluent)[:15]) + (" …" if len(evoluent) > 15 else ""))
+        print(
+            "  évoluent (synthèse chronologique) : "
+            + ", ".join(sorted(evoluent)[:15])
+            + (" …" if len(evoluent) > 15 else "")
+        )
 
 
 def main() -> int:
@@ -336,16 +388,24 @@ def main() -> int:
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--etat", action="store_true")
     ap.add_argument("--notion", help="la chronologie d'une notion (libellé ou identifiant)")
-    ap.add_argument("--annoter-fiches", action="store_true", help="écrit version et statut dans l'en-tête des fiches de référence")
+    ap.add_argument(
+        "--annoter-fiches", action="store_true", help="écrit version et statut dans l'en-tête des fiches de référence"
+    )
     ap.add_argument("--controle", action="store_true", help="avec --annoter-fiches : dit ce qui serait écrit")
     ap.add_argument("--versions", action="store_true", help="veille : versions nouvelles en ligne (Cellar, Fedlex)")
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
     if a.annoter_fiches:
         c = annoter_fiches(g, a.controle)
-        print(f"  {g} : {c['ecrites']} en-tête(s) {'à écrire' if a.controle else 'écrit(s)'}, {c['a_jour']} déjà justes ; "
-              f"{c[EN_VIGUEUR]} fiche(s) en vigueur, {c[REMPLACEE]} remplacée(s)"
-              + (f", {c['sans_remplacante']} sans partie correspondante dans la version en vigueur" if c["sans_remplacante"] else ""))
+        print(
+            f"  {g} : {c['ecrites']} en-tête(s) {'à écrire' if a.controle else 'écrit(s)'}, {c['a_jour']} déjà justes ; "
+            f"{c[EN_VIGUEUR]} fiche(s) en vigueur, {c[REMPLACEE]} remplacée(s)"
+            + (
+                f", {c['sans_remplacante']} sans partie correspondante dans la version en vigueur"
+                if c["sans_remplacante"]
+                else ""
+            )
+        )
     if a.versions:
         s = veille(g)
         for l in s:
@@ -355,6 +415,7 @@ def main() -> int:
     if a.notion:
         from newskit import interroger_graphe as ig  # noqa: PLC0415
         from newskit import themes_emergents as te  # noqa: PLC0415
+
         G = te.charger(g)
         n = ig.resoudre(G, a.notion, muet=True) if G is not None else None
         if n is None:
@@ -362,7 +423,11 @@ def main() -> int:
             return 1
         print(f"{ig._label(G, n)} — {phrase(actualite(G, n)) or 'sans attestation datée'}")
         for x in attestations(G, n):
-            print(f"  {x['date'] or '????-??-??'}  " + (f"{x['texte']} {x['version']} ({x['statut']})" if x.get("statut") else x["plateforme"]) + f"  {x['fiche']}")
+            print(
+                f"  {x['date'] or '????-??-??'}  "
+                + (f"{x['texte']} {x['version']} ({x['statut']})" if x.get("statut") else x["plateforme"])
+                + f"  {x['fiche']}"
+            )
     if a.etat or not (a.annoter_fiches or a.versions or a.notion):
         etat(g)
     return 0

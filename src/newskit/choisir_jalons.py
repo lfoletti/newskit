@@ -87,6 +87,7 @@ def choisis_a_la_main(graphe: str | None = None) -> list[str]:
     # Les papiers que le canon a fait entrer (combler_canon.py, 04.10.2026) : trouvés par leur titre
     # et vérifiés, ils valent un choix. Ils vivent dans graphe/<nom>/canon.json, pas au registre.
     from newskit import combler_canon  # noqa: PLC0415
+
     return list(dict.fromkeys(registre + combler_canon.papiers_du_canon(nom)))
 
 
@@ -99,8 +100,10 @@ def papiers_du_graphe(graphe: str) -> dict[str, dict]:
         for f in sorted((RACINE / "sources" / v["dossier"]).glob("*.md")):
             champs, _ = fiche.lire_fichier(f)
             if champs.get("arxiv_id"):
-                out[str(champs["arxiv_id"])] = {"titre": str(champs.get("title") or f.stem),
-                                                "chemin": str(f.relative_to(RACINE))}
+                out[str(champs["arxiv_id"])] = {
+                    "titre": str(champs.get("title") or f.stem),
+                    "chemin": str(f.relative_to(RACINE)),
+                }
     return out
 
 
@@ -131,26 +134,36 @@ def citations(ids: list[str], sans_reseau: bool = False) -> dict[str, int]:
     a_demander = [i for i in ids if i not in cache or maintenant - cache[i].get("ts", 0) > AGE_MAX]
     if a_demander and not sans_reseau:
         for k in range(0, len(a_demander), LOT):
-            lot = a_demander[k:k + LOT]
-            req = urllib.request.Request(API, data=json.dumps({"ids": ["ARXIV:" + i for i in lot]}).encode(),
-                                         headers={"Content-Type": "application/json",
-                                                  "User-Agent": f"{cfg.edition()['nom']}/1.0 (mailto:{contact()})"})
+            lot = a_demander[k : k + LOT]
+            req = urllib.request.Request(
+                API,
+                data=json.dumps({"ids": ["ARXIV:" + i for i in lot]}).encode(),
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": f"{cfg.edition()['nom']}/1.0 (mailto:{contact()})",
+                },
+            )
             for essai in range(5):
                 try:
                     with urllib.request.urlopen(req, timeout=90) as r:
                         rendus = json.load(r)
                     for i, x in zip(lot, rendus):
                         # Un papier inconnu de Semantic Scholar compte zéro, et le dit (`inconnu`).
-                        cache[i] = {"n": int((x or {}).get("citationCount") or 0),
-                                    "influentes": int((x or {}).get("influentialCitationCount") or 0),
-                                    "inconnu": x is None, "ts": maintenant}
+                        cache[i] = {
+                            "n": int((x or {}).get("citationCount") or 0),
+                            "influentes": int((x or {}).get("influentialCitationCount") or 0),
+                            "inconnu": x is None,
+                            "ts": maintenant,
+                        }
                     break
                 except urllib.error.HTTPError as e:
                     if e.code != 429 or essai == 4:
-                        print(f"  !! Semantic Scholar : HTTP {e.code} sur un lot de {len(lot)} — comptes absents pour ce lot",
-                              file=sys.stderr)
+                        print(
+                            f"  !! Semantic Scholar : HTTP {e.code} sur un lot de {len(lot)} — comptes absents pour ce lot",
+                            file=sys.stderr,
+                        )
                         break
-                    time.sleep(20 * (essai + 1))            # bridé sans clé : attendre, puis reprendre
+                    time.sleep(20 * (essai + 1))  # bridé sans clé : attendre, puis reprendre
                 except (urllib.error.URLError, TimeoutError) as e:
                     print(f"  !! Semantic Scholar injoignable : {e}", file=sys.stderr)
                     break
@@ -163,6 +176,7 @@ def citations(ids: list[str], sans_reseau: bool = False) -> dict[str, int]:
 def collecter_les_choisis(graphe: str) -> None:
     """Donne une fiche, dans le dossier arXiv du graphe, aux papiers choisis à la main qui n'en ont pas."""
     from newskit import collecte_arxiv as ca  # noqa: PLC0415
+
     dossier = next((RACINE / "sources" / v["dossier"] for v in cfg.veilles_arxiv() if v["graphe"] == graphe), None)
     if dossier is None:
         return
@@ -193,18 +207,27 @@ def choisir(graphe: str, ecrire: bool = True, sans_reseau: bool = False) -> dict
         if n >= r["citations"] or m >= r["fiches_citantes"] or aid in choisis:
             retenus[aid] = {"citations": n, "fiches_citantes": m, "titre": p["titre"], "chemin": p["chemin"]}
     seuils = [100, 500, 1000, 5000]
-    print(f"  {graphe} : {len(papiers)} papiers arXiv, {len(cit)} comptés"
-          + "".join(f", ≥ {s} citations : {sum(1 for v in cit.values() if v >= s)}" for s in seuils))
-    print(f"      cités par ≥ {r['fiches_citantes']} fiches du graphe : {sum(1 for a in papiers if citantes.get(a, 0) >= r['fiches_citantes'])}"
-          f" ; jalons (≥ {r['citations']} citations ou ≥ {r['fiches_citantes']} fiches citantes) : {len(retenus)}")
+    print(
+        f"  {graphe} : {len(papiers)} papiers arXiv, {len(cit)} comptés"
+        + "".join(f", ≥ {s} citations : {sum(1 for v in cit.values() if v >= s)}" for s in seuils)
+    )
+    print(
+        f"      cités par ≥ {r['fiches_citantes']} fiches du graphe : {sum(1 for a in papiers if citantes.get(a, 0) >= r['fiches_citantes'])}"
+        f" ; jalons (≥ {r['citations']} citations ou ≥ {r['fiches_citantes']} fiches citantes) : {len(retenus)}"
+    )
     for aid, v in sorted(retenus.items(), key=lambda kv: -kv[1]["citations"])[:6]:
         print(f"        {v['citations']:>7}  {v['fiches_citantes']:>3} fiche(s)  {v['titre'][:70]}")
     if ecrire:
         sortie = chemin_jalons(graphe)
         sortie.parent.mkdir(parents=True, exist_ok=True)
-        sortie.write_text(json.dumps({"regle": r, "date": time.strftime("%Y-%m-%d"),
-                                      "papiers": {k: retenus[k] for k in sorted(retenus)}},
-                                     indent=1, ensure_ascii=False), encoding="utf-8")
+        sortie.write_text(
+            json.dumps(
+                {"regle": r, "date": time.strftime("%Y-%m-%d"), "papiers": {k: retenus[k] for k in sorted(retenus)}},
+                indent=1,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
     return retenus
 
 

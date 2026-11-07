@@ -18,7 +18,7 @@ import sys
 import time
 from pathlib import Path
 
-MARQUE_VALIDE_S = 10800                  # newskit.couts.MARQUE_VALIDE_S (3 h) ; un test garde l'égalité
+MARQUE_VALIDE_S = 10800  # newskit.couts.MARQUE_VALIDE_S (3 h) ; un test garde l'égalité
 APPEL_AU_MODELE = re.compile(r"(?:^|[\s;&|(])(?:claude\s+-p|newskit\s+routine)\b")
 MEDIA = re.compile(r"^media\s*:", re.MULTILINE)
 
@@ -53,18 +53,28 @@ def main() -> int:
         commande = e["tool_input"]["command"]
         cwd = Path(e.get("cwd") or os.getcwd())
     except (ValueError, KeyError, TypeError):
-        return 0                         # une entrée illisible ne bloque rien
+        return 0  # une entrée illisible ne bloque rien
     if not isinstance(commande, str) or not APPEL_AU_MODELE.search(commande):
         return 0
     media = dossier_du_media(cwd)
     note = marque_fraiche(media) if media else None
     if note is None:
         return 0
-    json.dump({"hookSpecificOutput": {
-        "hookEventName": "PreToolUse", "permissionDecision": "deny",
-        "permissionDecisionReason": (f"Newskit : la fenêtre d'usage du modèle est fermée (limite atteinte, marque de "
-                                     f"{media / 'cache' / 'limite_atteinte'} : {note}). Attendre qu'elle se rouvre ; "
-                                     f"la marque tombe d'elle-même après 3 h.")}}, sys.stdout, ensure_ascii=False)
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": (
+                    f"Newskit : la fenêtre d'usage du modèle est fermée (limite atteinte, marque de "
+                    f"{media / 'cache' / 'limite_atteinte'} : {note}). Attendre qu'elle se rouvre ; "
+                    f"la marque tombe d'elle-même après 3 h."
+                ),
+            }
+        },
+        sys.stdout,
+        ensure_ascii=False,
+    )
     return 0
 
 

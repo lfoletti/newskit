@@ -17,17 +17,23 @@ from newskit import puits_cortexdb as pc  # noqa: E402
 
 
 def test_une_entite_porte_l_identifiant_sous_le_nom_du_moteur():
-    for n in ({"id": "concept_ruche", "label": "ruche"},
-              {"id": "auteur_x", "label": "X", "kind": "auteur"},
-              {"id": "titre_1", "label": "Titre", "_origin": "ast"}):
+    for n in (
+        {"id": "concept_ruche", "label": "ruche"},
+        {"id": "auteur_x", "label": "X", "kind": "auteur"},
+        {"id": "titre_1", "label": "Titre", "_origin": "ast"},
+    ):
         m = pc.entite_composee(n, "sources/a.md", {})["metadata"]
         assert m.get("newskit_id") == n["id"] and "contaixt_id" not in m, n
 
 
 def test_le_renommage_ne_change_pas_l_empreinte_d_un_versement():
     def versement(cle: str) -> dict:
-        return {"document": {"document_id": "abc"}, "relations": [],
-                "entites": [{"name": "ruche", "metadata": {"_source": "s", cle: "concept_ruche"}}]}
+        return {
+            "document": {"document_id": "abc"},
+            "relations": [],
+            "entites": [{"name": "ruche", "metadata": {"_source": "s", cle: "concept_ruche"}}],
+        }
+
     assert pc.empreinte(versement("newskit_id")) == pc.empreinte(versement("contaixt_id"))
     autre = versement("newskit_id")
     autre["entites"][0]["metadata"]["newskit_id"] = "concept_autre"

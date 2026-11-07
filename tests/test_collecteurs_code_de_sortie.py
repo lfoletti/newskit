@@ -15,9 +15,17 @@ from newskit import collecte_openalex
 
 def _source(tmp_path, plateforme: str):
     chemin = tmp_path / "sources" / plateforme.lower()
-    return SimpleNamespace(nom=f"essai {plateforme}", cle=f"essai_{plateforme.lower()}", plateforme=plateforme,
-                           chemin=chemin, manifeste=chemin / "manifeste.json", requetes=["agents"],
-                           jours=30, par_requete=2, etoiles_min=1)
+    return SimpleNamespace(
+        nom=f"essai {plateforme}",
+        cle=f"essai_{plateforme.lower()}",
+        plateforme=plateforme,
+        chemin=chemin,
+        manifeste=chemin / "manifeste.json",
+        requetes=["agents"],
+        jours=30,
+        par_requete=2,
+        etoiles_min=1,
+    )
 
 
 def _sans_attente(monkeypatch, module):

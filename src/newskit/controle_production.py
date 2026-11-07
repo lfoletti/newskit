@@ -7,6 +7,7 @@ Sortie 0 si tout concorde, 1 au moindre écart, imprimé ligne par ligne. Aucun 
 
     python3 -m newskit.controle_production [--sans-ssh]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,6 +22,7 @@ from pathlib import Path
 import yaml
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 VERSIONS = RACINE / "deploiement" / "versions.yaml"
 COMPOSANTS = ("th-gateway", "cortexdb-grpc")
 
@@ -36,14 +38,20 @@ def attendues(chemin: Path = VERSIONS) -> dict:
 
 def ecarts(attendu: dict, obtenu: dict[str, str]) -> list[str]:
     """Pur : une ligne par composant dont la version en production n'est pas celle attendue."""
-    return [f"{nom} : attendu {v['version']}, en production {obtenu.get(nom) or 'non lu'}"
-            for nom, v in attendu.items() if obtenu.get(nom) != v["version"]]
+    return [
+        f"{nom} : attendu {v['version']}, en production {obtenu.get(nom) or 'non lu'}"
+        for nom, v in attendu.items()
+        if obtenu.get(nom) != v["version"]
+    ]
 
 
 def rapport(attendu: dict, obtenu: dict[str, str]) -> str:
     """Pur : une ligne par composant, puis le verdict."""
-    lignes = [f"{nom:14} attendu {v['version']:12} production {obtenu.get(nom) or 'non lu':30} "
-              f"{'ok' if obtenu.get(nom) == v['version'] else 'ÉCART'}" for nom, v in attendu.items()]
+    lignes = [
+        f"{nom:14} attendu {v['version']:12} production {obtenu.get(nom) or 'non lu':30} "
+        f"{'ok' if obtenu.get(nom) == v['version'] else 'ÉCART'}"
+        for nom, v in attendu.items()
+    ]
     e = ecarts(attendu, obtenu)
     return "\n".join(lignes + [f"{len(e)} écart(s)" if e else "production conforme"])
 
@@ -61,15 +69,28 @@ def version_gateway(adresse: str, delai: float = 10, ouvrir=urllib.request.urlop
 
 
 def ssh(acces: dict) -> list[str]:
-    return ["ssh", "-i", str(Path(acces["VPS_CLE"]).expanduser()), "-o", "BatchMode=yes", "-o", "ConnectTimeout=20",
-            f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}"]
+    return [
+        "ssh",
+        "-i",
+        str(Path(acces["VPS_CLE"]).expanduser()),
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=20",
+        f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}",
+    ]
 
 
 def version_cortexdb(acces: dict, clone: str, run=subprocess.run) -> str:
     """Ce que le binaire du serveur dit de lui : `cortexdb-grpc -version` imprime « cortexdb-grpc v2.139.0 »."""
     try:
-        r = run([*ssh(acces), "sudo " + shlex.quote(f"{clone}/cache/cortexdb/bin/cortexdb-grpc") + " -version"],
-                capture_output=True, text=True, timeout=60, check=True)
+        r = run(
+            [*ssh(acces), "sudo " + shlex.quote(f"{clone}/cache/cortexdb/bin/cortexdb-grpc") + " -version"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
         return r.stdout.split()[-1] if r.stdout.split() else "vide"
     except Exception as e:  # noqa: BLE001
         return f"injoignable ({type(e).__name__})"
@@ -81,6 +102,7 @@ def lire(attendu: dict, acces: dict | None, sans_ssh: bool = False) -> dict[str,
     if acces and not sans_ssh:
         pass
         from newskit import publier_index as pi  # noqa: PLC0415
+
         obtenu["cortexdb-grpc"] = version_cortexdb(acces, acces.get("VPS_CLONE", pi.CLONE_DEFAUT).rstrip("/"))
     return obtenu
 
@@ -90,6 +112,7 @@ def main() -> int:
     ap.add_argument("--sans-ssh", action="store_true", help="ne lit que le gateway (pas d'accès au serveur)")
     a = ap.parse_args()
     from newskit import publier_index as pi  # noqa: PLC0415
+
     attendu = attendues()
     obtenu = lire(attendu, pi.lire_acces(), a.sans_ssh)
     print(rapport(attendu, obtenu))

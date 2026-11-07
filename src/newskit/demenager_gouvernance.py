@@ -29,6 +29,7 @@ Une source sans fiche suit la destination donnée à son graphe d'origine (--san
 pour la gouvernance, mainteneur, 2 novembre 2026 : conformité et éthique vers le graphe fusionné, sécurité vers
 l'archive).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +44,8 @@ from pathlib import Path
 from newskit import partage_graphe as pgr
 
 RESTE, A_REVOIR, DOUBLON, ECARTE, ORPHELIN = "reste", "a_revoir", "doublon", "ecarte", "orphelin"
+
+
 def destinations(fusion: str, archive: str) -> set[str]:
     return {fusion, archive, RESTE, A_REVOIR, DOUBLON}
 
@@ -63,8 +66,10 @@ def _majorite(compte: Counter, ordre: list[str]) -> str | None:
 def doublons_gardes(fiches: list[dict]) -> dict[str, str]:
     """{fiche écartée: fiche gardée}, avec les règles de partage_graphe.doublons (même corps ; même adresse et texte
     presque identique), la plus ancienne gardée (date, puis chemin)."""
+
     def ordre(f):
         return (f.get("date") or "9999", f["chemin"])
+
     out: dict[str, str] = {}
     par_corps, par_url = defaultdict(list), defaultdict(list)
     for f in sorted(fiches, key=ordre):
@@ -85,7 +90,7 @@ def doublons_gardes(fiches: list[dict]) -> dict[str, str]:
                 out[f["chemin"]] = g["chemin"]
             else:
                 gardees.append(f)
-    for perdu, garde in list(out.items()):          # chaînes : la gardée d'une écartée peut l'être elle-même
+    for perdu, garde in list(out.items()):  # chaînes : la gardée d'une écartée peut l'être elle-même
         while garde in out:
             garde = out[garde]
         out[perdu] = garde
@@ -93,9 +98,16 @@ def doublons_gardes(fiches: list[dict]) -> dict[str, str]:
     return dict(sorted(out.items()))
 
 
-def planifier(fiches: list[dict], lots: dict[str, dict], partage: dict[str, str], inclus: list[str],
-              fusion: str, archive: str, vides: list[tuple[str, str]] | None = None,
-              sans_fiche: dict[str, str] | None = None) -> dict:
+def planifier(
+    fiches: list[dict],
+    lots: dict[str, dict],
+    partage: dict[str, str],
+    inclus: list[str],
+    fusion: str,
+    archive: str,
+    vides: list[tuple[str, str]] | None = None,
+    sans_fiche: dict[str, str] | None = None,
+) -> dict:
     """Le plan : `fiches` {chemin: destination…}, `lots` {id: destination, avant, après}, `sources` {clé: destination,
     exceptions}, `bilan`. `fiches` : chemin, graphe, source, url, date, corps ; `lots` : {id: {graphe, fiche, avant?}}."""
     ordre = [fusion, archive, RESTE, A_REVOIR]
@@ -107,10 +119,14 @@ def planifier(fiches: list[dict], lots: dict[str, dict], partage: dict[str, str]
     dest: dict[str, dict] = {}
     for f in fiches:
         d = rangees[f["chemin"]]
-        if d is None:                                # collectée après le rangement
+        if d is None:  # collectée après le rangement
             d = (_majorite(par_source[f["source"]], ordre) or A_REVOIR) if f["graphe"] in inclus else RESTE
-        dest[f["chemin"]] = {"destination": d, "graphe": f["graphe"], "source": f["source"],
-                             "rangement": partage.get(f["chemin"])}
+        dest[f["chemin"]] = {
+            "destination": d,
+            "graphe": f["graphe"],
+            "source": f["source"],
+            "rangement": partage.get(f["chemin"]),
+        }
     for perdu, garde in doublons_gardes([f for f in fiches if dest[f["chemin"]]["destination"] == fusion]).items():
         dest[perdu].update(destination=DOUBLON, garde=garde)
 
@@ -120,11 +136,14 @@ def planifier(fiches: list[dict], lots: dict[str, dict], partage: dict[str, str]
         membres[v["source"]].append(c)
     for s in sorted(membres):
         compte = Counter(dest[c]["destination"] for c in membres[s] if dest[c]["destination"] != DOUBLON)
-        d = _majorite(compte, ordre) or fusion       # une source dont toutes les fiches sont des doublons
+        d = _majorite(compte, ordre) or fusion  # une source dont toutes les fiches sont des doublons
         graphes = sorted({dest[c]["graphe"] for c in membres[s]})
-        sources[s] = {"destination": d, "graphe_avant": graphes[0] if len(graphes) == 1 else graphes,
-                      "fiches": len(membres[s]),
-                      "exceptions": sorted(c for c in membres[s] if dest[c]["destination"] not in (d, DOUBLON))}
+        sources[s] = {
+            "destination": d,
+            "graphe_avant": graphes[0] if len(graphes) == 1 else graphes,
+            "fiches": len(membres[s]),
+            "exceptions": sorted(c for c in membres[s] if dest[c]["destination"] not in (d, DOUBLON)),
+        }
 
     # Une source sans fiche n'a pas de majorité : elle suit la destination donnée à son graphe d'origine (mainteneur,
     # 2 novembre 2026, « ok, d'accord pour les 28 sources »), sinon elle est à revoir.
@@ -146,13 +165,15 @@ def planifier(fiches: list[dict], lots: dict[str, dict], partage: dict[str, str]
         apres = f"graphe/{d}/couche2/fiches/{ident}.json" if d in (fusion, archive) else avant
         plan_lots[ident] = {"destination": d, "fiche": lot["fiche"], "avant": avant, "apres": apres}
 
-    bilan = {"fiches": dict(sorted(Counter(v["destination"] for v in dest.values()).items())),
-             "lots": dict(sorted(Counter(v["destination"] for v in plan_lots.values()).items())),
-             "sources": dict(sorted(Counter(v["destination"] for v in sources.values()).items())),
-             "sources_mixtes": sorted(s for s, v in sources.items() if v["exceptions"]),
-             "fiches_en_exception": sum(len(v["exceptions"]) for v in sources.values()),
-             "sources_sans_fiche": dict(sorted(vides_comptees.items())),
-             "fiches_sans_lot": sorted(set(dest) - {v["fiche"] for v in plan_lots.values()})}
+    bilan = {
+        "fiches": dict(sorted(Counter(v["destination"] for v in dest.values()).items())),
+        "lots": dict(sorted(Counter(v["destination"] for v in plan_lots.values()).items())),
+        "sources": dict(sorted(Counter(v["destination"] for v in sources.values()).items())),
+        "sources_mixtes": sorted(s for s, v in sources.items() if v["exceptions"]),
+        "fiches_en_exception": sum(len(v["exceptions"]) for v in sources.values()),
+        "sources_sans_fiche": dict(sorted(vides_comptees.items())),
+        "fiches_sans_lot": sorted(set(dest) - {v["fiche"] for v in plan_lots.values()}),
+    }
     bilan["fiches_sans_lot"] = len(bilan["fiches_sans_lot"])
     return {"fiches": dest, "lots": plan_lots, "sources": sources, "bilan": bilan}
 
@@ -168,8 +189,8 @@ def rattachements(texte: str) -> list[tuple[str, str]]:
     """(clé, graphe) de chaque source du registre, dans l'ordre du fichier."""
     out = []
     for m in re.finditer(r"^  - cle: (\S+)[ \t]*$", texte, flags=re.MULTILINE):
-        fin = re.search(r"^(  - cle: |\S)", texte[m.end():], flags=re.MULTILINE)
-        bloc = texte[m.end(): m.end() + fin.start()] if fin else texte[m.end():]
+        fin = re.search(r"^(  - cle: |\S)", texte[m.end() :], flags=re.MULTILINE)
+        bloc = texte[m.end() : m.end() + fin.start()] if fin else texte[m.end() :]
         g = re.search(r"^    graphe: (\S+)[ \t]*$", bloc, flags=re.MULTILINE)
         out.append((m.group(1), g.group(1) if g else ""))
     return out
@@ -177,7 +198,7 @@ def rattachements(texte: str) -> list[tuple[str, str]]:
 
 def _bornes_source(texte: str, cle: str) -> tuple[int, int]:
     m = re.search(rf"^  - cle: {re.escape(cle)}[ \t]*$", texte, flags=re.MULTILINE)
-    fin = re.search(r"^(  - cle: |\S)", texte[m.end():], flags=re.MULTILINE)
+    fin = re.search(r"^(  - cle: |\S)", texte[m.end() :], flags=re.MULTILINE)
     return m.start(), (m.end() + fin.start()) if fin else len(texte)
 
 
@@ -185,27 +206,33 @@ def _bornes_graphe(texte: str, nom: str) -> tuple[int, int] | None:
     m = re.search(rf"^  {re.escape(nom)}:[ \t]*$", texte, flags=re.MULTILINE)
     if not m:
         return None
-    fin = re.search(r"^(  \S|\S)", texte[m.end():], flags=re.MULTILINE)
+    fin = re.search(r"^(  \S|\S)", texte[m.end() :], flags=re.MULTILINE)
     return m.start(), (m.end() + fin.start()) if fin else len(texte)
 
 
 def bloc_graphe(texte: str, nom: str) -> str:
     b = _bornes_graphe(texte, nom)
-    return texte[b[0]:b[1]] if b else ""
+    return texte[b[0] : b[1]] if b else ""
 
 
 def _a_rattacher(plan: dict, texte: str, fusion: str, archive: str) -> list[tuple[str, str, str]]:
     actuels = dict(rattachements(texte))
-    return [(c, actuels[c], v["destination"]) for c, v in sorted(plan["sources"].items())
-            if v["destination"] in (fusion, archive) and c in actuels and actuels[c] != v["destination"]]
+    return [
+        (c, actuels[c], v["destination"])
+        for c, v in sorted(plan["sources"].items())
+        if v["destination"] in (fusion, archive) and c in actuels and actuels[c] != v["destination"]
+    ]
 
 
 def restant(plan: dict, racine: Path, fusion: str, archive: str) -> dict:
     """Ce que l'application a encore à faire : sources à rattacher, lots à recopier, `inclut` à retirer."""
     texte = (racine / "sources.yaml").read_text(encoding="utf-8")
     sources = [c for c, _, _ in _a_rattacher(plan, texte, fusion, archive)]
-    lots = sorted(i for i, v in plan["lots"].items()
-                  if v["destination"] in (fusion, archive) and not (racine / v["apres"]).exists())
+    lots = sorted(
+        i
+        for i, v in plan["lots"].items()
+        if v["destination"] in (fusion, archive) and not (racine / v["apres"]).exists()
+    )
     decl = [g for g in (fusion, archive) if re.search(r"^    inclut:", bloc_graphe(texte, g), flags=re.MULTILINE)]
     return {"sources": sources, "lots": lots, "declarations": decl, "total": len(sources) + len(lots) + len(decl)}
 
@@ -222,16 +249,21 @@ def appliquer(plan: dict, racine: Path, fusion: str, archive: str, socle: list[s
     a_faire = _a_rattacher(plan, texte, fusion, archive)
     for cle, de, vers in a_faire:
         debut, fin = _bornes_source(texte, cle)
-        bloc, n = re.subn(rf"^    graphe: {re.escape(de)}[ \t]*$", f"    graphe: {vers}", texte[debut:fin], count=1,
-                          flags=re.MULTILINE)
+        bloc, n = re.subn(
+            rf"^    graphe: {re.escape(de)}[ \t]*$",
+            f"    graphe: {vers}",
+            texte[debut:fin],
+            count=1,
+            flags=re.MULTILINE,
+        )
         if n != 1:
             raise SystemExit(f"{cle} : champ « graphe: {de} » introuvable dans son bloc")
         texte = texte[:debut] + bloc + texte[fin:]
     for g in (fusion, archive):
         b = _bornes_graphe(texte, g)
         if b:
-            bloc = re.sub(r"^    inclut:.*\n", "", texte[b[0]:b[1]], flags=re.MULTILINE)
-            texte = texte[:b[0]] + bloc + texte[b[1]:]
+            bloc = re.sub(r"^    inclut:.*\n", "", texte[b[0] : b[1]], flags=re.MULTILINE)
+            texte = texte[: b[0]] + bloc + texte[b[1] :]
     copies = 0
     empreintes: dict[Path, dict] = {}
     for ident, v in sorted(plan["lots"].items()):
@@ -268,6 +300,7 @@ def appliquer(plan: dict, racine: Path, fusion: str, archive: str, socle: list[s
 
 # --- Lecture des vraies données --------------------------------------------------------------------
 
+
 def _voisins(par_source: list[dict], inclus: list[str]) -> list[str]:
     return sorted({x["graphe"] for x in par_source} - set(inclus))
 
@@ -278,6 +311,7 @@ def charger(fusion: str) -> tuple[list[dict], dict[str, dict], dict[str, str], l
     from newskit import config_sources as cfg
     from newskit import extraire_concepts as ec
     from newskit import fiche as fi
+
     decl = cfg.graphe_declare(fusion)
     journal = _lire_json(cfg.chemins_du_graphe(fusion)["base"] / JOURNAL)
     inclus = cfg.graphes_inclus(fusion) or list(journal.get("socle") or [])
@@ -287,7 +321,7 @@ def charger(fusion: str) -> tuple[list[dict], dict[str, dict], dict[str, str], l
     par_source = json.loads((fichier.parent / "par_source.json").read_text(encoding="utf-8"))
     voisins = _voisins(par_source, inclus)
     rangees_voisin = {(x["graphe"], x["source"]) for x in par_source if x["graphe"] in voisins}
-    a_lire: list[tuple[str, str, str]] = []                    # (dossier, graphe d'origine, source)
+    a_lire: list[tuple[str, str, str]] = []  # (dossier, graphe d'origine, source)
     for s in cfg.toutes():
         g = origine.get(s.cle, s.graphe)
         if g in inclus or (g, s.cle) in rangees_voisin:
@@ -306,43 +340,67 @@ def charger(fusion: str) -> tuple[list[dict], dict[str, dict], dict[str, str], l
                 continue
             entete, corps = fi.lire_fichier(p)
             lues.add(rel)
-            fiches.append({"chemin": rel, "graphe": g, "source": cle, "url": str(entete.get("url") or ""),
-                           "date": str(entete.get("date") or ""), "corps": corps})
+            fiches.append(
+                {
+                    "chemin": rel,
+                    "graphe": g,
+                    "source": cle,
+                    "url": str(entete.get("url") or ""),
+                    "date": str(entete.get("date") or ""),
+                    "corps": corps,
+                }
+            )
             ident_vers_fiche[(g, ec.identifiant_de_fiche(p, entete))] = rel
             avec_fiche.add(cle)
     lots: dict[str, dict] = {}
     for g in inclus + voisins:
         base = cfg.chemins_du_graphe(g)["couche2"] / "fiches"
-        idents = (sorted(p.stem for p in base.glob("*.json")) if g in inclus
-                  else sorted(i for (gg, i) in ident_vers_fiche if gg == g and (base / f"{i}.json").exists()))
+        idents = (
+            sorted(p.stem for p in base.glob("*.json"))
+            if g in inclus
+            else sorted(i for (gg, i) in ident_vers_fiche if gg == g and (base / f"{i}.json").exists())
+        )
         for i in idents:
             rel = ident_vers_fiche.get((g, i))
-            if rel is None:                                    # pas de fiche sous cet identifiant : le lot la nomme-t-il ?
+            if rel is None:  # pas de fiche sous cet identifiant : le lot la nomme-t-il ?
                 try:
                     noeuds = json.loads((base / f"{i}.json").read_text(encoding="utf-8")).get("nodes") or []
                 except (OSError, json.JSONDecodeError):
                     noeuds = []
-                rel = next((pgr._relatif(n.get("source_file"), cfg.RACINE) for n in noeuds if n.get("source_file")), None)
+                rel = next(
+                    (pgr._relatif(n.get("source_file"), cfg.RACINE) for n in noeuds if n.get("source_file")), None
+                )
                 # Une fiche d'une source retirée (gov_km_mollick, mainteneur, 2 novembre 2026, « 4 ok ») : rangée, sur le
                 # disque, dans aucun dossier déclaré ; elle suit son rangement, et sa source n'a pas de bloc à rattacher.
                 if rel and rel not in lues and rel in partage and (cfg.RACINE / rel).exists():
                     entete, corps = fi.lire_fichier(cfg.RACINE / rel)
                     lues.add(rel)
-                    fiches.append({"chemin": rel, "graphe": g, "source": f"retiree:{Path(rel).parent.as_posix()}",
-                                   "url": str(entete.get("url") or ""), "date": str(entete.get("date") or ""),
-                                   "corps": corps})
+                    fiches.append(
+                        {
+                            "chemin": rel,
+                            "graphe": g,
+                            "source": f"retiree:{Path(rel).parent.as_posix()}",
+                            "url": str(entete.get("url") or ""),
+                            "date": str(entete.get("date") or ""),
+                            "corps": corps,
+                        }
+                    )
             cle = i if i not in lots else f"{g}/{i}"
             lots[cle] = {"graphe": g, "fiche": rel, "avant": (base / f"{i}.json").relative_to(cfg.RACINE).as_posix()}
-    vides = sorted({(cle, g) for _, g, cle in a_lire if g in inclus and cle not in avec_fiche
-                    and not cle.startswith("dossier:")})
+    vides = sorted(
+        {(cle, g) for _, g, cle in a_lire if g in inclus and cle not in avec_fiche and not cle.startswith("dossier:")}
+    )
     return fiches, lots, partage, inclus, vides
 
 
 def routines_en_cours() -> list[str]:
     """Les processus de routine qui tournent : l'application attend qu'ils aient fini."""
     import subprocess
-    motif = ("routine_hebdo|extraire_concepts|fusionner_graphe|extraire_squelette|synthese.py|cerveau_cortexdb|"
-             "puits_cortexdb|banc.py|banc_croise")
+
+    motif = (
+        "routine_hebdo|extraire_concepts|fusionner_graphe|extraire_squelette|synthese.py|cerveau_cortexdb|"
+        "puits_cortexdb|banc.py|banc_croise"
+    )
     r = subprocess.run(["pgrep", "-fl", motif], check=False, capture_output=True, text=True)
     return [x for x in r.stdout.splitlines() if "pgrep" not in x]
 
@@ -350,14 +408,20 @@ def routines_en_cours() -> list[str]:
 def inventaire(inclus: list[str], fusion: str) -> list[dict]:
     """Ce que chaque graphe inclus porte en plus des fiches et des lots, et s'il a déjà son équivalent fusionné."""
     from newskit import config_sources as cfg
+
     out = []
     for g in inclus:
         base = cfg.chemins_du_graphe(g)["base"]
         for p in sorted(base.iterdir()) if base.exists() else []:
             if p.name == "couche2":
                 continue
-            out.append({"graphe": g, "chemin": p.relative_to(cfg.RACINE).as_posix(),
-                        "dans_la_fusion": (cfg.chemins_du_graphe(fusion)["base"] / p.name).exists()})
+            out.append(
+                {
+                    "graphe": g,
+                    "chemin": p.relative_to(cfg.RACINE).as_posix(),
+                    "dans_la_fusion": (cfg.chemins_du_graphe(fusion)["base"] / p.name).exists(),
+                }
+            )
         for extra in (cfg.RACINE / "cache" / "encodeur" / g, cfg.RACINE / "cache" / "cortexdb" / f"{g}.db"):
             if extra.exists():
                 out.append({"graphe": g, "chemin": extra.relative_to(cfg.RACINE).as_posix(), "dans_la_fusion": False})
@@ -370,10 +434,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--archive", required=True, help="le graphe d'archive, déclaré ou à déclarer (GV5)")
     ap.add_argument("--plan", action="store_true", help="le défaut : calculer le plan, rien n'est écrit dans le dépôt")
     ap.add_argument("--sortie", type=Path, help="écrire le plan entier dans ce fichier JSON")
-    ap.add_argument("--appliquer", action="store_true",
-                    help="rattacher les sources, recopier les lots, retirer `inclut` (rien n'est effacé ; idempotent)")
-    ap.add_argument("--sans-fiche", action="append", default=[], metavar="GRAPHE=DESTINATION",
-                    help="destination d'une source sans fiche, selon son graphe d'origine (répétable)")
+    ap.add_argument(
+        "--appliquer",
+        action="store_true",
+        help="rattacher les sources, recopier les lots, retirer `inclut` (rien n'est effacé ; idempotent)",
+    )
+    ap.add_argument(
+        "--sans-fiche",
+        action="append",
+        default=[],
+        metavar="GRAPHE=DESTINATION",
+        help="destination d'une source sans fiche, selon son graphe d'origine (répétable)",
+    )
     a = ap.parse_args(argv)
     sans_fiche = dict(x.split("=", 1) for x in a.sans_fiche)
     fiches, lots, partage, inclus, vides = charger(a.graphe)
@@ -384,14 +456,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  fiches par destination : {b['fiches']}")
     print(f"  lots par destination : {b['lots']} ; fiches sans lot : {b['fiches_sans_lot']}")
     print(f"  sources sans fiche : {b['sources_sans_fiche']}")
-    print(f"  sources par destination : {b['sources']} ; sources mixtes : {len(b['sources_mixtes'])}, "
-          f"{b['fiches_en_exception']} fiche(s) hors du graphe de leur source")
-    print(f"  autres pièces des graphes inclus : {len(p['autres'])}, dont {sum(x['dans_la_fusion'] for x in p['autres'])} "
-          f"déjà présentes sous {a.graphe}")
+    print(
+        f"  sources par destination : {b['sources']} ; sources mixtes : {len(b['sources_mixtes'])}, "
+        f"{b['fiches_en_exception']} fiche(s) hors du graphe de leur source"
+    )
+    print(
+        f"  autres pièces des graphes inclus : {len(p['autres'])}, dont {sum(x['dans_la_fusion'] for x in p['autres'])} "
+        f"déjà présentes sous {a.graphe}"
+    )
     from newskit import config_sources as cfg
+
     r = restant(p, cfg.RACINE, a.graphe, a.archive)
-    print(f"  à faire : {len(r['sources'])} source(s) à rattacher, {len(r['lots'])} lot(s) à recopier, "
-          f"`inclut` à retirer de {r['declarations'] or 'aucun'}")
+    print(
+        f"  à faire : {len(r['sources'])} source(s) à rattacher, {len(r['lots'])} lot(s) à recopier, "
+        f"`inclut` à retirer de {r['declarations'] or 'aucun'}"
+    )
     if a.appliquer:
         if en_cours := routines_en_cours():
             print("  une routine tourne, rien n'est appliqué :\n    " + "\n    ".join(en_cours), file=sys.stderr)
@@ -399,14 +478,15 @@ def main(argv: list[str] | None = None) -> int:
         avant = cfg.FICHIER.read_text(encoding="utf-8")
         b2 = appliquer(p, cfg.RACINE, a.graphe, a.archive, inclus)
         try:
-            cfg.charger(cfg.FICHIER)                       # le registre réécrit doit rester valide
+            cfg.charger(cfg.FICHIER)  # le registre réécrit doit rester valide
         except Exception:
             cfg.FICHIER.write_text(avant, encoding="utf-8")
             raise
         print(f"  appliqué : {b2} ; reste : {restant(p, cfg.RACINE, a.graphe, a.archive)['total']}")
     if a.sortie:
-        a.sortie.write_text(json.dumps({k: v for k, v in p.items()}, ensure_ascii=False, indent=1, sort_keys=True),
-                            encoding="utf-8")
+        a.sortie.write_text(
+            json.dumps({k: v for k, v in p.items()}, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
+        )
         print(f"  plan écrit : {a.sortie}")
     return 0
 

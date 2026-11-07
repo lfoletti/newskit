@@ -16,6 +16,7 @@ Accès : celui de publier_index (~/.secrets/vps_kg.env).
     python3 -m newskit.publier_graphes                     # tous les graphes du registre
     python3 -m newskit.publier_graphes --graphe <graphe> --lister
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,12 +35,20 @@ MARQUE = "graphe/.envoi"
 # Ce que .gitignore écarte de graphe/ hors de la règle générale de la purge : formes en clair du graphe principal (les
 # archives .json.gz suffisent au serveur), index des paragraphes (publier_index les envoie avec leur encodeur),
 # renvois de la dernière réponse locale. Tenu égal aux lignes de .gitignore par un test.
-EXCLUS = ("graphe/squelette.json", "graphe/graphe.json",
-          "graphe/*/synthese/.derniers_renvois.json", "graphe/synthese/.derniers_renvois.json",
-          "graphe/*/synthese/vecteurs.npy", "graphe/*/synthese/paragraphes.json",
-          "graphe/*/synthese/encodeur.txt", "graphe/*/synthese/empreintes_index.json",
-          "graphe/synthese/vecteurs.npy", "graphe/synthese/paragraphes.json",
-          "graphe/synthese/encodeur.txt", "graphe/synthese/empreintes_index.json")
+EXCLUS = (
+    "graphe/squelette.json",
+    "graphe/graphe.json",
+    "graphe/*/synthese/.derniers_renvois.json",
+    "graphe/synthese/.derniers_renvois.json",
+    "graphe/*/synthese/vecteurs.npy",
+    "graphe/*/synthese/paragraphes.json",
+    "graphe/*/synthese/encodeur.txt",
+    "graphe/*/synthese/empreintes_index.json",
+    "graphe/synthese/vecteurs.npy",
+    "graphe/synthese/paragraphes.json",
+    "graphe/synthese/encodeur.txt",
+    "graphe/synthese/empreintes_index.json",
+)
 
 
 def exclu(rel: str) -> bool:
@@ -55,8 +64,13 @@ def suivis() -> set[str]:
 def fichiers(graphe: str, deja: set[str] | None = None) -> list[str]:
     """Les fichiers du graphe à envoyer, relatifs au dépôt, sans ceux des autres graphes ni ceux que git suit."""
     base = cfg.chemins_du_graphe(graphe)["base"]
-    autres = [b for g in cfg.charger().get("graphes", {}) if g != graphe
-              for b in [cfg.chemins_du_graphe(g)["base"]] if b != base and base in b.parents]
+    autres = [
+        b
+        for g in cfg.charger().get("graphes", {})
+        if g != graphe
+        for b in [cfg.chemins_du_graphe(g)["base"]]
+        if b != base and base in b.parents
+    ]
     deja = suivis() if deja is None else deja
     out = []
     for p in base.rglob("*"):
@@ -98,18 +112,41 @@ def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("\n".join(liste) + "\n")
-        r = subprocess.run(["rsync", "-t", "--files-from", f.name, "--rsync-path=sudo rsync", "-e", " ".join(ssh),
-                            str(RACINE) + "/", f"{hote}:{clone}/"], capture_output=True, text=True, timeout=7200)
+        r = subprocess.run(
+            [
+                "rsync",
+                "-t",
+                "--files-from",
+                f.name,
+                "--rsync-path=sudo rsync",
+                "-e",
+                " ".join(ssh),
+                str(RACINE) + "/",
+                f"{hote}:{clone}/",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=7200,
+        )
         Path(f.name).unlink(missing_ok=True)
         if r.returncode != 0:
             raise RuntimeError(f"rsync : {r.stderr.strip()[:160]}")
-        subprocess.run([*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone))],
-                       capture_output=True, text=True, timeout=600, check=True)
+        subprocess.run(
+            [*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone))],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=True,
+        )
         taille = sum((RACINE / p).stat().st_size for p in liste) / 1e6
-        lignes.append(f"Graphes en ligne : {', '.join(graphes)} — {len(liste)} fichier(s), {taille:.0f} Mo au plus "
-                      f"(rsync n'envoie que ce qui change).")
+        lignes.append(
+            f"Graphes en ligne : {', '.join(graphes)} — {len(liste)} fichier(s), {taille:.0f} Mo au plus "
+            f"(rsync n'envoie que ce qui change)."
+        )
     except subprocess.CalledProcessError as e:
-        lignes.append(f"Graphes en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]}).")
+        lignes.append(
+            f"Graphes en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]})."
+        )
     except Exception as e:  # noqa: BLE001 — le serveur garde les graphes qu'il a
         lignes.append(f"Graphes en ligne : envoi interrompu ({type(e).__name__} {str(e)[:120]}).")
     return pi._dire(lignes, verbeux)

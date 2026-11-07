@@ -8,6 +8,7 @@ pas ; ce qui est écrit en français hors de ces textes (l'éclairage, les mots 
 ne passe pas, et une nouvelle liée garde le titre de sa source. La lettre anglaise se garde sous cache/lettres_en : un
 second envoi ne la réécrit pas.
 """
+
 from __future__ import annotations
 
 import copy
@@ -18,7 +19,7 @@ from newskit import fil
 from newskit import fil_anglais as fa
 
 CACHE = fa.RACINE / "cache" / "lettres_en"
-RETIRES = ("lecture", "gras", "lieu", "liens")        # écrits en français, hors des textes réécrits
+RETIRES = ("lecture", "gras", "lieu", "liens")  # écrits en français, hors des textes réécrits
 
 
 def chemin(L: dict) -> Path:
@@ -40,8 +41,11 @@ def _du_fil(graphe: str) -> dict[str, dict]:
         F = fil.lire(graphe)
     except Exception:  # noqa: BLE001 — sans fil lisible, tout s'écrit
         return {}
-    return {b["chemin"]: b["en"] for b in (F.get("pile") or []) + (F.get("billets") or [])
-            if (b.get("en") or {}).get("tenu") and b.get("chemin")}
+    return {
+        b["chemin"]: b["en"]
+        for b in (F.get("pile") or []) + (F.get("billets") or [])
+        if (b.get("en") or {}).get("tenu") and b.get("chemin")
+    }
 
 
 def ecrire(L: dict) -> dict | None:
@@ -53,8 +57,11 @@ def ecrire(L: dict) -> dict | None:
     a_ecrire = [x for x, _ in elements if x.get("chemin") and x["chemin"] not in tenus]
     if a_ecrire:
         fiches = fa.lt.charger_fiches(sorted({x["chemin"] for x in a_ecrire}))
-        lot = [({"chemin": x["chemin"], "date": (x.get("source") or {}).get("date") or ""}, fiches[x["chemin"]])
-               for x in a_ecrire if x["chemin"] in fiches]
+        lot = [
+            ({"chemin": x["chemin"], "date": (x.get("source") or {}).get("date") or ""}, fiches[x["chemin"]])
+            for x in a_ecrire
+            if x["chemin"] in fiches
+        ]
         ecrits, _ = fa.ecrire(lot, graphe) if lot else ({}, 0.0)
         for n, en in ecrits.items():
             if en.get("tenu"):
@@ -71,8 +78,11 @@ def ecrire(L: dict) -> dict | None:
             y["titre"] = (y.get("source") or {}).get("titre") or y.get("titre")
         garde.add(id(x))
     rub = lambda g: fil.RUBRIQUES_EN.get(g, g)  # noqa: E731
-    E["faits"] = [{**f, **({"rubrique": rub(f["rubrique"])} if f.get("rubrique") else {})}
-                  for f in E.get("faits") or [] if id(f) in garde]
+    E["faits"] = [
+        {**f, **({"rubrique": rub(f["rubrique"])} if f.get("rubrique") else {})}
+        for f in E.get("faits") or []
+        if id(f) in garde
+    ]
     for groupe in ("aussi", "bref"):
         E[groupe] = {rub(g): [x for x in v if id(x) in garde] for g, v in (E.get(groupe) or {}).items()}
         E[groupe] = {g: v for g, v in E[groupe].items() if v}

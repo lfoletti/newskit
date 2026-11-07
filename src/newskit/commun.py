@@ -38,24 +38,29 @@ def _dossier_courant_du_media() -> Path | None:
         if not p.is_file():
             return None
         import yaml  # noqa: PLC0415 — seulement quand un config.yaml est là
+
         d = yaml.safe_load(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001 — dossier courant disparu, YAML illisible : pas un média
         return None
     return p.parent.resolve() if isinstance(d, dict) and isinstance(d.get("media"), dict) else None
 
 
-RACINE = (Path(os.environ[VARIABLE_DONNEES]).expanduser().resolve() if os.environ.get(VARIABLE_DONNEES)
-          else _dossier_courant_du_media() or Path.cwd().resolve())
+RACINE = (
+    Path(os.environ[VARIABLE_DONNEES]).expanduser().resolve()
+    if os.environ.get(VARIABLE_DONNEES)
+    else _dossier_courant_du_media() or Path.cwd().resolve()
+)
 if os.environ.get(VARIABLE_DONNEES) or _dossier_courant_du_media():
-    os.environ[VARIABLE_DONNEES] = str(RACINE)     # les étapes, lancées sous CODE, gardent le média (07.11.2026)
+    os.environ[VARIABLE_DONNEES] = str(RACINE)  # les étapes, lancées sous CODE, gardent le média (07.11.2026)
 
 # Deux identités HTTP, et la différence est délibérée. Les sites grand public —
 # LinkedIn, Substack, blogs — servent une page différente, ou rien, à ce qui ne
 # ressemble pas à un navigateur. Les services faits pour les machines — arXiv,
 # Crossref, flux RSS — demandent au contraire qu'on se nomme et qu'on donne un
 # moyen de contact, et ils rendent la politesse par de meilleurs quotas.
-UA_NAVIGATEUR = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 "
-                 "(KHTML, like Gecko) Chrome/120 Safari/537.36")
+UA_NAVIGATEUR = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+)
 # L'adresse de contact n'est pas dans le dépôt (24.10.2026 ; renommée le 01.11.2026) : NEWSKIT_CONTACT_EMAIL, sinon le fichier hors dépôt
 # que lisent aussi les daemons. Elle se demande à l'usage, jamais à l'import : le serveur importe les collecteurs
 # sans collecter, et n'a pas d'adresse.
@@ -79,7 +84,9 @@ def contact() -> str:
     """L'adresse donnée aux services qui demandent qu'on se nomme (OpenAlex, Crossref, arXiv) et aux commits."""
     v = variable_hors_depot(VARIABLE_CONTACT)
     if not v:
-        raise RuntimeError(f"adresse de contact absente : définir {VARIABLE_CONTACT} ou l'écrire dans {FICHIER_CONTACT}")
+        raise RuntimeError(
+            f"adresse de contact absente : définir {VARIABLE_CONTACT} ou l'écrire dans {FICHIER_CONTACT}"
+        )
     return v
 
 
@@ -102,23 +109,30 @@ def agent_robot() -> str:
     `edition:`, `lettre_site` et `robot_contact` ; mainteneur, 06.11.2026) ; sans eux, l'adresse de contact."""
     import urllib.parse  # noqa: PLC0415
     from newskit import config_sources as cfg  # noqa: PLC0415 — config_sources importe commun
+
     e = cfg.edition()
     site, adresse_robot = str(e.get("lettre_site") or "").rstrip("/"), str(e.get("robot_contact") or "")
     if site and adresse_robot:
         return f"{urllib.parse.urlsplit(site).netloc}-bot/1.0 (+{site}; {adresse_robot})"
     return f"veille-data-science/1.0 (projet documentaire personnel; mailto:{contact()})"
+
+
 # Un jeu d'en-têtes de navigateur complet et cohérent, pour les seules sources qui le déclarent au registre
 # (`entetes: navigateur`), après un audit d'accès (/sap) montrant que le serveur refuse un agent déclaré — un pare-feu
 # applicatif qui renvoie 403 à tout robot, flux RSS compris (Hastings Center, 07.10.2026). Jamais un agent seul : un
 # en-tête isolé ou des profils mélangés sont eux-mêmes un signal de robot (méthode de site_scraper, stealth.py).
 ENTETES_NAVIGATEUR = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/131.0.0.0 Safari/537.36",
+    "Chrome/131.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
     "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-    "sec-ch-ua-mobile": "?0", "sec-ch-ua-platform": '"macOS"',
-    "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
     "Upgrade-Insecure-Requests": "1",
 }
 
@@ -157,7 +171,12 @@ def separer_auteurs(champ: str | None) -> list[str]:
     noms, vus = [], set()
     for brut in RE_SEPARATEURS.split(RE_ADRESSE.sub("", str(champ or ""))):
         nom = re.sub(r"\s+", " ", brut.strip().strip('"').strip())
-        if not nom or re.search(r"\d", nom) or nom.replace(".", "").casefold() in TITRES or normaliser_auteur(nom) in vus:
+        if (
+            not nom
+            or re.search(r"\d", nom)
+            or nom.replace(".", "").casefold() in TITRES
+            or normaliser_auteur(nom) in vus
+        ):
             continue
         vus.add(normaliser_auteur(nom))
         noms.append(nom)
@@ -225,22 +244,29 @@ def nettoyer_href(h: str) -> str:
 def html_to_md(frag: str) -> str:
     """Convertit un fragment HTML en markdown lisible."""
     f = re.sub(r"<script.*?</script>|<style.*?</style>|<!--.*?-->", "", frag, flags=re.S)
-    f = re.sub(r"<(h[1-6])[^>]*>(.*?)</\1>",
-               lambda m: "\n\n" + "#" * (int(m.group(1)[1]) + 1) + " " + m.group(2) + "\n\n",
-               f, flags=re.S)
-    f = re.sub(r"<pre[^>]*>(.*?)</pre>",
-               lambda m: "\n\n```\n" + re.sub(r"<[^>]+>", "", m.group(1)) + "\n```\n\n",
-               f, flags=re.S)
+    f = re.sub(
+        r"<(h[1-6])[^>]*>(.*?)</\1>",
+        lambda m: "\n\n" + "#" * (int(m.group(1)[1]) + 1) + " " + m.group(2) + "\n\n",
+        f,
+        flags=re.S,
+    )
+    f = re.sub(
+        r"<pre[^>]*>(.*?)</pre>",
+        lambda m: "\n\n```\n" + re.sub(r"<[^>]+>", "", m.group(1)) + "\n```\n\n",
+        f,
+        flags=re.S,
+    )
     f = re.sub(r"<code[^>]*>(.*?)</code>", r"`\1`", f, flags=re.S)
     f = re.sub(r"<(strong|b)>(.*?)</\1>", r"**\2**", f, flags=re.S)
     f = re.sub(r"<(em|i)>(.*?)</\1>", r"*\2*", f, flags=re.S)
-    f = re.sub(r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
-               lambda m: f"[{re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(2))).strip()}]"
-                         f"({nettoyer_href(m.group(1))})",
-               f, flags=re.S)
+    f = re.sub(
+        r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+        lambda m: f"[{re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(2))).strip()}]({nettoyer_href(m.group(1))})",
+        f,
+        flags=re.S,
+    )
     f = re.sub(r"<li[^>]*>(.*?)</li>", r"\n- \1", f, flags=re.S)
-    f = re.sub(r"<blockquote[^>]*>(.*?)</blockquote>",
-               lambda m: "\n\n> " + m.group(1).strip() + "\n\n", f, flags=re.S)
+    f = re.sub(r"<blockquote[^>]*>(.*?)</blockquote>", lambda m: "\n\n> " + m.group(1).strip() + "\n\n", f, flags=re.S)
     f = re.sub(r"<br\s*/?>", "\n", f)
     f = re.sub(r"</?(p|div|ul|ol|figure|section)[^>]*>", "\n\n", f)
     f = re.sub(r"<[^>]+>", "", f)

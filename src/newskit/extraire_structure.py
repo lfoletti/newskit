@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 SORTIE = RACINE / "graphify-out" / ".graphify_ast.json"
 
 from newskit import config_sources as cfg  # noqa: E402
@@ -64,8 +65,9 @@ def main() -> int:
     except ImportError as e:
         print(f"  graphify introuvable dans {sys.executable} : {e}", file=sys.stderr)
         return 1
-    fichiers = sorted(p for d in cfg.dossiers_denses(graphe)
-                      for p in (RACINE / d).rglob("*.md") if not p.name.startswith("_"))
+    fichiers = sorted(
+        p for d in cfg.dossiers_denses(graphe) for p in (RACINE / d).rglob("*.md") if not p.name.startswith("_")
+    )
     if not fichiers:
         print("  aucune fiche dense : le registre ne déclare aucun dossier `dense`", file=sys.stderr)
         return 1
@@ -76,16 +78,21 @@ def main() -> int:
         print(f"  extraction vide sur {len(fichiers)} fiches : rien n'est écrit", file=sys.stderr)
         return 1
     if not structure_acceptable(resultat):
-        print(f"  {identifiants_absolus(resultat)} identifiants sur {len(resultat['nodes'])} portent un chemin absolu "
-              f"({PREFIXE_ABSOLU}…) : le cache de graphify vient d'une autre racine ; rien n'est écrit", file=sys.stderr)
+        print(
+            f"  {identifiants_absolus(resultat)} identifiants sur {len(resultat['nodes'])} portent un chemin absolu "
+            f"({PREFIXE_ABSOLU}…) : le cache de graphify vient d'une autre racine ; rien n'est écrit",
+            file=sys.stderr,
+        )
         return 1
     resultat, pendantes = sans_aretes_pendantes(resultat)
     if pendantes:
         print(f"  {pendantes} arête(s) vers un lien qui n'est pas une fiche, retirée(s)")
     SORTIE.parent.mkdir(parents=True, exist_ok=True)
     SORTIE.write_text(json.dumps(resultat, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"  {len(fichiers)} fiches denses : {len(resultat['nodes'])} nœuds, "
-          f"{len(resultat['edges'])} arêtes → {SORTIE.relative_to(RACINE)}")
+    print(
+        f"  {len(fichiers)} fiches denses : {len(resultat['nodes'])} nœuds, "
+        f"{len(resultat['edges'])} arêtes → {SORTIE.relative_to(RACINE)}"
+    )
     return 0
 
 

@@ -10,6 +10,7 @@ nginx refuse.
     python3 -m newskit.retirer_domaines --dossier /etc/nginx/sites-available --actifs /etc/nginx/sites-enabled \\
         --copie /root/nginx-avant-retrait --noms <nom>,<nom>
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,7 +33,9 @@ def retirer(texte: str, noms: list[str]) -> str | None:
         return None
     texte = LIGNE.sub(lambda m: m.group(1) + " ".join(n for n in m.group(2).split() if n not in retires) + ";", texte)
     for n in retires:
-        texte = re.sub(rf"^[ \t]*if \(\$host = {re.escape(n)}\) \{{\n(?:.*\n)*?[ \t]*\}}[^\n]*\n", "", texte, flags=re.M)
+        texte = re.sub(
+            rf"^[ \t]*if \(\$host = {re.escape(n)}\) \{{\n(?:.*\n)*?[ \t]*\}}[^\n]*\n", "", texte, flags=re.M
+        )
     return texte
 
 

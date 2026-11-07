@@ -20,8 +20,9 @@ from newskit import routine_hebdo as rh  # noqa: E402
 
 
 def _c(tmp_path, m: dict) -> dict:
-    (tmp_path / "config.yaml").write_text(yaml.safe_dump({"version": 1, "media": {"nom": "ruchers", **m}}),
-                                          encoding="utf-8")
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump({"version": 1, "media": {"nom": "ruchers", **m}}), encoding="utf-8"
+    )
     return media.charger(tmp_path / "config.yaml")
 
 
@@ -42,9 +43,20 @@ def test_l_ancienne_frequence_reste_lue(tmp_path):
     assert media.passages(_c(tmp_path, {"frequence": {"heure": 4, "minute": 10}})) == (1, [(4, 10)])
 
 
-@pytest.mark.parametrize("p", [{"tous_les": 0}, {"tous_les": "2"}, {"tous_les": True}, {"heures": []},
-                               {"heures": ["25:00"]}, {"heures": ["5h30"]}, {"heures": "05:30"},
-                               {"jours": 2}, ["05:30"]])
+@pytest.mark.parametrize(
+    "p",
+    [
+        {"tous_les": 0},
+        {"tous_les": "2"},
+        {"tous_les": True},
+        {"heures": []},
+        {"heures": ["25:00"]},
+        {"heures": ["5h30"]},
+        {"heures": "05:30"},
+        {"jours": 2},
+        ["05:30"],
+    ],
+)
 def test_des_passages_mal_dits_sont_refuses(tmp_path, p):
     with pytest.raises(media.ConfigMediaInvalide, match="passages"):
         _c(tmp_path, {"passages": p})
@@ -67,8 +79,15 @@ def test_la_tache_part_a_chaque_heure_et_se_dit_planifiee(media_vide):
     p = ng.ecrire_plist("ruchers", "Ruchers", [(5, 30), (17, 0)])
     d = plistlib.loads(p.read_bytes())
     assert d["StartCalendarInterval"] == [{"Hour": 5, "Minute": 30}, {"Hour": 17, "Minute": 0}]
-    assert d["ProgramArguments"] == [sys.executable, "-u", "-m", "newskit.routine_hebdo", "--graphe", "ruchers",
-                                     "--planifie"]
+    assert d["ProgramArguments"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "newskit.routine_hebdo",
+        "--graphe",
+        "ruchers",
+        "--planifie",
+    ]
 
 
 def test_nouveau_graphe_prend_les_heures_du_media_ou_l_heure_donnee(monkeypatch):
@@ -86,12 +105,12 @@ def jours(tmp_path, monkeypatch):
 
 def test_hors_intervalle_la_routine_planifiee_attend(jours):
     j1 = datetime.date(2026, 11, 7)
-    assert rh.jour_de_passage("ruchers", j1) is True               # aucun passage encore
+    assert rh.jour_de_passage("ruchers", j1) is True  # aucun passage encore
     rh.noter_le_passage("ruchers", j1)
-    assert rh.jour_de_passage("ruchers", j1) is True               # même jour : une autre heure du même passage
+    assert rh.jour_de_passage("ruchers", j1) is True  # même jour : une autre heure du même passage
     assert rh.jour_de_passage("ruchers", j1 + datetime.timedelta(days=1)) is False
     assert rh.jour_de_passage("ruchers", j1 + datetime.timedelta(days=2)) is True
-    assert rh.jour_de_passage("autre", j1 + datetime.timedelta(days=1)) is True   # un graphe, son propre intervalle
+    assert rh.jour_de_passage("autre", j1 + datetime.timedelta(days=1)) is True  # un graphe, son propre intervalle
 
 
 def test_un_passage_par_jour_part_chaque_jour(jours, monkeypatch):
@@ -115,6 +134,7 @@ def routine(jours, monkeypatch):
 
     def arret():
         raise _Arret
+
     monkeypatch.setattr(rh, "attendre_la_collecte", arret)
     return vus
 
@@ -130,8 +150,8 @@ def _lancer(monkeypatch, *args):
 def test_la_routine_planifiee_hors_intervalle_s_arrete_avant_le_temoin(routine, monkeypatch):
     rh.noter_le_passage("ruchers", datetime.date.today() - datetime.timedelta(days=1))
     assert _lancer(monkeypatch, "--planifie") == 0 and routine == []
-    assert _lancer(monkeypatch) == "parti"                                    # à la main : il part
-    assert rh.dernier_passage("ruchers") == datetime.date.today()             # et compte comme passage
+    assert _lancer(monkeypatch) == "parti"  # à la main : il part
+    assert rh.dernier_passage("ruchers") == datetime.date.today()  # et compte comme passage
 
 
 def test_un_passage_refuse_par_le_temoin_ne_compte_pas(routine, monkeypatch):

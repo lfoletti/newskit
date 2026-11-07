@@ -20,7 +20,7 @@ def _json(rel: str) -> dict:
 
 def test_une_version_partout():
     projet = tomllib.loads((ICI / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert "version" not in projet and "version" in projet["dynamic"]          # lue dans __init__.py par hatch
+    assert "version" not in projet and "version" in projet["dynamic"]  # lue dans __init__.py par hatch
     assert _json(".claude-plugin/plugin.json")["version"] == newskit.__version__
     assert f"## [{newskit.__version__}]" in (ICI / "CHANGELOG.md").read_text(encoding="utf-8")
 
@@ -56,7 +56,13 @@ def test_le_skill_nomme_chaque_role_de_modele_et_chaque_champ_du_media():
 
 def test_le_moteur_ne_nomme_personne_dans_le_plugin():
     motif = re.compile(r"Lauro|Foletti|/Users/|/mnt/dat[a]")
-    for p in [SKILL, ICI / "hooks" / "garde_limite.py", ICI / "hooks" / "hooks.json", ICI / "README.md", ICI / "README.fr.md"]:
+    for p in [
+        SKILL,
+        ICI / "hooks" / "garde_limite.py",
+        ICI / "hooks" / "hooks.json",
+        ICI / "README.md",
+        ICI / "README.fr.md",
+    ]:
         assert not motif.search(p.read_text(encoding="utf-8")), p.name
 
 

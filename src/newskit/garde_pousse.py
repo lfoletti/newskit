@@ -7,6 +7,7 @@ Deux contrôles :
 - les valeurs réelles des fichiers ~/.secrets/*.env (ou GARDE_SECRETS), dans tout le diff, corpus compris ;
 - les motifs de clés connus, hors du corpus (`sources/`, `graphe/`) : les fiches de sécurité citent des clés d'exemple.
 Bibliothèque standard seule : le hook le lance par `python3 -I`."""
+
 from __future__ import annotations
 
 import os

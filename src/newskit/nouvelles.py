@@ -10,6 +10,7 @@ Le registre est le fichier du fil, graphe/<graphe>/fil.json : un billet est une 
 Le fil écrit le registre. La lettre le lit. Ce qu'une lettre a déjà dit se lit dans les lettres gardées
 (lettres/<graphe>/<date>.json).
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -24,7 +25,7 @@ from pathlib import Path
 from newskit import config_sources as cfg  # noqa: E402
 from newskit.commun import RACINE  # noqa: E402 — la racine des données : les lettres gardées y sont
 
-MEMOIRE = 30             # jours : une nouvelle dite par une lettre ne revient pas pendant ce temps
+MEMOIRE = 30  # jours : une nouvelle dite par une lettre ne revient pas pendant ce temps
 
 
 def chemin_du_registre(graphe: str) -> Path:
@@ -46,8 +47,11 @@ def toutes(F: dict) -> list[dict]:
 def texte(b: dict) -> str:
     """Le texte d'une nouvelle tel qu'il se lit, au fil comme dans la lettre : son descriptif, puis la définition d'un
     terme que sa source n'explique pas (fil.definir)."""
-    return " ".join(t for t in (str(b.get("descriptif") or "").strip(),
-                                str((b.get("definition") or {}).get("texte") or "").strip()) if t)
+    return " ".join(
+        t
+        for t in (str(b.get("descriptif") or "").strip(), str((b.get("definition") or {}).get("texte") or "").strip())
+        if t
+    )
 
 
 def a_completer(b: dict) -> bool:
@@ -114,7 +118,10 @@ def portees(graphe: str, jour: str, jours: int = MEMOIRE) -> dict[str, str]:
             v = L.get(cle) or []
             blocs += list(v.values()) if isinstance(v, dict) else [v]
         for x in (x for bloc in blocs for x in bloc if isinstance(x, dict)):
-            for c in [x.get("chemin"), *(s.get("chemin") for s in [*(x.get("sources_plus") or []), *(x.get("liees") or [])])]:
+            for c in [
+                x.get("chemin"),
+                *(s.get("chemin") for s in [*(x.get("sources_plus") or []), *(x.get("liees") or [])]),
+            ]:
                 if c:
                     out.setdefault(c, p.stem[:10])
     return out
@@ -145,7 +152,7 @@ def ecartees(F: dict, chemins: list[str]) -> set[str]:
 # Linux, Szpunar, NCSC) sortent dans les 45 premières de 7 260, avec des paires fausses entre elles (pages d'un même
 # site, discours d'une même institution). La signature propose donc ; le modèle décide.
 
-PROCHES = 3              # les nouvelles proches proposées au modèle pour une fiche
+PROCHES = 3  # les nouvelles proches proposées au modèle pour une fiche
 RE_NOM = re.compile(r"[A-ZÀ-ÖØ-Þ][\w-]*(?:[ -][A-ZÀ-ÖØ-Þ][\w-]*)*")
 RE_NOMBRE = re.compile(r"\d+(?:[.,]\d+)*(?:[ \u00a0\u202f]\d{3})*(\s?(?:%|percent|per cent|pour cent))?")
 RE_DEBUT = re.compile(r"(?:^|[.!?:;»”\"\n]\s+|\(\s*)$")
@@ -161,7 +168,7 @@ def _noms(texte: str) -> list[str]:
     out = []
     for m in RE_NOM.finditer(texte):
         mots = re.split(r"[ ]", m.group(0))
-        if RE_DEBUT.search(texte[:m.start()]) and not re.search(r"[A-ZÀ-ÖØ-Þ\d]", mots[0][1:]):
+        if RE_DEBUT.search(texte[: m.start()]) and not re.search(r"[A-ZÀ-ÖØ-Þ\d]", mots[0][1:]):
             mots = mots[1:]
         if mots:
             out.append(_plier(" ".join(mots)))
@@ -176,8 +183,9 @@ def _nombres(texte: str) -> list[str]:
 def signature(texte: str | None) -> set[str]:
     """Les noms propres et les nombres d'un texte. Un chiffre seul ou une année ne distingue pas une nouvelle."""
     texte = str(texte or "")
-    return ({n for n in _noms(texte) if len(n) > 2}
-            | {"#" + n for n in _nombres(texte) if len(n) > 1 and not re.fullmatch(r"(?:19|20)\d\d", n)})
+    return {n for n in _noms(texte) if len(n) > 2} | {
+        "#" + n for n in _nombres(texte) if len(n) > 1 and not re.fullmatch(r"(?:19|20)\d\d", n)
+    }
 
 
 def proches(cible: set[str], autres: dict[str, set[str]], k: int = PROCHES, plafond: int | None = None) -> list[str]:
@@ -203,9 +211,16 @@ def fusionner(F: dict, garde: dict, absorbe: dict) -> None:
     registre. Une suite de la nouvelle absorbée devient une suite de la nouvelle gardée, qui reçoit son contexte si
     elle n'en a pas."""
     src = absorbe.get("source") or {}
-    attacher(garde, {"titre": src.get("titre") or absorbe.get("titre"), "editeur": src.get("editeur"),
-                     "date": src.get("date") or absorbe.get("date"), "url": absorbe.get("url"),
-                     "chemin": absorbe.get("chemin")})
+    attacher(
+        garde,
+        {
+            "titre": src.get("titre") or absorbe.get("titre"),
+            "editeur": src.get("editeur"),
+            "date": src.get("date") or absorbe.get("date"),
+            "url": absorbe.get("url"),
+            "chemin": absorbe.get("chemin"),
+        },
+    )
     for s in absorbe.get("sources_plus") or []:
         attacher(garde, s)
     for cle in ("billets", "pile"):
@@ -213,5 +228,5 @@ def fusionner(F: dict, garde: dict, absorbe: dict) -> None:
     for b in toutes(F):
         if b.get("suite_de") == absorbe.get("chemin"):
             b["suite_de"] = garde.get("chemin")
-    if absorbe.get("contexte") and not garde.get("contexte"):      # le groupe de la nouvelle fondue (fil.lier)
+    if absorbe.get("contexte") and not garde.get("contexte"):  # le groupe de la nouvelle fondue (fil.lier)
         garde["contexte"], garde["evenement"] = absorbe["contexte"], absorbe.get("evenement") or ""

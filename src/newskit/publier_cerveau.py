@@ -17,6 +17,7 @@ La roue du client se construit ici (cortexdb-grpc, lui, vient de sa release : ne
     python3 -m newskit.publier_cerveau                       # les graphes au cerveau engagé (cortexdb: true)
     python3 -m newskit.publier_cerveau --graphe <graphe> --lister
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,14 +38,17 @@ DOSSIER = RACINE / "cache" / "cortexdb"
 
 def graphes_engages() -> list[str]:
     from newskit import config_sources as cfg  # noqa: PLC0415
-    return sorted(g for g, v in (cfg.charger().get("graphes") or {}).items()
-                  if (v or {}).get("cortexdb") and tenu_au_serveur(g))
+
+    return sorted(
+        g for g, v in (cfg.charger().get("graphes") or {}).items() if (v or {}).get("cortexdb") and tenu_au_serveur(g)
+    )
 
 
 def tenu_au_serveur(graphe: str) -> bool:
     """Faux pour un cerveau gardé au Mac (`cortexdb_publie: false`) : construit et mesuré avant d'être servi (GV7,
     2 novembre 2026). Il ne part ni lors d'un passage complet, ni par un envoi qui le nomme."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     return ((cfg.charger().get("graphes") or {}).get(graphe) or {}).get("cortexdb_publie", True) is not False
 
 
@@ -77,9 +81,11 @@ def commande_distante(clone: str, graphes: list[str]) -> str:
     """Côté serveur : un cerveau dont le bilan a changé devient prêt, puis le bilan ; tout revient à kg."""
     etapes = [f"cd {shlex.quote(clone + '/cache/cortexdb')}"]
     for g in graphes:
-        etapes.append(f"if [ -f {g}.envoi.json ] && ! cmp -s {g}.envoi.json {g}.json; then "
-                      f"cp {g}.envoi.db {g}.pret.tmp && mv {g}.pret.tmp {g}.pret.db && cp {g}.envoi.json {g}.json "
-                      f"&& echo '{g} : cerveau prêt'; fi")
+        etapes.append(
+            f"if [ -f {g}.envoi.json ] && ! cmp -s {g}.envoi.json {g}.json; then "
+            f"cp {g}.envoi.db {g}.pret.tmp && mv {g}.pret.tmp {g}.pret.db && cp {g}.envoi.json {g}.json "
+            f"&& echo '{g} : cerveau prêt'; fi"
+        )
     etapes += ["chmod 755 bin/*", "chown -R kg:kg ."]
     return " && ".join(etapes)
 
@@ -102,22 +108,48 @@ def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]
     ssh = ["ssh", "-i", cle, "-o", "BatchMode=yes", "-o", "ConnectTimeout=20"]
     try:
         dossiers = sorted({str(Path(rel).parent) for _, rel in envois})
-        subprocess.run([*ssh, hote, "sudo mkdir -p " + " ".join(f"{clone}/{d}" for d in dossiers)],
-                       capture_output=True, text=True, timeout=60, check=True)
+        subprocess.run(
+            [*ssh, hote, "sudo mkdir -p " + " ".join(f"{clone}/{d}" for d in dossiers)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
         for src, rel in envois:
-            r = subprocess.run(["rsync", *options_rsync(rel), "--rsync-path=sudo rsync", "-e", " ".join(ssh), str(src),
-                                f"{hote}:{clone}/{rel}"], capture_output=True, text=True, timeout=7200)
+            r = subprocess.run(
+                [
+                    "rsync",
+                    *options_rsync(rel),
+                    "--rsync-path=sudo rsync",
+                    "-e",
+                    " ".join(ssh),
+                    str(src),
+                    f"{hote}:{clone}/{rel}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=7200,
+            )
             if r.returncode != 0:
                 raise RuntimeError(f"rsync {rel} : {r.stderr.strip()[:160]}")
         envoyes = sorted({rel.split("/")[-1].split(".envoi")[0] for _, rel in envois if ".envoi." in rel})
-        r = subprocess.run([*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone, envoyes))],
-                           capture_output=True, text=True, timeout=600, check=True)
+        r = subprocess.run(
+            [*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone, envoyes))],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=True,
+        )
         prets = [l for l in r.stdout.splitlines() if l.strip()]
         taille = sum(src.stat().st_size for src, _ in envois) / 1e6
-        lignes.append(f"Cerveaux en ligne : {', '.join(envoyes) or 'aucun'} — {len(envois)} fichier(s), {taille:.0f} Mo "
-                      f"au plus (rsync n'envoie que ce qui change) ; {'; '.join(prets) or 'aucun cerveau neuf'}.")
+        lignes.append(
+            f"Cerveaux en ligne : {', '.join(envoyes) or 'aucun'} — {len(envois)} fichier(s), {taille:.0f} Mo "
+            f"au plus (rsync n'envoie que ce qui change) ; {'; '.join(prets) or 'aucun cerveau neuf'}."
+        )
     except subprocess.CalledProcessError as e:
-        lignes.append(f"Cerveaux en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]}).")
+        lignes.append(
+            f"Cerveaux en ligne : envoi interrompu (ssh code {e.returncode} : {(e.stderr or e.stdout or '').strip()[:160]})."
+        )
     except Exception as e:  # noqa: BLE001 — le serveur garde le cerveau qu'il a
         lignes.append(f"Cerveaux en ligne : envoi interrompu ({type(e).__name__} {str(e)[:120]}).")
     return pi._dire(lignes, verbeux)

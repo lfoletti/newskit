@@ -39,10 +39,20 @@ def _appel(cwd: Path, commande: str, env_donnees: Path | None = None) -> dict | 
     env = {k: v for k, v in os.environ.items() if k != "NEWSKIT_DONNEES"}
     if env_donnees is not None:
         env["NEWSKIT_DONNEES"] = str(env_donnees)
-    entree = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": str(cwd),
-              "tool_input": {"command": commande}}
-    r = subprocess.run([sys.executable, "-I", str(CROCHET)], input=json.dumps(entree), capture_output=True,
-                       text=True, env=env, timeout=30)
+    entree = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "cwd": str(cwd),
+        "tool_input": {"command": commande},
+    }
+    r = subprocess.run(
+        [sys.executable, "-I", str(CROCHET)],
+        input=json.dumps(entree),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout) if r.stdout.strip() else None
 
@@ -51,8 +61,9 @@ def _refus(sortie: dict | None) -> bool:
     return bool(sortie) and sortie["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
-@pytest.mark.parametrize("commande", ["newskit routine --graphe g", "echo x | claude -p --model m",
-                                      "cd /x && newskit routine"])
+@pytest.mark.parametrize(
+    "commande", ["newskit routine --graphe g", "echo x | claude -p --model m", "cd /x && newskit routine"]
+)
 def test_marque_fraiche_l_appel_au_modele_est_refuse(tmp_path, commande):
     sortie = _appel(_media(tmp_path / "m", 60), commande)
     assert _refus(sortie)
@@ -89,8 +100,9 @@ def test_hors_d_un_media_rien_n_est_refuse(tmp_path):
 
 
 def test_une_entree_illisible_ne_bloque_rien(tmp_path):
-    r = subprocess.run([sys.executable, "-I", str(CROCHET)], input="pas du json", capture_output=True, text=True,
-                       timeout=30)
+    r = subprocess.run(
+        [sys.executable, "-I", str(CROCHET)], input="pas du json", capture_output=True, text=True, timeout=30
+    )
     assert r.returncode == 0 and r.stdout.strip() == ""
 
 

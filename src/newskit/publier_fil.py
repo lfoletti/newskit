@@ -11,6 +11,7 @@ remplace les deux fichiers par renommage. Un fil inchangé ne repart pas (emprei
 Usage :
     python3 -m newskit.publier_fil [--graphe <graphe du site>]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,7 @@ from newskit import nouvelles as nv  # noqa: E402 — le texte d'une nouvelle, s
 ENV = Path.home() / ".secrets" / "vps_kg.env"
 DOSSIER_VPS = "/var/www/kg-mcp/fil"
 CHAMPS = ("titre", "descriptif", "rubrique", "url")
-MAX = 150                    # billets de la copie publique (mainteneur, 06.11.2026 : « passe à 150 news affichées »)
+MAX = 150  # billets de la copie publique (mainteneur, 06.11.2026 : « passe à 150 news affichées »)
 
 
 def public(F: dict) -> dict:
@@ -48,15 +49,26 @@ def liens(b: dict) -> dict:
     """La source mise en lien sur chaque page du site : la version dans sa langue, sinon l'anglaise, sinon l'originale
     (fil.lien)."""
     from newskit import fil  # noqa: PLC0415 — fil importe ce module au passage
+
     fr, en = fil.lien(b, "fr"), fil.lien(b, "en")
     return {"lien_fr": fr[0], "langue_fr": fr[1], "lien_en": en[0], "langue_en": en[1]}
 
 
 def _public(F: dict) -> list[dict]:
-    return [{**{k: b.get(k, "") for k in CHAMPS}, **liens(b), "descriptif": nv.texte(b), "editeur": (b.get("source") or {}).get("editeur", ""),
-                         "date": b.get("date", ""), "ajoute": b.get("ajoute", ""), "langue": b.get("langue", ""),
-                         "fiche": (b.get("fiche") or {}).get("texte", "") if (b.get("fiche") or {}).get("tenu") is True else "",
-                         **anglais(b)} for b in (F.get("billets") or [])[:MAX]]
+    return [
+        {
+            **{k: b.get(k, "") for k in CHAMPS},
+            **liens(b),
+            "descriptif": nv.texte(b),
+            "editeur": (b.get("source") or {}).get("editeur", ""),
+            "date": b.get("date", ""),
+            "ajoute": b.get("ajoute", ""),
+            "langue": b.get("langue", ""),
+            "fiche": (b.get("fiche") or {}).get("texte", "") if (b.get("fiche") or {}).get("tenu") is True else "",
+            **anglais(b),
+        }
+        for b in (F.get("billets") or [])[:MAX]
+    ]
 
 
 def anglais(b: dict) -> dict:
@@ -83,11 +95,20 @@ def paquet(corps: bytes, xml: bytes, maintenant: float | None = None, xml_en: by
     """L'archive déposée sur le VPS, fichiers datés : nginx en tire Last-Modified et l'ETag (05.11.2026 : sans date,
     l'ETag ne dépendait que de la taille, et la page revalide le fil toutes les 10 secondes)."""
     import time  # noqa: PLC0415
+
     tampon = io.BytesIO()
     with tarfile.open(fileobj=tampon, mode="w") as t:
-        for nom, donnees in (("fil.json", corps), ("fil.xml", xml), *((("fil_en.xml", xml_en),) if xml_en is not None else ())):
+        for nom, donnees in (
+            ("fil.json", corps),
+            ("fil.xml", xml),
+            *((("fil_en.xml", xml_en),) if xml_en is not None else ()),
+        ):
             info = tarfile.TarInfo(nom)
-            info.size, info.mode, info.mtime = len(donnees), 0o644, int(maintenant if maintenant is not None else time.time())
+            info.size, info.mode, info.mtime = (
+                len(donnees),
+                0o644,
+                int(maintenant if maintenant is not None else time.time()),
+            )
             t.addfile(info, io.BytesIO(donnees))
     return tampon.getvalue()
 
@@ -96,10 +117,13 @@ def publier(base: Path, env: Path = ENV, marque: Path | None = None) -> str:
     """Dépose fil.json (copie publique) et fil.xml de `base` sur le VPS ; rend une ligne pour le journal."""
     marque = marque or RACINE / "cache" / f"fil_publie_{base.name}.sha"
     try:
-        corps = json.dumps(public(json.loads((base / "fil.json").read_text(encoding="utf-8"))), ensure_ascii=False,
-                           separators=(",", ":")).encode()
+        corps = json.dumps(
+            public(json.loads((base / "fil.json").read_text(encoding="utf-8"))),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode()
         xml = (base / "fil.xml").read_bytes()
-        xml_en = (base / "fil_en.xml").read_bytes() if (base / "fil_en.xml").exists() else None   # le flux anglais
+        xml_en = (base / "fil_en.xml").read_bytes() if (base / "fil_en.xml").exists() else None  # le flux anglais
     except (OSError, ValueError) as e:
         return f"sans fil à déposer ({type(e).__name__})"
     empreinte = hashlib.sha256(corps + b"\0" + xml + (b"\0" + xml_en if xml_en is not None else b"")).hexdigest()
@@ -109,11 +133,27 @@ def publier(base: Path, env: Path = ENV, marque: Path | None = None) -> str:
     if v is None:
         return f"sans accès au VPS ({env})"
     paquet_ = paquet(corps, xml, xml_en=xml_en)
-    distant = (f"set -e; mkdir -p {DOSSIER_VPS}/.neuf; tar -C {DOSSIER_VPS}/.neuf -xf -; "
-               f"mv {DOSSIER_VPS}/.neuf/fil.json {DOSSIER_VPS}/fil.json; mv {DOSSIER_VPS}/.neuf/fil.xml {DOSSIER_VPS}/fil.xml"
-               + (f"; mv {DOSSIER_VPS}/.neuf/fil_en.xml {DOSSIER_VPS}/fil_en.xml" if xml_en is not None else ""))
-    r = subprocess.run(["ssh", "-i", v["VPS_CLE"], "-o", "BatchMode=yes", "-o", "ConnectTimeout=20",
-                        f"{v['VPS_UTILISATEUR']}@{v['VPS_HOTE']}", distant], input=paquet_, capture_output=True, check=False)
+    distant = (
+        f"set -e; mkdir -p {DOSSIER_VPS}/.neuf; tar -C {DOSSIER_VPS}/.neuf -xf -; "
+        f"mv {DOSSIER_VPS}/.neuf/fil.json {DOSSIER_VPS}/fil.json; mv {DOSSIER_VPS}/.neuf/fil.xml {DOSSIER_VPS}/fil.xml"
+        + (f"; mv {DOSSIER_VPS}/.neuf/fil_en.xml {DOSSIER_VPS}/fil_en.xml" if xml_en is not None else "")
+    )
+    r = subprocess.run(
+        [
+            "ssh",
+            "-i",
+            v["VPS_CLE"],
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=20",
+            f"{v['VPS_UTILISATEUR']}@{v['VPS_HOTE']}",
+            distant,
+        ],
+        input=paquet_,
+        capture_output=True,
+        check=False,
+    )
     if r.returncode:
         return f"échec du dépôt (ssh {r.returncode}) : {r.stderr.decode(errors='replace').strip()[:160]}"
     marque.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +163,7 @@ def publier(base: Path, env: Path = ENV, marque: Path | None = None) -> str:
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", default=cfg.graphe_du_site())
     return ap.parse_args(argv)
@@ -131,6 +172,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
 def main() -> int:
     a = arguments()
     from newskit import fil  # noqa: PLC0415
+
     print(publier(fil.chemin_fil(a.graphe).parent))
     return 0
 

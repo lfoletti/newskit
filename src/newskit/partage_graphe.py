@@ -17,6 +17,7 @@ Ce module porte aussi les trois dédoublonnages de la fusion qui se font sans mo
     python3 -m newskit.partage_graphe --graphe <nom> --bilan     # destinations, doublons, alias : rien d'écrit
     python3 -m newskit.partage_graphe --graphe <nom> --alias     # écrit graphe/<nom>/alias.json (table fondue)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,20 +30,74 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
-CORPS_MIN = 200      # caractères : sous ce seuil, deux corps égaux sont des pages vides ou des renvois, pas des doublons
+CORPS_MIN = 200  # caractères : sous ce seuil, deux corps égaux sont des pages vides ou des renvois, pas des doublons
 
 # Les intertitres et les liens de service que l'extraction a pris pour des notions (mesuré le 1er novembre 2026 sur
 # les nuages des pages par thème). Une liste fermée : un libellé qui n'y est pas reste, même s'il ressemble à un titre.
-NAVIGATION = {"latest commit", "folders and files", "repository files navigation", "share", "read next", "topics", "similar posts", "take action", "this week’s overview", "this week's overview",
-              "bibtex formatted citation", "access paper", "featured articles", "filed under", "analyses", "related",
-              "subscribe", "support our work through substack", "but first, our call-to-action this week", "comments",
-              "newsletter", "tags", "categories", "read more", "about", "home", "menu", "search", "contact",
-              "about the author", "about the authors", "authors", "articles", "events", "research", "references",
-              "conclusion", "background", "background information", "recommendations", "key takeaways",
-              "executive summary", "origin of the case", "summary of the decision", "decision", "latest news",
-              "downloadable documents", "introduction", "summary", "overview", "related stories", "content types",
-              "explore", "dates", "contributors", "guest authors", "bookmark", "submission history",
-              "references & citations", "current browse context", "related posts", "read next"}
+NAVIGATION = {
+    "latest commit",
+    "folders and files",
+    "repository files navigation",
+    "share",
+    "read next",
+    "topics",
+    "similar posts",
+    "take action",
+    "this week’s overview",
+    "this week's overview",
+    "bibtex formatted citation",
+    "access paper",
+    "featured articles",
+    "filed under",
+    "analyses",
+    "related",
+    "subscribe",
+    "support our work through substack",
+    "but first, our call-to-action this week",
+    "comments",
+    "newsletter",
+    "tags",
+    "categories",
+    "read more",
+    "about",
+    "home",
+    "menu",
+    "search",
+    "contact",
+    "about the author",
+    "about the authors",
+    "authors",
+    "articles",
+    "events",
+    "research",
+    "references",
+    "conclusion",
+    "background",
+    "background information",
+    "recommendations",
+    "key takeaways",
+    "executive summary",
+    "origin of the case",
+    "summary of the decision",
+    "decision",
+    "latest news",
+    "downloadable documents",
+    "introduction",
+    "summary",
+    "overview",
+    "related stories",
+    "content types",
+    "explore",
+    "dates",
+    "contributors",
+    "guest authors",
+    "bookmark",
+    "submission history",
+    "references & citations",
+    "current browse context",
+    "related posts",
+    "read next",
+}
 PARAMETRES_DE_SUIVI = re.compile(r"^(utm_|fbclid$|gclid$|mc_|ref$|source$)")
 
 
@@ -67,8 +122,10 @@ def url_normalisee(url: str) -> str:
         return ""
     p = urlsplit(url.strip())
     hote = (p.hostname or "").lower().removeprefix("www.")
-    q = urlencode(sorted((k, v) for k, v in parse_qsl(p.query, keep_blank_values=True) if not PARAMETRES_DE_SUIVI.match(k)))
-    return urlunsplit(("", hote, p.path.rstrip("/"), q, p.fragment))     # le fragment désigne l'article d'une loi
+    q = urlencode(
+        sorted((k, v) for k, v in parse_qsl(p.query, keep_blank_values=True) if not PARAMETRES_DE_SUIVI.match(k))
+    )
+    return urlunsplit(("", hote, p.path.rstrip("/"), q, p.fragment))  # le fragment désigne l'article d'une loi
 
 
 def _empreinte(corps: str) -> str | None:
@@ -80,7 +137,7 @@ def _mots(texte: str) -> set[str]:
     return set(re.findall(r"\w+", (texte or "").lower()))
 
 
-CORPS_PROCHES = 0.9      # part des mots communs à deux corps (Jaccard). Mesuré le 01.11.2026 : vrais doublons 1,0 ; articles distincts de la Convention du Conseil de l'Europe jusqu'à 0,69
+CORPS_PROCHES = 0.9  # part des mots communs à deux corps (Jaccard). Mesuré le 01.11.2026 : vrais doublons 1,0 ; articles distincts de la Convention du Conseil de l'Europe jusqu'à 0,69
 
 
 def _meme_texte(f: dict, g: dict) -> bool:
@@ -97,8 +154,10 @@ def doublons(fiches: list[dict]) -> set[str]:
     - une même adresse normalisée ET des corps presque identiques (CORPS_PROCHES) : un texte de référence publie souvent
       tous ses articles sous une adresse et un titre (1er novembre 2026 : la Convention du Conseil de l'Europe, le NIST
       AI RMF), et une page republiée change à peine."""
+
     def ordre(f):
         return (f.get("date") or "9999", f["chemin"])
+
     out = set()
     par_corps: dict[str, list[dict]] = defaultdict(list)
     par_url: dict[str, list[dict]] = defaultdict(list)
@@ -131,7 +190,7 @@ def doublons(fiches: list[dict]) -> set[str]:
 def _relatif(source_file: str, racine: str) -> str:
     s = str(source_file or "")
     r = str(racine).rstrip("/") + "/"
-    return s[len(r):] if s.startswith(r) else s
+    return s[len(r) :] if s.startswith(r) else s
 
 
 def retirer_fiches(G, exclues: set[str], racine) -> tuple[int, int]:
@@ -175,6 +234,7 @@ def fondre_tables(tables: list[dict[str, str]]) -> tuple[dict[str, str], list[li
             parent[x] = parent[parent[x]]
             x = parent[x]
         return x
+
     designes, perdus = Counter(), set()
     for t in tables:
         for perdu, garde in t.items():
@@ -191,7 +251,7 @@ def fondre_tables(tables: list[dict[str, str]]) -> tuple[dict[str, str], list[li
         terminaux = sorted(m for m in membres if m not in perdus)
         if len(terminaux) > 1:
             conflits.append(sorted(membres))
-        canon = (min(terminaux, key=lambda m: (-designes[m], m)) if terminaux else min(membres))
+        canon = min(terminaux, key=lambda m: (-designes[m], m)) if terminaux else min(membres)
         alias.update({m: canon for m in membres if m != canon})
     return dict(sorted(alias.items())), sorted(conflits)
 
@@ -258,9 +318,11 @@ def bilan(partage: dict[str, str], fiches: list[str]) -> dict:
 
 # --- Le registre ------------------------------------------------------------------------------
 
+
 def declaration(graphe: str) -> tuple[dict[str, str], str] | None:
     """Le rangement et la destination gardée, si le graphe déclare `partage` ; sinon None."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     p = ((cfg.charger().get("graphes") or {}).get(graphe) or {}).get("partage")
     if not p:
         return None
@@ -271,22 +333,34 @@ def declaration(graphe: str) -> tuple[dict[str, str], str] | None:
 def fiche_lue(r: str, c: Path) -> dict:
     """Ce que `doublons` lit d'une fiche : chemin, adresse, titre, corps, date et identifiant arXiv."""
     from newskit import fiche  # noqa: PLC0415
+
     entete, corps = fiche.lire_fichier(c)
-    return {"chemin": r, "url": str(entete.get("url") or ""), "titre": str(entete.get("title") or ""), "corps": corps,
-            "date": str(entete.get("date") or ""), "arxiv_id": str(entete.get("arxiv_id") or "").strip()}
+    return {
+        "chemin": r,
+        "url": str(entete.get("url") or ""),
+        "titre": str(entete.get("title") or ""),
+        "corps": corps,
+        "date": str(entete.get("date") or ""),
+        "arxiv_id": str(entete.get("arxiv_id") or "").strip(),
+    }
 
 
 def fiches_du_graphe(graphe: str) -> dict[str, Path] | None:
     """Les fiches du graphe, par chemin relatif, rangement et doublons appliqués ; None sans `partage` (le graphe lit
     alors ses dossiers tels quels)."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     d = declaration(graphe)
     if d is None:
         return None
     partage, garder = d
     dossiers = cfg.dossiers_du_graphe(graphe)
-    chemins = {str(c.relative_to(cfg.RACINE)): c for dd in dossiers for c in (cfg.RACINE / dd).rglob("*.md")
-               if not c.name.startswith("_")}
+    chemins = {
+        str(c.relative_to(cfg.RACINE)): c
+        for dd in dossiers
+        for c in (cfg.RACINE / dd).rglob("*.md")
+        if not c.name.startswith("_")
+    }
     gardees = {r: c for r, c in chemins.items() if retenue(partage, garder, r, True)}
     for r in ajouts(partage, garder, dossiers):
         if (cfg.RACINE / r).exists():
@@ -299,14 +373,21 @@ def fiches_du_graphe(graphe: str) -> dict[str, Path] | None:
 
 def main(argv: list[str] | None = None) -> int:
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--bilan", action="store_true")
     ap.add_argument("--alias", action="store_true")
-    ap.add_argument("--elaguer", action="store_true",
-                    help="retirer de la pyramide les phrases dont aucune référence n'est une fiche du graphe (copie gardée)")
-    ap.add_argument("--pyramide", action="store_true",
-                    help="semer la pyramide du graphe fusionné avec les synthèses des graphes inclus (jamais par-dessus une pyramide)")
+    ap.add_argument(
+        "--elaguer",
+        action="store_true",
+        help="retirer de la pyramide les phrases dont aucune référence n'est une fiche du graphe (copie gardée)",
+    )
+    ap.add_argument(
+        "--pyramide",
+        action="store_true",
+        help="semer la pyramide du graphe fusionné avec les synthèses des graphes inclus (jamais par-dessus une pyramide)",
+    )
     a = ap.parse_args(argv)
     d = declaration(a.graphe)
     if d is None:
@@ -315,12 +396,19 @@ def main(argv: list[str] | None = None) -> int:
     partage, garder = d
     inclus = cfg.graphes_inclus(a.graphe)
     if a.bilan:
-        toutes = [str(c.relative_to(cfg.RACINE)) for g in inclus for dd in cfg.dossiers_du_graphe(g, propres=True)
-                  for c in (cfg.RACINE / dd).rglob("*.md") if not c.name.startswith("_")]
+        toutes = [
+            str(c.relative_to(cfg.RACINE))
+            for g in inclus
+            for dd in cfg.dossiers_du_graphe(g, propres=True)
+            for c in (cfg.RACINE / dd).rglob("*.md")
+            if not c.name.startswith("_")
+        ]
         b = bilan(partage, toutes)
         gardees = fiches_du_graphe(a.graphe) or {}
-        print(f"  fiches des graphes inclus : {len(toutes)} ; destinations : {b['destinations']} ; "
-              f"sans destination (collectées après le rangement) : {len(b['sans_destination'])}")
+        print(
+            f"  fiches des graphes inclus : {len(toutes)} ; destinations : {b['destinations']} ; "
+            f"sans destination (collectées après le rangement) : {len(b['sans_destination'])}"
+        )
         print(f"  fiches gardées par {a.graphe}, doublons retirés : {len(gardees)}")
     if a.elaguer:
         base = cfg.chemins_du_graphe(a.graphe)["base"]
@@ -329,8 +417,10 @@ def main(argv: list[str] | None = None) -> int:
         copie = p.with_name("notions.avant_elagage.json")
         if not copie.exists():
             copie.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
-        present = {_relatif(n.get("source_file"), cfg.RACINE)
-                   for n in json.loads((base / "graphe.json").read_text(encoding="utf-8"))["nodes"]} - {None, ""}
+        present = {
+            _relatif(n.get("source_file"), cfg.RACINE)
+            for n in json.loads((base / "graphe.json").read_text(encoding="utf-8"))["nodes"]
+        } - {None, ""}
         b = elaguer_pyramide(etat, present)
         p.write_text(json.dumps(etat, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"  pyramide élaguée : {b} ; copie d'avant : {copie}")
@@ -343,12 +433,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         tab = json.loads((base / "alias.json").read_text(encoding="utf-8")).get("alias", {})
         present = {n["id"] for n in json.loads((base / "graphe.json").read_text(encoding="utf-8"))["nodes"]}
-        etats = [json.loads(p.read_text(encoding="utf-8")) for g in inclus
-                 if (p := cfg.chemins_du_graphe(g)["base"] / "synthese" / "notions.json").exists()]
+        etats = [
+            json.loads(p.read_text(encoding="utf-8"))
+            for g in inclus
+            if (p := cfg.chemins_du_graphe(g)["base"] / "synthese" / "notions.json").exists()
+        ]
         notions = semer_pyramide(etats, tab, present)
         sortie.parent.mkdir(parents=True, exist_ok=True)
-        sortie.write_text(json.dumps({"notions": notions, "phrases": 0, "retirees": 0, "echecs": {}}, ensure_ascii=False),
-                          encoding="utf-8")
+        sortie.write_text(
+            json.dumps({"notions": notions, "phrases": 0, "retirees": 0, "echecs": {}}, ensure_ascii=False),
+            encoding="utf-8",
+        )
         print(f"  pyramide semée : {len(notions)} synthèse(s) reprise(s) de {len(etats)} graphe(s) → {sortie}")
         return 0
     tables, refus = [], []
@@ -359,14 +454,22 @@ def main(argv: list[str] | None = None) -> int:
             tables.append(x.get("alias", {}))
             refus.append(x.get("refuses", {}))
     alias, conflits = fondre_tables(tables)
-    print(f"  alias : {sum(len(t) for t in tables)} dans {len(tables)} tables → {len(alias)} après fusion, {len(conflits)} désaccord(s)")
+    print(
+        f"  alias : {sum(len(t) for t in tables)} dans {len(tables)} tables → {len(alias)} après fusion, {len(conflits)} désaccord(s)"
+    )
     for c in conflits[:20]:
         print(f"    désaccord : {', '.join(c)}")
     if a.alias:
         sortie = cfg.chemins_du_graphe(a.graphe)["base"] / "alias.json"
         sortie.parent.mkdir(parents=True, exist_ok=True)
-        sortie.write_text(json.dumps({"alias": alias, "refuses": fondre_refus(refus), "desaccords": conflits, "depuis": inclus}, ensure_ascii=False, indent=1),
-                          encoding="utf-8")
+        sortie.write_text(
+            json.dumps(
+                {"alias": alias, "refuses": fondre_refus(refus), "desaccords": conflits, "depuis": inclus},
+                ensure_ascii=False,
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
         print(f"  écrit : {sortie}")
     return 0
 

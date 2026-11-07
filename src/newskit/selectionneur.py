@@ -13,6 +13,7 @@ apport de l'enquête au-delà de la nouvelle + enjeu pour le lecteur, chacun de 
 sans recherche web ; + 1 si sa source se lit sans geste humain (cache/eclairages/<graphe>/gestes.jsonl) ; un sujet déjà enquêté
 (cache/eclairages/<graphe>/*/*/enquete.json) ou publié n'est jamais proposé.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,18 +24,48 @@ from newskit import lettre as lt
 from newskit import reporter as rp
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
+
 SORTIE = RACINE / "cache" / "selection"
-CANDIDATS_MAX = 12          # éléments de la daily notés, dans l'ordre de lecture
+CANDIDATS_MAX = 12  # éléments de la daily notés, dans l'ordre de lecture
 PROPOSES = 2
-USD = 0.30                  # plafond de l'appel
-MOTS_EXTRAIT = 200          # extrait de la fiche donné par élément
+USD = 0.30  # plafond de l'appel
+MOTS_EXTRAIT = 200  # extrait de la fiche donné par élément
 POSTE = "selectionneur"
 
-SCHEMA = {"type": "object", "required": ["notes"], "properties": {"notes": {"type": "array", "items": {
-    "type": "object", "required": ["ref", "groupe", "these", "primaires", "primaire", "apport", "enjeu", "hypothese", "raison"], "properties": {
-        "ref": {"type": "integer"}, "groupe": {"type": "integer"}, "these": {"type": "integer"}, "primaires": {"type": "integer"},
-        "primaire": {"type": "string"}, "apport": {"type": "integer"}, "enjeu": {"type": "integer"},
-        "hypothese": {"type": "string"}, "raison": {"type": "string"}}}}}}
+SCHEMA = {
+    "type": "object",
+    "required": ["notes"],
+    "properties": {
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ref",
+                    "groupe",
+                    "these",
+                    "primaires",
+                    "primaire",
+                    "apport",
+                    "enjeu",
+                    "hypothese",
+                    "raison",
+                ],
+                "properties": {
+                    "ref": {"type": "integer"},
+                    "groupe": {"type": "integer"},
+                    "these": {"type": "integer"},
+                    "primaires": {"type": "integer"},
+                    "primaire": {"type": "string"},
+                    "apport": {"type": "integer"},
+                    "enjeu": {"type": "integer"},
+                    "hypothese": {"type": "string"},
+                    "raison": {"type": "string"},
+                },
+            },
+        }
+    },
+}
 
 
 def domaines_illisibles(graphe: str) -> set[str]:
@@ -68,10 +99,20 @@ def score(note: dict, url: str, graphe: str) -> float:
             return max(0, min(3, int(x)))
         except (TypeError, ValueError):
             return 0
+
     # Une source primaire que le modèle ne sait pas nommer vaut un point au plus (mainteneur, 04.11.2026 : « affiner »).
-    primaires = borne(note.get("primaires")) if str(note.get("primaire") or "").strip() else min(1, borne(note.get("primaires")))
-    return borne(note.get("these")) + primaires + borne(note.get("apport")) + borne(note.get("enjeu")) + \
-        (0 if rp.domaine(url) in domaines_illisibles(graphe) else 1)
+    primaires = (
+        borne(note.get("primaires"))
+        if str(note.get("primaire") or "").strip()
+        else min(1, borne(note.get("primaires")))
+    )
+    return (
+        borne(note.get("these"))
+        + primaires
+        + borne(note.get("apport"))
+        + borne(note.get("enjeu"))
+        + (0 if rp.domaine(url) in domaines_illisibles(graphe) else 1)
+    )
 
 
 def _extrait(chemin: str) -> str:
@@ -85,24 +126,28 @@ def _extrait(chemin: str) -> str:
 
 
 def invite(elements: list[dict]) -> str:
-    blocs = "\n\n".join(f"n° {e['ref']} — {e['titre']} ({e.get('rubrique', '')}) — {e['url']}\n{_extrait(e.get('chemin', ''))}"
-                        for e in elements)
-    return ("SÉLECTION D'ENQUÊTE. Voici les éléments d'une lettre quotidienne de veille. Un éclairage est une enquête "
-            "courte, sourcée, qui défend une thèse pour un lecteur cultivé non spécialiste. Note chaque élément sur ce "
-            "qui fait une enquête, pas sur l'importance de la nouvelle. `these` (0 à 3) : y a-t-il un écart à établir, "
-            "entre ce qui est annoncé et ce qui est fait, une règle contestée, une question ouverte qu'une recherche "
-            "peut trancher ? 0 : un simple fait sans enjeu à démêler. `primaires` (0 à 3) : des sources primaires "
-            "existent-elles et sont-elles probablement publiques (texte de loi, décision, rapport, déclaration "
-            "officielle, données) ? `primaire` : le nom de la principale (« l'avis de l'avocat général dans l'affaire "
-            "C-250/25 »), vide si tu ne peux pas la nommer. `groupe` : le plus petit "
-            "numéro des éléments qui reposent sur la même source primaire (le même rapport, la même décision), sinon "
-            "le numéro de l'élément lui-même. `apport` (0 à 3) : ce qu'une enquête ajouterait à la nouvelle "
-            "elle-même ; 0 si la nouvelle dit déjà tout ou si la presse l'a déjà analysée de près, 3 si les faits "
-            "épars demandent à être reliés ou confrontés. `enjeu` (0 à 3) : la conséquence concrète pour le lecteur "
-            "de la lettre (une obligation, une échéance, une décision, un risque pour son organisation) ; 0 si le "
-            "sujet reste une curiosité. `hypothese` : l'hypothèse d'enquête en une phrase, vérifiable, sans adjectif "
-            "d'évaluation. `raison` : en une phrase, ce qui rend l'enquête faisable ou non. Ne cherche rien sur le "
-            "web.\n\n" + rp._DONNEE + "\n\n⟦\n" + blocs + "\n⟧\n\nRéponds en JSON selon le schéma.")
+    blocs = "\n\n".join(
+        f"n° {e['ref']} — {e['titre']} ({e.get('rubrique', '')}) — {e['url']}\n{_extrait(e.get('chemin', ''))}"
+        for e in elements
+    )
+    return (
+        "SÉLECTION D'ENQUÊTE. Voici les éléments d'une lettre quotidienne de veille. Un éclairage est une enquête "
+        "courte, sourcée, qui défend une thèse pour un lecteur cultivé non spécialiste. Note chaque élément sur ce "
+        "qui fait une enquête, pas sur l'importance de la nouvelle. `these` (0 à 3) : y a-t-il un écart à établir, "
+        "entre ce qui est annoncé et ce qui est fait, une règle contestée, une question ouverte qu'une recherche "
+        "peut trancher ? 0 : un simple fait sans enjeu à démêler. `primaires` (0 à 3) : des sources primaires "
+        "existent-elles et sont-elles probablement publiques (texte de loi, décision, rapport, déclaration "
+        "officielle, données) ? `primaire` : le nom de la principale (« l'avis de l'avocat général dans l'affaire "
+        "C-250/25 »), vide si tu ne peux pas la nommer. `groupe` : le plus petit "
+        "numéro des éléments qui reposent sur la même source primaire (le même rapport, la même décision), sinon "
+        "le numéro de l'élément lui-même. `apport` (0 à 3) : ce qu'une enquête ajouterait à la nouvelle "
+        "elle-même ; 0 si la nouvelle dit déjà tout ou si la presse l'a déjà analysée de près, 3 si les faits "
+        "épars demandent à être reliés ou confrontés. `enjeu` (0 à 3) : la conséquence concrète pour le lecteur "
+        "de la lettre (une obligation, une échéance, une décision, un risque pour son organisation) ; 0 si le "
+        "sujet reste une curiosité. `hypothese` : l'hypothèse d'enquête en une phrase, vérifiable, sans adjectif "
+        "d'évaluation. `raison` : en une phrase, ce qui rend l'enquête faisable ou non. Ne cherche rien sur le "
+        "web.\n\n" + rp._DONNEE + "\n\n⟦\n" + blocs + "\n⟧\n\nRéponds en JSON selon le schéma."
+    )
 
 
 def proposer(L: dict, graphe: str) -> list[dict]:
@@ -126,14 +171,33 @@ def proposer(L: dict, graphe: str) -> list[dict]:
             tetes[g]["aussi"].append(n["ref"])
         else:
             tetes[g] = {"note": n, "aussi": []}
-    out = [{"ref": t["note"]["ref"], "titre": par_ref[t["note"]["ref"]]["titre"], "url": par_ref[t["note"]["ref"]]["url"],
-            "hypothese": str(t["note"].get("hypothese") or ""), "raison": str(t["note"].get("raison") or ""),
-            "score": score(t["note"], par_ref[t["note"]["ref"]]["url"], graphe), "aussi": t["aussi"]}
-           for t in list(tetes.values())[:PROPOSES]]
+    out = [
+        {
+            "ref": t["note"]["ref"],
+            "titre": par_ref[t["note"]["ref"]]["titre"],
+            "url": par_ref[t["note"]["ref"]]["url"],
+            "hypothese": str(t["note"].get("hypothese") or ""),
+            "raison": str(t["note"].get("raison") or ""),
+            "score": score(t["note"], par_ref[t["note"]["ref"]]["url"], graphe),
+            "aussi": t["aussi"],
+        }
+        for t in list(tetes.values())[:PROPOSES]
+    ]
     if notes:
         d = SORTIE / graphe
         d.mkdir(parents=True, exist_ok=True)
-        (d / f"{L.get('envoi') or time.strftime('%Y-%m-%d')}.json").write_text(json.dumps(
-            {"graphe": graphe, "envoi": L.get("envoi"), "cout_usd": budget.depense, "proposes": out, "notes": notes},
-            ensure_ascii=False, indent=1), encoding="utf-8")
+        (d / f"{L.get('envoi') or time.strftime('%Y-%m-%d')}.json").write_text(
+            json.dumps(
+                {
+                    "graphe": graphe,
+                    "envoi": L.get("envoi"),
+                    "cout_usd": budget.depense,
+                    "proposes": out,
+                    "notes": notes,
+                },
+                ensure_ascii=False,
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
     return out

@@ -13,6 +13,7 @@ serveur ; le client gRPC ne s'importe qu'en elle (venv du pilote : cache/pilote_
 
     cache/pilote_cortexdb/venv/bin/python newskit.puits_cortexdb --graphe <graphe> --adresse 127.0.0.1:47899 --jeton …
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,13 +41,13 @@ PRODUCTEUR_SQUELETTE = f"{_EDITION} couche 1 (squelette, déterministe)"
 PRODUCTEUR_AST = f"{_EDITION} structure des titres (AST, déterministe)"
 # `_origin` d'une arête du graphe composé → producteur ; une arête sans `_origin` est de la couche 2, versée par son lot.
 PRODUCTEUR_VUES = f"{_EDITION} vues du graphe (carte, sommets, relations ; déterministe)"
-EXPLIQUER = 200   # fiches `expliquer` versées, les entités au plus fort degré (mainteneur, 29.10.2026)
+EXPLIQUER = 200  # fiches `expliquer` versées, les entités au plus fort degré (mainteneur, 29.10.2026)
 
 PRODUCTEURS_COMPOSES = {"squelette": PRODUCTEUR_SQUELETTE, "ast": PRODUCTEUR_AST}
 # Un titre de section a un identifiant propre à sa fiche : par son nom, « Introduction » de mille fiches serait une
 # seule entité. Les auteurs, publications et papiers, eux, se fondent par leur nom, d'une fiche à l'autre.
 PREFIXE_TITRE = "entity:titre_"
-FICHES_SQUELETTE = ("article", "papier")                 # fusionner_graphe : les nœuds du squelette qui sont des fiches
+FICHES_SQUELETTE = ("article", "papier")  # fusionner_graphe : les nœuds du squelette qui sont des fiches
 RE_PARENTHESE_FINALE = re.compile(r"\s*\([^()]*\)\s*$")  # fusionner_graphe : « … (Ahead of AI, 2024-09-21) »
 # Morceaux relus par appel de get_chunks : le client gRPC n'admet que 4 Mo par réponse ; un livre de 1,6 Mo
 # (une bibliothèque de PDF, 24.10.2026) rendait 4,4 Mo d'un seul appel.
@@ -73,7 +74,7 @@ CHAMPS_NOEUD = {
     "contributor": "métadonnée",
     "rationale": "description de l'entité",
     "evidence": "hors classe : citation de la fiche qui fonde le rationale, vérifiée à l'extraction ; jamais versée "
-                "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
+    "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
 }
 CHAMPS_ARETE = {
     "source": "from (nom de l'entité source)",
@@ -86,37 +87,79 @@ CHAMPS_ARETE = {
     "weight": "métadonnée",
     "contributor": "métadonnée",
     "evidence": "rattachement : choisit le morceau de la relation (`rattacher`) ; le texte cité n'est jamais versé "
-                "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
+    "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
 }
 _EN_TETE = "hors classe : dans l'en-tête du document de la fiche"
 _COLLECTE = "hors classe : propre à la collecte"
 CHAMPS_NOEUD_SQUELETTE = {
-    "id": "métadonnée newskit_id", "label": "nom de l'entité", "kind": "type de l'entité",
-    "file_type": "hors classe : `kind` le précise", "source_file": "hors classe : _source est la fiche de l'arête",
-    "url": "métadonnée", "date": "métadonnée", "collected": _EN_TETE, "plateforme": _EN_TETE, "arxiv_id": _EN_TETE,
-    "texte": _EN_TETE, "version": _EN_TETE, "statut": _EN_TETE, "remplacee_par": _EN_TETE, "partie": _EN_TETE,
-    "complet": _COLLECTE, "words": _COLLECTE, "categories": _COLLECTE, "source_corpus": _COLLECTE,
-    "audience": _COLLECTE, "edition": _COLLECTE,
+    "id": "métadonnée newskit_id",
+    "label": "nom de l'entité",
+    "kind": "type de l'entité",
+    "file_type": "hors classe : `kind` le précise",
+    "source_file": "hors classe : _source est la fiche de l'arête",
+    "url": "métadonnée",
+    "date": "métadonnée",
+    "collected": _EN_TETE,
+    "plateforme": _EN_TETE,
+    "arxiv_id": _EN_TETE,
+    "texte": _EN_TETE,
+    "version": _EN_TETE,
+    "statut": _EN_TETE,
+    "remplacee_par": _EN_TETE,
+    "partie": _EN_TETE,
+    "complet": _COLLECTE,
+    "words": _COLLECTE,
+    "categories": _COLLECTE,
+    "source_corpus": _COLLECTE,
+    "audience": _COLLECTE,
+    "edition": _COLLECTE,
     # Le fil (newskit.fil) : titre relu, résumé et complément en français, posés à l'en-tête de la fiche.
-    "titre_fr": _EN_TETE, "resume_fr": _EN_TETE, "complement_fr": _EN_TETE,
+    "titre_fr": _EN_TETE,
+    "resume_fr": _EN_TETE,
+    "complement_fr": _EN_TETE,
     "label_fr": "hors classe : affichage en français, posé à la composition d'après la table du graphe (francais.py)",
 }
 CHAMPS_NOEUD_AST = {
-    "id": "identifiant de l'entité (PREFIXE_TITRE + empreinte) et métadonnée newskit_id", "label": "nom de l'entité",
-    "file_type": "type de l'entité", "source_file": "_source", "source_location": "métadonnée",
+    "id": "identifiant de l'entité (PREFIXE_TITRE + empreinte) et métadonnée newskit_id",
+    "label": "nom de l'entité",
+    "file_type": "type de l'entité",
+    "source_file": "_source",
+    "source_location": "métadonnée",
     "_origin": "_producer",
 }
 CHAMPS_ARETE_COMPOSEE = {
-    "source": "from", "target": "to", "relation": "type de la relation",
-    "confidence": "inferred et métadonnée", "confidence_score": "métadonnée", "contributor": "métadonnée",
-    "source_file": "_source ; document du versement", "source_location": "métadonnée", "weight": "métadonnée",
-    "_origin": "_producer", "_src": "hors classe : copie de source (networkx)", "_tgt": "hors classe : copie de target (networkx)",
+    "source": "from",
+    "target": "to",
+    "relation": "type de la relation",
+    "confidence": "inferred et métadonnée",
+    "confidence_score": "métadonnée",
+    "contributor": "métadonnée",
+    "source_file": "_source ; document du versement",
+    "source_location": "métadonnée",
+    "weight": "métadonnée",
+    "_origin": "_producer",
+    "_src": "hors classe : copie de source (networkx)",
+    "_tgt": "hors classe : copie de target (networkx)",
 }
 # Les champs de l'en-tête d'une fiche qui suivent le document (le reste est dans le corps ou propre à la collecte).
-ENTETE_VERSEE = ("date", "url", "plateforme", "publication", "collected", "arxiv_id", "doi", "texte", "version", "statut",
-                 "remplacee_par", "partie",
-                 # Le fil (05.11.2026, mainteneur : « verse les titres au cerveau thalamus ») : ils s'arrêtaient au graphe local.
-                 "titre_fr", "resume_fr", "complement_fr")
+ENTETE_VERSEE = (
+    "date",
+    "url",
+    "plateforme",
+    "publication",
+    "collected",
+    "arxiv_id",
+    "doi",
+    "texte",
+    "version",
+    "statut",
+    "remplacee_par",
+    "partie",
+    # Le fil (05.11.2026, mainteneur : « verse les titres au cerveau thalamus ») : ils s'arrêtaient au graphe local.
+    "titre_fr",
+    "resume_fr",
+    "complement_fr",
+)
 
 
 def court(chemin: str) -> str:
@@ -196,14 +239,16 @@ def du_squelette(n: dict, canon: dict | None) -> tuple[str, str] | None:
     if n.get("file_type") in ("document", "paper"):
         label = n.get("label") or ""
         cible = canon["titres"].get(normaliser_etiquette(label)) or canon["titres"].get(
-            normaliser_etiquette(RE_PARENTHESE_FINALE.sub("", label)))
+            normaliser_etiquette(RE_PARENTHESE_FINALE.sub("", label))
+        )
         if cible:
             return canon["ids"][cible]
     return None
 
 
-def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, alias: dict[str, str] | None = None,
-                      canon: dict | None = None) -> dict:
+def lot_vers_cortexdb(
+    lot: dict, entete: dict, corps: str, racine: Path, alias: dict[str, str] | None = None, canon: dict | None = None
+) -> dict:
     """{document, entites, relations, ecartes} d'un lot : rien n'est écrit, rien n'est lu. `alias` : identifiant de nœud
     → libellé du canonique (`alias_par_identifiant`). `canon` : le squelette (`canon_squelette`), qui fait foi sur une
     fiche."""
@@ -222,10 +267,20 @@ def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, alias: 
         sq = du_squelette(n, canon)
         nom, type_ = sq if sq else (alias.get(n["id"], n["label"]), n.get("file_type") or "concept")
         nom_de[n["id"]] = nom
-        e = entites.setdefault(nom, {"name": nom, "type": type_, "chunk_ids": [],
-                                     "metadata": {"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"],
-                                                  **{k: n.get(k) for k in ("source_url", "captured_at", "author",
-                                                                           "contributor", "source_location")}}})
+        e = entites.setdefault(
+            nom,
+            {
+                "name": nom,
+                "type": type_,
+                "chunk_ids": [],
+                "metadata": {
+                    "_source": source,
+                    "_producer": PRODUCTEUR,
+                    "newskit_id": n["id"],
+                    **{k: n.get(k) for k in ("source_url", "captured_at", "author", "contributor", "source_location")},
+                },
+            },
+        )
         if n.get("rationale"):
             e["description"] = n["rationale"]
         if nom != n["label"]:
@@ -237,24 +292,51 @@ def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, alias: 
         if a["source"] not in nom_de or a["target"] not in nom_de:
             ecartes["arete_sans_extremite"] += 1
             continue
-        relations.append({"from": nom_de[a["source"]], "to": nom_de[a["target"]], "type": a["relation"],
-                          "inferred": a.get("confidence") != "EXTRACTED", "chunk_ids": [],
-                          "metadata": {"_source": source, "_producer": PRODUCTEUR, "confidence": a.get("confidence"),
-                                       **{k: a.get(k) for k in ("confidence_score", "weight", "contributor", "source_location")}},
-                          **({"extrait": a["evidence"]} if a.get("evidence") else {})})
+        relations.append(
+            {
+                "from": nom_de[a["source"]],
+                "to": nom_de[a["target"]],
+                "type": a["relation"],
+                "inferred": a.get("confidence") != "EXTRACTED",
+                "chunk_ids": [],
+                "metadata": {
+                    "_source": source,
+                    "_producer": PRODUCTEUR,
+                    "confidence": a.get("confidence"),
+                    **{k: a.get(k) for k in ("confidence_score", "weight", "contributor", "source_location")},
+                },
+                **({"extrait": a["evidence"]} if a.get("evidence") else {}),
+            }
+        )
     document = document_de(source, entete, corps, PRODUCTEUR)
     for x in [*entites.values(), *relations]:
         x["metadata"] = chaines(x["metadata"])
-    return {"document": document, "origine": source, "entites": list(entites.values()), "relations": relations, "ecartes": ecartes}
+    return {
+        "document": document,
+        "origine": source,
+        "entites": list(entites.values()),
+        "relations": relations,
+        "ecartes": ecartes,
+    }
 
 
 def document_de(source: str, entete: dict, corps: str, producteur: str) -> dict:
     """Le document d'une fiche, le même qu'elle ait un lot ou non : une fiche extraite plus tard garde son identifiant
     et son texte, donc ses vecteurs repris (cerveau_cortexdb.reprendre_vecteurs)."""
-    return {"document_id": court(source), "title": str(entete.get("title") or Path(source).stem),
-            "author": str(entete.get("author") or ""), "content": corps, "source_url": str(entete.get("url") or ""),
-            "metadata": chaines({"_source": source, "_producer": producteur,
-                                 **{k: str(entete[k]) for k in ENTETE_VERSEE if entete.get(k) not in (None, "")}})}
+    return {
+        "document_id": court(source),
+        "title": str(entete.get("title") or Path(source).stem),
+        "author": str(entete.get("author") or ""),
+        "content": corps,
+        "source_url": str(entete.get("url") or ""),
+        "metadata": chaines(
+            {
+                "_source": source,
+                "_producer": producteur,
+                **{k: str(entete[k]) for k in ENTETE_VERSEE if entete.get(k) not in (None, "")},
+            }
+        ),
+    }
 
 
 # Pas d'image dans le texte versé (J4, décision du mainteneur du 31.10.2026, docs/demarchage/note_juridique.md) : une
@@ -277,28 +359,37 @@ def corps_versable(source_reg, entete: dict, corps: str, droits: dict | None = N
     entités et ses relations entrent quand même : le graphe ne dépend pas de l'accord, et le lecteur suit l'adresse de
     l'original."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     if cfg.reservee(source_reg, entete):
-        pourquoi = ("billet d'abonnement, non relayé ici" if source_reg.abonnement == "payant"
-                    else "document privé, non relayé ici")
+        pourquoi = (
+            "billet d'abonnement, non relayé ici"
+            if source_reg.abonnement == "payant"
+            else "document privé, non relayé ici"
+        )
     elif not cfg.fiche_publiable(source_reg, entete, droits):
         pourquoi = "l'auteur ou la source n'en a pas permis la publication ici"
     else:
         # Un article de loi porte en tête ses désignations : formes usuelles, titre français, termes définis, mots
         # propres (designations.py, mainteneur, 06.11.2026 : « je n'aimerais pas que le site fonctionne mieux que le mcp »).
         from newskit import designations  # noqa: PLC0415
+
         return designations.ligne(chemin) + sans_image(corps)
     # Un refus : la référence et le résumé publié restent (refus.py, mainteneur, 06.11.2026).
     from newskit import refus  # noqa: PLC0415
+
     lignes = refus.resume(chemin) if chemin and not cfg.reservee(source_reg, entete) else []
-    return (f"{entete.get('title') or ''}\n{entete.get('author') or ''}\n\nContenu non publié : {pourquoi}. "
-            f"Texte à l'adresse d'origine : {entete.get('url') or 'document local, sans adresse publique'}\n"
-            + ("\nRésumé publié :\n" + "\n".join(lignes) + "\n" if lignes else ""))
+    return (
+        f"{entete.get('title') or ''}\n{entete.get('author') or ''}\n\nContenu non publié : {pourquoi}. "
+        f"Texte à l'adresse d'origine : {entete.get('url') or 'document local, sans adresse publique'}\n"
+        + ("\nRésumé publié :\n" + "\n".join(lignes) + "\n" if lignes else "")
+    )
 
 
 def relayeur(droits: dict):
     """La fonction « le contenu de cette fiche (chemin relatif) est-il relayé ? », qui lit chaque en-tête une fois.
     Une fiche absente ne se juge pas : elle n'entre pas au cerveau."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     vus: dict[str, bool] = {}
 
     def relayee(rel: str) -> bool:
@@ -311,6 +402,7 @@ def relayeur(droits: dict):
                 source = cfg.source_du_chemin(rel)
                 vus[rel] = not cfg.reservee(source, entete) and cfg.fiche_publiable(source, entete, droits)
         return vus[rel]
+
     return relayee
 
 
@@ -318,8 +410,13 @@ def fiche_vers_cortexdb(source: str, entete: dict, corps: str) -> dict:
     """Une fiche du graphe sans lot de la couche 2 : un document seul, sans entité ni relation (un graphe d'ingénierie,
     24.10.2026 : 4 131 fiches sur 8 074 n'étaient pas dans le cerveau, dont toutes celles des questions perdues contre
     la recherche par les mots). Ses morceaux sont cherchés ; ses entités viendront avec son extraction."""
-    return {"document": document_de(source, entete, corps, PRODUCTEUR_FICHE), "origine": source, "entites": [],
-            "relations": [], "ecartes": {}}
+    return {
+        "document": document_de(source, entete, corps, PRODUCTEUR_FICHE),
+        "origine": source,
+        "entites": [],
+        "relations": [],
+        "ecartes": {},
+    }
 
 
 def fiches_sans_lot(graphe: dict, avec_lot: set[str], racine: Path) -> list[str]:
@@ -337,15 +434,41 @@ def fiches_sans_lot(graphe: dict, avec_lot: set[str], racine: Path) -> list[str]
 def entite_composee(n: dict, source: str, alias: dict[str, str]) -> dict:
     """L'entité d'un nœud du graphe composé, extrémité d'une arête du squelette ou de l'AST."""
     if "kind" in n:
-        return {"name": n["label"], "type": n["kind"], "chunk_ids": [],
-                "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_SQUELETTE, "newskit_id": n["id"],
-                                     "url": n.get("url"), "date": n.get("date")})}
+        return {
+            "name": n["label"],
+            "type": n["kind"],
+            "chunk_ids": [],
+            "metadata": chaines(
+                {
+                    "_source": source,
+                    "_producer": PRODUCTEUR_SQUELETTE,
+                    "newskit_id": n["id"],
+                    "url": n.get("url"),
+                    "date": n.get("date"),
+                }
+            ),
+        }
     if n.get("_origin") == "ast":
-        return {"id": PREFIXE_TITRE + court(n["id"]), "name": n["label"], "type": n.get("file_type") or "document",
-                "chunk_ids": [], "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_AST, "newskit_id": n["id"],
-                                                      "source_location": n.get("source_location")})}
-    return {"name": alias.get(n["id"], n["label"]), "type": n.get("file_type") or "concept", "chunk_ids": [],
-            "metadata": chaines({"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"]})}
+        return {
+            "id": PREFIXE_TITRE + court(n["id"]),
+            "name": n["label"],
+            "type": n.get("file_type") or "document",
+            "chunk_ids": [],
+            "metadata": chaines(
+                {
+                    "_source": source,
+                    "_producer": PRODUCTEUR_AST,
+                    "newskit_id": n["id"],
+                    "source_location": n.get("source_location"),
+                }
+            ),
+        }
+    return {
+        "name": alias.get(n["id"], n["label"]),
+        "type": n.get("file_type") or "concept",
+        "chunk_ids": [],
+        "metadata": chaines({"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"]}),
+    }
 
 
 def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None = None) -> tuple[dict[str, dict], dict]:
@@ -376,12 +499,26 @@ def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None =
         x = par_fiche.setdefault(source, {"entites": {}, "relations": []})
         for cle, e in zip(cles, (de, vers)):
             x["entites"].setdefault(cle, e)
-        x["relations"].append({"from": cles[0], "to": cles[1], "type": a["relation"],
-                               "inferred": a.get("confidence") != "EXTRACTED", "chunk_ids": [],
-                               "metadata": chaines({"_source": source, "_producer": producteur, "confidence": a.get("confidence"),
-                                                    **{k: a.get(k) for k in ("confidence_score", "weight", "contributor",
-                                                                             "source_location")}})})
-    return {s: {"entites": list(x["entites"].values()), "relations": x["relations"]} for s, x in par_fiche.items()}, ecartes
+        x["relations"].append(
+            {
+                "from": cles[0],
+                "to": cles[1],
+                "type": a["relation"],
+                "inferred": a.get("confidence") != "EXTRACTED",
+                "chunk_ids": [],
+                "metadata": chaines(
+                    {
+                        "_source": source,
+                        "_producer": producteur,
+                        "confidence": a.get("confidence"),
+                        **{k: a.get(k) for k in ("confidence_score", "weight", "contributor", "source_location")},
+                    }
+                ),
+            }
+        )
+    return {
+        s: {"entites": list(x["entites"].values()), "relations": x["relations"]} for s, x in par_fiche.items()
+    }, ecartes
 
 
 def completer(v: dict, couche1: dict | None) -> None:
@@ -406,17 +543,42 @@ def synthese_vers_cortexdb(cid: str, notion: dict, alias: dict[str, str] | None 
     brutes = [ph for ph in notion.get("phrases") or [] if str(ph.get("texte") or "").strip()]
     if not brutes:
         return None
-    phrases = [str(ph["texte"]).strip() for ph in brutes
-               if relayee is None or all(relayee(r["fiche"]) for r in ph.get("refs") or [] if r.get("fiche"))]
+    phrases = [
+        str(ph["texte"]).strip()
+        for ph in brutes
+        if relayee is None or all(relayee(r["fiche"]) for r in ph.get("refs") or [] if r.get("fiche"))
+    ]
     if not phrases:
         phrases = ["(synthèse non citée : ses sources ne sont pas relayées ; suivre ses preuves)"]
     nom = (alias or {}).get(cid, notion["label"])
-    preuves = list(dict.fromkeys(r["fiche"] for ph in notion["phrases"] for r in ph.get("refs") or [] if r.get("fiche")))
-    document = {"document_id": court(f"pyramide/{cid}"), "title": nom, "author": "", "collection": COLLECTION_PYRAMIDE,
-                "content": "\n".join([nom, *phrases]), "source_url": "",
-                "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "_grade": "self_consistent", "newskit_id": cid,
-                                     "preuves": preuves, "sources": [court(f) for f in preuves], "empreinte": notion.get("empreinte"), "degre": notion.get("degre")})}
-    entite = {"name": nom, "type": "concept", "chunk_ids": [], "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "newskit_id": cid})}
+    preuves = list(
+        dict.fromkeys(r["fiche"] for ph in notion["phrases"] for r in ph.get("refs") or [] if r.get("fiche"))
+    )
+    document = {
+        "document_id": court(f"pyramide/{cid}"),
+        "title": nom,
+        "author": "",
+        "collection": COLLECTION_PYRAMIDE,
+        "content": "\n".join([nom, *phrases]),
+        "source_url": "",
+        "metadata": chaines(
+            {
+                "_producer": PRODUCTEUR_PYRAMIDE,
+                "_grade": "self_consistent",
+                "newskit_id": cid,
+                "preuves": preuves,
+                "sources": [court(f) for f in preuves],
+                "empreinte": notion.get("empreinte"),
+                "degre": notion.get("degre"),
+            }
+        ),
+    }
+    entite = {
+        "name": nom,
+        "type": "concept",
+        "chunk_ids": [],
+        "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "newskit_id": cid}),
+    }
     return {"document": document, "origine": f"pyramide/{cid}", "entites": [entite], "relations": [], "ecartes": {}}
 
 
@@ -465,24 +627,35 @@ def verser(client, v: dict, vus: dict[str, str] | None = None) -> dict:
     def appel(nom: str, **args) -> dict:
         r = client.tools.CallTool(proto.CallToolRequest(name=nom, args_json=json.dumps(args, ensure_ascii=False)))
         return json.loads(r.result_json or "{}")
+
     doc = v["document"]
     d = appel("ingest_document", **doc)
     morceaux = d.get("chunk_node_ids") or []
     lus = {}
-    if v["entites"] or v["relations"]:                   # sans rien à rattacher, les morceaux ne se relisent pas
+    if v["entites"] or v["relations"]:  # sans rien à rattacher, les morceaux ne se relisent pas
         for k in range(0, len(morceaux), MORCEAUX_PAR_LECTURE):
-            paquet = morceaux[k:k + MORCEAUX_PAR_LECTURE]
-            lus.update({c["id"]: c.get("content") or "" for c in appel("get_chunks", chunk_ids=paquet, disable_graph=True).get("chunks") or []})
+            paquet = morceaux[k : k + MORCEAUX_PAR_LECTURE]
+            lus.update(
+                {
+                    c["id"]: c.get("content") or ""
+                    for c in appel("get_chunks", chunk_ids=paquet, disable_graph=True).get("chunks") or []
+                }
+            )
     rattacher(v, [(m, lus.get(m, "")) for m in morceaux])
     e = appel("upsert_entities", document_id=doc["document_id"], entities=v["entites"]) if v["entites"] else {}
     r = appel("upsert_relations", document_id=doc["document_id"], relations=v["relations"]) if v["relations"] else {}
-    return {"morceaux": len(morceaux), "entites": len(e.get("entity_node_ids") or []), "relations": int(r.get("written") or 0)}
+    return {
+        "morceaux": len(morceaux),
+        "entites": len(e.get("entity_node_ids") or []),
+        "relations": int(r.get("written") or 0),
+    }
 
 
 def _sortie(commande, G, **args) -> str:
     """Ce qu'une commande d'interroger_graphe imprime : la réponse de kg-mcp, mot pour mot."""
     import contextlib  # noqa: PLC0415
     import io  # noqa: PLC0415
+
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
         commande(G, argparse.Namespace(**args))
@@ -491,14 +664,18 @@ def _sortie(commande, G, **args) -> str:
 
 # Chaque vue commence par son titre et ce qu'elle dit : sans eux, th_recall ne la trouvait pas sur les mots qu'on lui
 # demande (parcours K4, 31.10.2026).
-EN_TETES = {"vue/sommets": "# Sommets du graphe\n\nLes entités les plus connectées du graphe, hors auteurs, puis pour "
-                           "chaque type de nœud.\n\n",
-            "vue/relations": "# Relations du graphe\n\nLes types de relations du graphe et leur nombre.\n\n"}
+EN_TETES = {
+    "vue/sommets": "# Sommets du graphe\n\nLes entités les plus connectées du graphe, hors auteurs, puis pour "
+    "chaque type de nœud.\n\n",
+    "vue/relations": "# Relations du graphe\n\nLes types de relations du graphe et leur nombre.\n\n",
+}
 
 
 def en_tete_expliquer(etiquette: str) -> str:
-    return (f"# Expliquer : {etiquette}\n\nFiche de l'entité {etiquette} : son type, son degré, ses relations et ses "
-            f"voisins les plus centraux.\n\n")
+    return (
+        f"# Expliquer : {etiquette}\n\nFiche de l'entité {etiquette} : son type, son degré, ses relations et ses "
+        f"voisins les plus centraux.\n\n"
+    )
 
 
 def carte_pour_thalamus(carte: str) -> str:
@@ -506,32 +683,49 @@ def carte_pour_thalamus(carte: str) -> str:
     31.10.2026) : la section « Creuser » est remplacée par les outils de Thalamus, et les renvois au script retirés.
     La carte finit par la consigne « Signaler ce qui manque » (05.11.2026)."""
     from newskit import lacunes as la  # noqa: PLC0415 — le nom du cerveau des lacunes signalées
+
     if "\n## Creuser" in carte:
-        carte = carte[:carte.index("\n## Creuser")]
-    carte = carte.replace("Pour creuser, `newskit.interroger_graphe`.", "Pour creuser, les outils de Thalamus (fin de la carte).")
+        carte = carte[: carte.index("\n## Creuser")]
+    carte = carte.replace(
+        "Pour creuser, `newskit.interroger_graphe`.", "Pour creuser, les outils de Thalamus (fin de la carte)."
+    )
     carte = carte.replace(" `interroger_graphe.py --sans-modele` les écarte.", "")
-    return carte.rstrip("\n") + "\n\n" + "\n".join([
-        "## Creuser", "",
-        "Par Thalamus, dans ce cerveau :", "",
-        "- chercher : `th_recall` (le cerveau nommé dans `brains`) ;",
-        "- entrer par un nom : `th_find_nodes`, puis `th_entity` ;",
-        "- expliquer une entité : sa fiche « Expliquer : <nom> » (les 200 entités les plus connectées), "
-        "par `th_find_nodes` sur ce titre puis `th_get` ;",
-        "- voisinage : `th_expand_graph` depuis l'identifiant, en écartant `mentions`, `has_chunk` et `next` "
-        "par `relation_policies` ;",
-        "- chemin : `th_search_paths` ; depuis une entité très citée, monter `max_expansions` (50 000) ;",
-        "- sources : `th_get` d'un passage, `th_descend` d'une synthèse (extraits avec l'adresse d'origine) ;",
-        "- passages d'une entité : `th_search_chunks_by_entities` ;",
-        f"- sommets : « Sommets du graphe », `th_get` {court('vue/sommets')} ; "
-        f"relations : « Relations du graphe », `th_get` {court('vue/relations')}.", "",
-        # Sans cette consigne, le cerveau des lacunes signalées était relevé à chaque routine et ne recevait rien
-        # (05.11.2026) : la forme attendue n'était écrite que dans le code de la relève.
-        "## Signaler ce qui manque", "",
-        f"Quand ce graphe n'a pas su répondre, dites ce qui a manqué : `th_add` dans le cerveau `{la.CERVEAU_LACUNES}`.", "",
-        "- `content` : un objet précis par ligne, 10 au plus (un nom, un texte, un article de loi, un produit ; "
-        "jamais une phrase) ;",
-        "- `metadata` : `graphe`, le nom de ce graphe, et `question`, la question posée.", "",
-        "La routine relève ces lignes et va chercher ce qui manque.", ""])
+    return (
+        carte.rstrip("\n")
+        + "\n\n"
+        + "\n".join(
+            [
+                "## Creuser",
+                "",
+                "Par Thalamus, dans ce cerveau :",
+                "",
+                "- chercher : `th_recall` (le cerveau nommé dans `brains`) ;",
+                "- entrer par un nom : `th_find_nodes`, puis `th_entity` ;",
+                "- expliquer une entité : sa fiche « Expliquer : <nom> » (les 200 entités les plus connectées), "
+                "par `th_find_nodes` sur ce titre puis `th_get` ;",
+                "- voisinage : `th_expand_graph` depuis l'identifiant, en écartant `mentions`, `has_chunk` et `next` "
+                "par `relation_policies` ;",
+                "- chemin : `th_search_paths` ; depuis une entité très citée, monter `max_expansions` (50 000) ;",
+                "- sources : `th_get` d'un passage, `th_descend` d'une synthèse (extraits avec l'adresse d'origine) ;",
+                "- passages d'une entité : `th_search_chunks_by_entities` ;",
+                f"- sommets : « Sommets du graphe », `th_get` {court('vue/sommets')} ; "
+                f"relations : « Relations du graphe », `th_get` {court('vue/relations')}.",
+                "",
+                # Sans cette consigne, le cerveau des lacunes signalées était relevé à chaque routine et ne recevait rien
+                # (05.11.2026) : la forme attendue n'était écrite que dans le code de la relève.
+                "## Signaler ce qui manque",
+                "",
+                f"Quand ce graphe n'a pas su répondre, dites ce qui a manqué : `th_add` dans le cerveau `{la.CERVEAU_LACUNES}`.",
+                "",
+                "- `content` : un objet précis par ligne, 10 au plus (un nom, un texte, un article de loi, un produit ; "
+                "jamais une phrase) ;",
+                "- `metadata` : `graphe`, le nom de ce graphe, et `question`, la question posée.",
+                "",
+                "La routine relève ces lignes et va chercher ce qui manque.",
+                "",
+            ]
+        )
+    )
 
 
 def vues_du_graphe(G, carte: str | None, expliquer: int = EXPLIQUER) -> list[dict]:
@@ -545,24 +739,48 @@ def vues_du_graphe(G, carte: str | None, expliquer: int = EXPLIQUER) -> list[dic
     type ni description, et ses voisins sans ordre de centralité (KGMCP.md, K4). La fiche nomme le nœud par son
     identifiant : une étiquette partagée ne mène pas au mauvais nœud."""
     from newskit import interroger_graphe as ig  # noqa: PLC0415
+
     types = sorted({ig._type(G, n) for n in G})
-    corps = {"vue/carte": carte_pour_thalamus(carte) if carte else carte,
-             "vue/sommets": EN_TETES["vue/sommets"] + "\n".join(_sortie(ig.cmd_sommets, G, type=t, limite=25)
-                                                               for t in [None, *types]),
-             "vue/relations": EN_TETES["vue/relations"] + _sortie(ig.cmd_relations, G)}
-    titres = {"vue/carte": "Carte du graphe", "vue/sommets": "Sommets du graphe", "vue/relations": "Relations du graphe"}
+    corps = {
+        "vue/carte": carte_pour_thalamus(carte) if carte else carte,
+        "vue/sommets": EN_TETES["vue/sommets"]
+        + "\n".join(_sortie(ig.cmd_sommets, G, type=t, limite=25) for t in [None, *types]),
+        "vue/relations": EN_TETES["vue/relations"] + _sortie(ig.cmd_relations, G),
+    }
+    titres = {
+        "vue/carte": "Carte du graphe",
+        "vue/sommets": "Sommets du graphe",
+        "vue/relations": "Relations du graphe",
+    }
     noeuds: dict[str, str] = {}
     centraux = sorted((n for n in G if not ig.est_auteur(G, n)), key=lambda n: (-G.degree(n), str(n)))[:expliquer]
     for n in centraux:
         o = f"vue/expliquer/{n}"
         etiquette = ig._label(G, n)
-        corps[o], titres[o], noeuds[o] = en_tete_expliquer(etiquette) + _sortie(ig.cmd_expliquer, G, noeud=[n]), \
-            f"Expliquer : {etiquette}", n
-    return [{"document": {"document_id": court(o), "title": titres[o], "author": "", "collection": COLLECTION_PYRAMIDE,
-                          "content": c, "source_url": "",
-                          "metadata": chaines({"_producer": PRODUCTEUR_VUES, **({"noeud": noeuds[o]} if o in noeuds else {})})},
-             "origine": o, "entites": [], "relations": [], "ecartes": {}}
-            for o, c in corps.items() if c]
+        corps[o], titres[o], noeuds[o] = (
+            en_tete_expliquer(etiquette) + _sortie(ig.cmd_expliquer, G, noeud=[n]),
+            f"Expliquer : {etiquette}",
+            n,
+        )
+    return [
+        {
+            "document": {
+                "document_id": court(o),
+                "title": titres[o],
+                "author": "",
+                "collection": COLLECTION_PYRAMIDE,
+                "content": c,
+                "source_url": "",
+                "metadata": chaines({"_producer": PRODUCTEUR_VUES, **({"noeud": noeuds[o]} if o in noeuds else {})}),
+            },
+            "origine": o,
+            "entites": [],
+            "relations": [],
+            "ecartes": {},
+        }
+        for o, c in corps.items()
+        if c
+    ]
 
 
 def vues_a_verser(chemin) -> list[dict]:
@@ -596,6 +814,7 @@ def lots_du_graphe(graphe: str) -> list[Path]:
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import extraire_concepts as ec  # noqa: PLC0415
     from newskit import partage_graphe  # noqa: PLC0415
+
     candidats = sorted((cfg.chemins_du_graphe(graphe)["base"] / "couche2" / "fiches").glob("*.json"))
     for g in cfg.graphes_inclus(graphe):
         candidats += sorted((cfg.chemins_du_graphe(g)["base"] / "couche2" / "fiches").glob("*.json"))
@@ -622,8 +841,10 @@ def empreinte(v: dict) -> str:
     l'identifiant du nœud s'y lit sous son ancien nom (contaixt_id, renommée newskit_id à N5) : le renommage ne fait
     reverser aucun document ; un cerveau prend le nouveau nom au fil des versements qui changent."""
     import hashlib  # noqa: PLC0415
-    texte = json.dumps({k: v.get(k) for k in ("document", "entites", "relations")}, ensure_ascii=False,
-                       sort_keys=True, default=str).replace(*CLE_D_EMPREINTE)
+
+    texte = json.dumps(
+        {k: v.get(k) for k in ("document", "entites", "relations")}, ensure_ascii=False, sort_keys=True, default=str
+    ).replace(*CLE_D_EMPREINTE)
     return hashlib.sha256(texte.encode("utf-8")).hexdigest()[:24]
 
 
@@ -640,6 +861,7 @@ class EnPlace:
 
     def appel(self, nom: str, **args) -> dict:
         from cortexdb_client import proto  # noqa: PLC0415
+
         r = self.client.tools.CallTool(proto.CallToolRequest(name=nom, args_json=json.dumps(args, ensure_ascii=False)))
         return json.loads(r.result_json or "{}")
 
@@ -668,6 +890,7 @@ class EnPlace:
 def main() -> int:
     from newskit import config_sources as cfg  # noqa: PLC0415
     from cortexdb_client import CortexClient  # noqa: PLC0415
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--adresse", default="127.0.0.1:47899")
@@ -675,8 +898,12 @@ def main() -> int:
     ap.add_argument("--limite", type=int, default=0, help="n'en verser que N (essai)")
     ap.add_argument("--pyramide", action="store_true", help="verser aussi les synthèses (synthese/notions.json)")
     ap.add_argument("--couche1", action="store_true", help="verser aussi le squelette et la structure des titres (K0)")
-    ap.add_argument("--vues", type=Path, help="verser aussi la carte, les sommets et les relations (K4), calculées par "
-                                               "cerveau_cortexdb.ecrire_vues dans ce fichier")
+    ap.add_argument(
+        "--vues",
+        type=Path,
+        help="verser aussi la carte, les sommets et les relations (K4), calculées par "
+        "cerveau_cortexdb.ecrire_vues dans ce fichier",
+    )
     ap.add_argument("--empreintes-avant", type=Path, help="empreintes du cerveau précédent : versement en place (B15)")
     ap.add_argument("--empreintes-apres", type=Path, help="où écrire les empreintes de ce passage")
     args = ap.parse_args()
@@ -687,14 +914,30 @@ def main() -> int:
     alias = alias_par_identifiant(json.loads(alias_p.read_text(encoding="utf-8"))) if alias_p.exists() else {}
     lots = lots_du_graphe(args.graphe)
     chemin_graphe = cfg.chemins_du_graphe(args.graphe).get("graphe")
-    graphe = json.loads(Path(chemin_graphe).read_text(encoding="utf-8")) if chemin_graphe and Path(chemin_graphe).exists() else {}
+    graphe = (
+        json.loads(Path(chemin_graphe).read_text(encoding="utf-8"))
+        if chemin_graphe and Path(chemin_graphe).exists()
+        else {}
+    )
     canon = canon_squelette(graphe) if args.couche1 else None
     couche1, ecartes1 = couche1_par_fiche(graphe, RACINE, alias) if args.couche1 else ({}, {})
     if args.limite:
-        lots = lots[:args.limite]
-    bilan = {"lots": 0, "verses": 0, "sans_lot": 0, "fiche_absente": 0, "invalides": 0, "morceaux": 0, "entites": 0,
-             "relations": 0, "libelle_de_balisage": 0, "arete_sans_extremite": 0,
-             "couche1_relations": 0, "couche1_sans_document": 0, **{f"couche1_{k}": n for k, n in ecartes1.items()}}
+        lots = lots[: args.limite]
+    bilan = {
+        "lots": 0,
+        "verses": 0,
+        "sans_lot": 0,
+        "fiche_absente": 0,
+        "invalides": 0,
+        "morceaux": 0,
+        "entites": 0,
+        "relations": 0,
+        "libelle_de_balisage": 0,
+        "arete_sans_extremite": 0,
+        "couche1_relations": 0,
+        "couche1_sans_document": 0,
+        **{f"couche1_{k}": n for k, n in ecartes1.items()},
+    }
     avec_lot: set[str] = set()
     droits = cfg.charger_droits_auteurs()
     relayee = relayeur(droits)
@@ -706,6 +949,7 @@ def main() -> int:
 
         def versement(v: dict) -> dict:
             return ep.verser(v, vus) or {}
+
         for k, p in enumerate(lots, 1):
             bilan["lots"] += 1
             lot = json.loads(p.read_text(encoding="utf-8"))
@@ -714,7 +958,7 @@ def main() -> int:
                 continue
             chemin = RACINE / relatif(lot["nodes"][0]["source_file"], RACINE)
             avec_lot.add(relatif(lot["nodes"][0]["source_file"], RACINE))
-            if not chemin.exists():                  # un lot dont la fiche a disparu : compté, jamais versé
+            if not chemin.exists():  # un lot dont la fiche a disparu : compté, jamais versé
                 bilan["fiche_absente"] += 1
                 continue
             entete, corps = fiche.lire_fichier(chemin)
@@ -768,7 +1012,7 @@ def main() -> int:
             ep.retirer_absents()
             if args.empreintes_apres:
                 args.empreintes_apres.write_text(json.dumps(ep.apres, ensure_ascii=False), encoding="utf-8")
-    if args.couche1 and not args.limite:                 # une couche 1 sans document : sa fiche n'est pas au cerveau
+    if args.couche1 and not args.limite:  # une couche 1 sans document : sa fiche n'est pas au cerveau
         bilan["couche1_sans_document"] = sum(len(x["relations"]) for x in couche1.values())
     bilan["duree_s"] = round(time.time() - t0, 1)
     print(json.dumps(bilan, ensure_ascii=False))

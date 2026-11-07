@@ -43,6 +43,8 @@ def test_main_passe_les_bancs(monkeypatch, tmp_path):
     vus = []
     monkeypatch.setattr(encodeur, "evaluer", lambda g, bancs=None: vus.append((g, bancs)))
     monkeypatch.setattr(encodeur.cfg, "nom_actuel", lambda g: g)
-    monkeypatch.setattr(sys, "argv", ["encodeur.py", "evaluer", "--graphe", "essai", "--banc", str(tmp_path / "x.json")])
+    monkeypatch.setattr(
+        sys, "argv", ["encodeur.py", "evaluer", "--graphe", "essai", "--banc", str(tmp_path / "x.json")]
+    )
     assert encodeur.main() == 0
     assert vus == [("essai", [tmp_path / "x.json"])]

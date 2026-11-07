@@ -35,6 +35,7 @@ from graphify.build import build, validate_extraction  # noqa: E402
 from newskit.commun import archiver_gz, normaliser_etiquette  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+
 SQUELETTE = RACINE / "graphe" / "squelette.json"
 AST = RACINE / "graphify-out" / ".graphify_ast.json"
 # Les lots sémantiques sont des artefacts coûteux : treize exécutions de
@@ -87,8 +88,9 @@ def nettoyer_titres(extraction: dict) -> int:
     return n
 
 
-def fondre_doublons_de_fiche(extraction: dict, ids_squelette: set[str],
-                             labels_squelette: dict[str, str], nom: str) -> tuple[int, int]:
+def fondre_doublons_de_fiche(
+    extraction: dict, ids_squelette: set[str], labels_squelette: dict[str, str], nom: str
+) -> tuple[int, int]:
     """Retire d'une extraction les nœuds qui redécrivent une fiche du squelette.
 
     Pourquoi. Le squelette décrit chaque fiche avec son titre et son typage ; la
@@ -113,8 +115,7 @@ def fondre_doublons_de_fiche(extraction: dict, ids_squelette: set[str],
             continue
         if n.get("file_type") in ("document", "paper"):
             cle = _norm_label(label)
-            cible = labels_squelette.get(cle) or labels_squelette.get(
-                _norm_label(RE_PARENTHESE_FINALE.sub("", label)))
+            cible = labels_squelette.get(cle) or labels_squelette.get(_norm_label(RE_PARENTHESE_FINALE.sub("", label)))
             if cible:
                 remap[nid] = cible
                 continue
@@ -125,7 +126,7 @@ def fondre_doublons_de_fiche(extraction: dict, ids_squelette: set[str],
     for e in extraction["edges"]:
         e["source"] = remap.get(e["source"], e["source"])
         e["target"] = remap.get(e["target"], e["target"])
-        if e["source"] != e["target"]:                 # la fusion peut créer des boucles
+        if e["source"] != e["target"]:  # la fusion peut créer des boucles
             aretes.append(e)
     boucles = len(extraction["edges"]) - len(aretes)
     extraction["edges"] = aretes
@@ -151,6 +152,7 @@ def consolider_concepts(G) -> int:
     que le résultat ne dépende pas de l'ordre de lecture.
     """
     from collections import defaultdict
+
     groupes = defaultdict(list)
     for n, d in G.nodes(data=True):
         if (d.get("kind") or d.get("file_type")) in TYPES_CONCEPT:
@@ -169,7 +171,7 @@ def consolider_concepts(G) -> int:
                 attrs = dict(G.get_edge_data(perdu, voisin) or {})
                 if not G.has_edge(garde, voisin):
                     G.add_edge(garde, voisin, **attrs)
-            for cle, val in G.nodes[perdu].items():          # ne rien perdre des attributs
+            for cle, val in G.nodes[perdu].items():  # ne rien perdre des attributs
                 G.nodes[garde].setdefault(cle, val)
             G.remove_node(perdu)
             fondus += 1
@@ -240,12 +242,14 @@ def appliquer_francais(G, table: dict) -> int:
     l'original actuel ; une traduction d'un autre original (le libellé a changé) n'est pas posée. Rend le nombre de
     champs posés."""
     from newskit import francais  # noqa: PLC0415
+
     k = 0
     for n, d in G.nodes(data=True):
         for cle, champ, dest in (("libelles", "label", "label_fr"), ("textes", "rationale", "rationale_fr")):
             v = table.get(cle, {}).get(n)
             if v and d.get(champ) and v[1] == francais.empreinte(d[champ]):
-                d[dest] = v[0]; k += 1
+                d[dest] = v[0]
+                k += 1
     return k
 
 
@@ -253,6 +257,7 @@ def appliquer_tables(G, graphes: list[str]) -> tuple[int, int]:
     """Les tables `alias.json` des graphes donnés : les alias d'abord (fondus), puis les noms anglais des notions
     restées seules. Rend (nœuds fondus, libellés renommés)."""
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     fondus = renommes = 0
     tables = []
     for g in graphes:
@@ -263,8 +268,11 @@ def appliquer_tables(G, graphes: list[str]) -> tuple[int, int]:
     for t in tables:
         fondus += appliquer_alias(G, t.get("alias", {}), vides)
     if vides:
-        print(f"    {len(vides)} alias sans cible (non appliqué(s)) : "
-              + ", ".join(f"{a} → {b}" for a, b in vides[:5]) + (" …" if len(vides) > 5 else ""))
+        print(
+            f"    {len(vides)} alias sans cible (non appliqué(s)) : "
+            + ", ".join(f"{a} → {b}" for a, b in vides[:5])
+            + (" …" if len(vides) > 5 else "")
+        )
     for t in tables:
         renommes += appliquer_anglais(G, t.get("anglais", {}))
     return fondus, renommes
@@ -279,13 +287,13 @@ def _charger(chemin: Path, nom: str, avertissements: list[str]) -> dict | None:
     except json.JSONDecodeError as e:
         avertissements.append(f"{nom} illisible ({e})")
         return None
-    d.setdefault("nodes", []); d.setdefault("edges", []); d.setdefault("hyperedges", [])
+    d.setdefault("nodes", [])
+    d.setdefault("edges", [])
+    d.setdefault("hyperedges", [])
     erreurs = validate_extraction(d)
     if erreurs:
         avertissements.append(f"{nom} : {len(erreurs)} erreur(s) de schéma, ex. {erreurs[0][:90]}")
     return d
-
-
 
 
 def main() -> int:
@@ -295,6 +303,7 @@ def main() -> int:
     args = ap.parse_args()
 
     from newskit import config_sources as cfg  # noqa: PLC0415
+
     nom_graphe = args.graphe or cfg.GRAPHE_PRINCIPAL
     chemins = cfg.chemins_du_graphe(nom_graphe)
     global SQUELETTE, SORTIE, STATS, LOTS_DURABLES, AST
@@ -313,7 +322,8 @@ def main() -> int:
     if sq is None:
         print("  Le squelette est indispensable. Lancer d'abord extraire_squelette.py.", file=sys.stderr)
         return 1
-    extractions.append(sq); origines.append(("couche 1 — squelette", sq))
+    extractions.append(sq)
+    origines.append(("couche 1 — squelette", sq))
     # Référentiels de fiche : sur une fiche, le squelette fait foi.
     fiches_sq = [n for n in sq["nodes"] if n.get("kind") in ("article", "papier")]
     ids_sq = {n["id"] for n in sq["nodes"]}
@@ -335,14 +345,17 @@ def main() -> int:
             avant = len(ast["nodes"])
             nettoyes = nettoyer_titres(ast)
             f, b = fondre_doublons_de_fiche(ast, ids_sq, labels_sq, "AST")
-            fondus_total += f; boucles_total += b
+            fondus_total += f
+            boucles_total += b
             # L'AST produit quelques identifiants dérivés de chemins absolus,
             # dont les arêtes ne mènent nulle part.
             connus = ids_sq | {n["id"] for n in ast["nodes"]}
-            ast["edges"] = [e for e in ast["edges"]
-                            if e["source"] in connus and e["target"] in connus]
-            print(f"    AST : {avant - len(ast['nodes'])} nœuds de fiche fondus dans le squelette, {nettoyes} titre(s) débarrassé(s) de leur balisage")
-            extractions.append(ast); origines.append(("structure des titres", ast))
+            ast["edges"] = [e for e in ast["edges"] if e["source"] in connus and e["target"] in connus]
+            print(
+                f"    AST : {avant - len(ast['nodes'])} nœuds de fiche fondus dans le squelette, {nettoyes} titre(s) débarrassé(s) de leur balisage"
+            )
+            extractions.append(ast)
+            origines.append(("structure des titres", ast))
 
     # Un graphe qui en inclut d'autres (un graphe financier inclut un graphe de trading quantitatif, 04.10.2026) reprend leur structure
     # des titres et leurs lots de couche 2 : rien n'est extrait deux fois.
@@ -352,10 +365,12 @@ def main() -> int:
         if ast_inclus:
             nettoyer_titres(ast_inclus)
             f, b = fondre_doublons_de_fiche(ast_inclus, ids_sq, labels_sq, f"AST de {g}")
-            fondus_total += f; boucles_total += b
+            fondus_total += f
+            boucles_total += b
             connus = ids_sq | {n["id"] for n in ast_inclus["nodes"]}
             ast_inclus["edges"] = [e for e in ast_inclus["edges"] if e["source"] in connus and e["target"] in connus]
-            extractions.append(ast_inclus); origines.append((f"structure des titres — {g}", ast_inclus))
+            extractions.append(ast_inclus)
+            origines.append((f"structure des titres — {g}", ast_inclus))
 
     # Un lot présent aux deux endroits n'est lu qu'une fois, la version durable
     # faisant foi.
@@ -370,12 +385,14 @@ def main() -> int:
     # Un graphe à partage fiche par fiche (partage_graphe.py, GV4) ne lit que les lots de ses fiches retenues, et reprend
     # ceux des fiches d'autres graphes rangées chez lui (cherchés dans les lots de tous les graphes).
     from newskit import partage_graphe  # noqa: PLC0415
+
     retenues_d = partage_graphe.fiches_du_graphe(nom_graphe)
     retenues = set(retenues_d) if retenues_d is not None else None
     if retenues is not None:
         decl = partage_graphe.declaration(nom_graphe)
         from newskit import extraire_concepts as ec  # noqa: PLC0415
         from newskit import fiche as fiche_mod  # noqa: PLC0415
+
         for r in partage_graphe.ajouts(decl[0], decl[1], cfg.dossiers_du_graphe(nom_graphe)):
             if r not in retenues:
                 continue
@@ -386,7 +403,7 @@ def main() -> int:
                     lots_par_fiche.append(str(p))
                     break
     for chemin in sorted(glob.glob(LOTS_DURABLES)) + lots_frais:
-        lots.setdefault(Path(chemin).stem[-2:], chemin)          # chunk_NN : les deux chiffres
+        lots.setdefault(Path(chemin).stem[-2:], chemin)  # chunk_NN : les deux chiffres
     # Un lot par fiche est identifié par son nom entier : sur les deux derniers
     # caractères, trente lots se réduisaient à quatre (27.09.2026, graphe financier).
     for chemin in lots_par_fiche:
@@ -394,15 +411,22 @@ def main() -> int:
     orphelins = 0
     for nom, chemin in sorted(lots.items()):
         d = _charger(Path(chemin), f"lot {nom}", avertissements)
-        if d and retenues is not None and nom.startswith("fiche ") and not partage_graphe.lot_retenu(d, retenues, RACINE):
+        if (
+            d
+            and retenues is not None
+            and nom.startswith("fiche ")
+            and not partage_graphe.lot_retenu(d, retenues, RACINE)
+        ):
             continue
         if d and nom.startswith("fiche ") and lot_orphelin(d):
-            orphelins += 1                     # fiche supprimée (publicité, retrait) : ses notions ne reviennent pas
+            orphelins += 1  # fiche supprimée (publicité, retrait) : ses notions ne reviennent pas
             continue
         if d:
             f, b = fondre_doublons_de_fiche(d, ids_sq, labels_sq, nom)
-            fondus_total += f; boucles_total += b
-            extractions.append(d); origines.append((f"couche 2 — {nom}", d))
+            fondus_total += f
+            boucles_total += b
+            extractions.append(d)
+            origines.append((f"couche 2 — {nom}", d))
     if not lots:
         avertissements.append("aucun lot d'extraction sémantique : le graphe n'aura pas de couche conceptuelle")
 
@@ -412,8 +436,9 @@ def main() -> int:
     for nom, d in origines:
         print(f"    {nom:<28} {len(d['nodes']):>6} nœuds, {len(d['edges']):>6} arêtes")
 
-    print(f"    {fondus_total} nœud(s) de fiche fondus dans le squelette au total, "
-          f"{boucles_total} boucle(s) écartée(s)")
+    print(
+        f"    {fondus_total} nœud(s) de fiche fondus dans le squelette au total, {boucles_total} boucle(s) écartée(s)"
+    )
 
     G = build(extractions, root=str(RACINE))
     if retenues is not None:
@@ -434,6 +459,7 @@ def main() -> int:
         print(f"    {renommes} libellé(s) étranger(s) remplacé(s) par leur nom anglais")
     # L'affichage en français (francais.py, 03.11.2026) : label_fr et rationale_fr, de la table du graphe.
     from newskit import francais  # noqa: PLC0415
+
     p_fr = francais.chemin_table(nom_graphe)
     if p_fr.exists():
         poses = appliquer_francais(G, json.loads(p_fr.read_text(encoding="utf-8")))
@@ -442,10 +468,13 @@ def main() -> int:
     # L'actualité de chaque notion, lue de ses attestations datées (diachronie.py, 09.10.2026) : première et dernière,
     # versions des textes de référence qui la nomment, en vigueur ou remplacée seulement, évoluant entre deux versions.
     from newskit import diachronie  # noqa: PLC0415
+
     c_act = diachronie.annoter_graphe(G)
     if c_act["reference"]:
-        print(f"    actualité : {c_act['notions']} notion(s) datée(s), {c_act['reference']} attestée(s) par un texte de référence "
-              f"dont {c_act['en_vigueur']} en vigueur, {c_act['remplacee_seulement']} remplacée(s) seulement, {c_act['evolue']} évoluant")
+        print(
+            f"    actualité : {c_act['notions']} notion(s) datée(s), {c_act['reference']} attestée(s) par un texte de référence "
+            f"dont {c_act['en_vigueur']} en vigueur, {c_act['remplacee_seulement']} remplacée(s) seulement, {c_act['evolue']} évoluant"
+        )
     donnees = json_graph.node_link_data(G, edges="links")
     SORTIE.parent.mkdir(parents=True, exist_ok=True)
     SORTIE.write_text(json.dumps(donnees, ensure_ascii=False), encoding="utf-8")
@@ -456,16 +485,32 @@ def main() -> int:
     confs = Counter(d.get("confidence", "?") for _, _, d in G.edges(data=True))
 
     lignes = [
-        "# Relevé du graphe composé", "",
+        "# Relevé du graphe composé",
+        "",
         f"Produit par `newskit.fusionner_graphe` à partir de {len(extractions)} extractions"
-        + (f" (graphe {nom_graphe})." if nom_graphe != cfg.GRAPHE_PRINCIPAL else "."), "",
-        f"- **{G.number_of_nodes()} nœuds**", f"- **{G.number_of_edges()} arêtes**", "",
-        "## Types de nœuds", "", "| type | nombre |", "|---|---|",
-        *[f"| {k} | {n} |" for k, n in kinds.most_common()], "",
-        "## Relations", "", "| relation | nombre |", "|---|---|",
-        *[f"| {r} | {n} |" for r, n in rels.most_common(25)], "",
-        "## Confiance", "", "| niveau | nombre |", "|---|---|",
-        *[f"| {c} | {n} |" for c, n in confs.most_common()], "",
+        + (f" (graphe {nom_graphe})." if nom_graphe != cfg.GRAPHE_PRINCIPAL else "."),
+        "",
+        f"- **{G.number_of_nodes()} nœuds**",
+        f"- **{G.number_of_edges()} arêtes**",
+        "",
+        "## Types de nœuds",
+        "",
+        "| type | nombre |",
+        "|---|---|",
+        *[f"| {k} | {n} |" for k, n in kinds.most_common()],
+        "",
+        "## Relations",
+        "",
+        "| relation | nombre |",
+        "|---|---|",
+        *[f"| {r} | {n} |" for r, n in rels.most_common(25)],
+        "",
+        "## Confiance",
+        "",
+        "| niveau | nombre |",
+        "|---|---|",
+        *[f"| {c} | {n} |" for c, n in confs.most_common()],
+        "",
     ]
     if avertissements:
         lignes += ["## Avertissements", ""] + [f"- {a}" for a in avertissements] + [""]

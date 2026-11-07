@@ -16,8 +16,10 @@ RSS = f"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel><tit
 def test_l_adresse_d_un_article_est_encodee_a_la_lecture_du_flux():
     for lire in (rss.entrees, rss.entrees_tolerantes):
         liens = [e["lien"] for e in lire(RSS)]
-        assert liens == [ENCODEE, "https://exemple.org/a%20b?x=1#n"], lire.__name__     # un encodage déjà fait reste
+        assert liens == [ENCODEE, "https://exemple.org/a%20b?x=1#n"], lire.__name__  # un encodage déjà fait reste
 
 
 def test_le_nom_de_fiche_vient_de_l_adresse_decodee():
-    assert rss.slug(ENCODEE, "") == rss.slug(ADRESSE, "") == "chinese-users-find-little-money-in-selling-their-faces-to-ai"
+    assert (
+        rss.slug(ENCODEE, "") == rss.slug(ADRESSE, "") == "chinese-users-find-little-money-in-selling-their-faces-to-ai"
+    )

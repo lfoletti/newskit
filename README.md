@@ -87,8 +87,8 @@ graphes:
 Newskit runs alone. These tools extend it when they are present.
 
 - **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Website access audit. When a source keeps failing, Newskit asks sap which route still reaches it (RSS feed, API, sitemap, plain HTML, browser) and repairs the source.
-- **[CortexDB](https://github.com/lfoletti/cortexdb)**. AI memory and knowledge graph in one SQLite file. A graph can be loaded into a CortexDB brain, each relation tied to the passage that supports it, and queried from any MCP client.
-- **[Thalamus](https://github.com/lfoletti/thalamus)**. A governance layer over CortexDB for an organisation's shared knowledge. Questions left unanswered by Thalamus clients return to the engine as searches.
+- **[cortexdb](https://github.com/lfoletti/cortexdb)**. AI memory and knowledge graph in one SQLite file. A graph can be loaded into a cortexdb brain, each relation tied to the passage that supports it, and queried from any MCP client.
+- **[thalamus](https://github.com/lfoletti/thalamus)**. A governance layer over cortexdb for an organisation's shared knowledge. Questions left unanswered by Thalamus clients return to the engine as searches.
 - **[graphify](https://github.com/Graphify-Labs/graphify)**. Reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities.
 - **[trafilatura](https://trafilatura.readthedocs.io)**. Main text extraction from web pages.
 

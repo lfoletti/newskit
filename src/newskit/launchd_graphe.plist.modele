@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>__ETIQUETTE__</string>
+
+  <!-- Routine du graphe __GRAPHE__ seul (__LIBELLE__), créée le __DATE__ par scripts/nouveau_graphe.py.
+       LaunchDaemon : démarre au boot, sans session à l'écran. Installation :
+         sudo zsh deploiement/installer_daemons_mac.sh
+       Essai immédiat : sudo launchctl kickstart system/__ETIQUETTE__ -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/miniconda3/bin/python3</string>
+    <string>-u</string>
+    <string>__DEPOT__/scripts/routine_hebdo.py</string>
+    <string>--graphe</string>
+    <string>__GRAPHE__</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__DEPOT__</string>
+
+  <!-- gh sert d'assistant d'identification à git pour l'envoi, et claude (~/.local/bin) fait la couche 2
+       incrémentale par l'abonnement : les deux doivent être sur le chemin. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__MAISON__/.local/bin:/opt/homebrew/bin:/opt/miniconda3/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>LANG</key>
+    <string>fr_FR.UTF-8</string>
+    <key>HOME</key>
+    <string>__MAISON__</string>
+    <key>SE_CLAUDE_MODELE</key>
+    <string>claude-opus-5-5</string>
+  </dict>
+
+  <!-- Tous les jours __HEURE__ h __MINUTE2__, heure locale ; le verrou fait passer les routines une à une. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>__HEURE__</integer>
+    <key>Minute</key><integer>__MINUTE__</integer>
+  </dict>
+
+  <!-- Si la machine dormait à l'heure dite, l'exécution est rattrapée au réveil. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>__DEPOT__/cache/routine___DOSSIER__.log</string>
+  <key>StandardErrorPath</key>
+  <string>__DEPOT__/cache/routine___DOSSIER__.log</string>
+
+  <key>UserName</key>
+  <string>__UTILISATEUR__</string>
+
+  <key>ProcessType</key>
+  <string>Standard</string>
+  <key>Nice</key>
+  <integer>5</integer>
+</dict>
+</plist>

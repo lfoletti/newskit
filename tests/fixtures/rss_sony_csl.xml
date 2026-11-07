@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>Sony CSL &#8211; Paris</title>
+	<atom:link href="https://csl.sony.fr/feed/" rel="self" type="application/rss+xml" />
+	<link>https://csl.sony.fr/</link>
+	<description>Sony CSL - Paris</description>
+	<lastBuildDate>Mon, 10 Aug 2026 09:49:24 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=7.1</generator>
+
+<image>
+	<url>https://csl.sony.fr/wp-content/uploads/2021/02/sonycsl-logo-color-textlogo-black-large-2-150x150.jpg</url>
+	<title>Sony CSL &#8211; Paris</title>
+	<link>https://csl.sony.fr/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>Fluorescence to measure light intensity, a protocol</title>
+		<link>https://csl.sony.fr/news/fluorescence-to-measure-light-intensity-a-protocol/</link>
+		
+		<dc:creator><![CDATA[Sebastien Marino]]></dc:creator>
+		<pubDate>Thu, 06 Aug 2026 08:34:08 +0000</pubDate>
+				<category><![CDATA[News]]></category>
+		<category><![CDATA[ARTICLE]]></category>
+		<guid isPermaLink="false">https://csl.sony.fr/?p=4018</guid>
+
+					<description><![CDATA[<p>Based on Aliénor's “Fluorescence to measure light intensity” paper, we developed a practical resource to help microscopy users quantify illumination at the sample, including spatial distribution and wavelength-dependent intensity.</p>
+<p>The post <a href="https://csl.sony.fr/news/fluorescence-to-measure-light-intensity-a-protocol/">Fluorescence to measure light intensity, a protocol</a> appeared first on <a href="https://csl.sony.fr">Sony CSL - Paris</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[		<div data-elementor-type="wp-post" data-elementor-id="4018" class="elementor elementor-4018" data-elementor-post-type="post">
+				<div class="has_eae_slider elementor-element elementor-element-85a1220 e-flex e-con-boxed e-con e-parent" data-eae-slider="49866" data-id="85a1220" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-24db1b8 elementor-widget elementor-widget-spacer" data-id="24db1b8" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-e58e021 e-flex e-con-boxed e-con e-parent" data-eae-slider="13659" data-id="e58e021" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-6798c04 e-con-full e-flex e-con e-child" data-eae-slider="62926" data-id="6798c04" data-element_type="container">
+				<div class="elementor-element elementor-element-4ce23c8 elementor-align-left elementor-widget elementor-widget-button" data-id="4ce23c8" data-element_type="widget" data-widget_type="button.default">
+				<div class="elementor-widget-container">
+									<div class="elementor-button-wrapper">
+					<a class="elementor-button elementor-button-link elementor-size-sm" href="https://csl.sony.fr/news/">
+						<span class="elementor-button-content-wrapper">
+						<span class="elementor-button-icon">
+				<svg xmlns="http://www.w3.org/2000/svg" width="21" height="16" viewBox="0 0 21 16" fill="none"><path d="M19.5 9C20.0523 9 20.5 8.55228 20.5 8C20.5 7.44772 20.0523 7 19.5 7L19.5 9ZM0.292893 7.29289C-0.097631 7.68342 -0.0976311 8.31658 0.292893 8.70711L6.65685 15.0711C7.04738 15.4616 7.68054 15.4616 8.07107 15.0711C8.46159 14.6805 8.46159 14.0474 8.07107 13.6569L2.41421 8L8.07107 2.34314C8.46159 1.95262 8.46159 1.31946 8.07107 0.928931C7.68054 0.538407 7.04738 0.538407 6.65685 0.928931L0.292893 7.29289ZM19.5 7L1 7L1 9L19.5 9L19.5 7Z" fill="black"></path></svg>			</span>
+									<span class="elementor-button-text">Back</span>
+					</span>
+					</a>
+				</div>
+								</div>
+				</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-e399b4d e-con-full e-flex e-con e-child" data-eae-slider="90096" data-id="e399b4d" data-element_type="container">
+				<div class="elementor-element elementor-element-255a27e elementor-widget elementor-widget-heading" data-id="255a27e" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<h2 class="elementor-heading-title elementor-size-default">Fluorescence to measure light intensity, a protocol</h2>				</div>
+				</div>
+				<div class="elementor-element elementor-element-96247d0 elementor-widget elementor-widget-text-editor" data-id="96247d0" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>Based on Aliénor&#8217;s “Fluorescence to measure light intensity” paper, she developed a practical resource to help microscopy users quantify illumination at the sample, including spatial distribution and wavelength-dependent intensity.</p>								</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-2c5eba0 e-con-full e-flex e-con e-child" data-eae-slider="99549" data-id="2c5eba0" data-element_type="container">
+				<div class="elementor-element elementor-element-e1edb81 elementor-widget elementor-widget-text-editor" data-id="e1edb81" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>August. 6 2026</p>								</div>
+				</div>
+				<div data-dce-advanced-background-color="#1C8BBA" class="elementor-element elementor-element-d6161bb elementor-widget__width-auto elementor-widget elementor-widget-heading" data-id="d6161bb" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<div class="elementor-heading-title elementor-size-default">ARTICLE</div>				</div>
+				</div>
+				<div data-dce-advanced-background-color="#1C8BBA" class="elementor-element elementor-element-0ec62cb elementor-widget__width-auto elementor-widget elementor-widget-heading" data-id="0ec62cb" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<div class="elementor-heading-title elementor-size-default">microscopy</div>				</div>
+				</div>
+				<div data-dce-advanced-background-color="#1C8BBA" class="elementor-element elementor-element-9633053 elementor-widget__width-auto elementor-widget elementor-widget-heading" data-id="9633053" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<div class="elementor-heading-title elementor-size-default">protocol</div>				</div>
+				</div>
+				</div>
+				<div class="elementor-element elementor-element-18d5dbe elementor-widget elementor-widget-spacer" data-id="18d5dbe" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-b27bff4 e-flex e-con-boxed e-con e-parent" data-eae-slider="73232" data-id="b27bff4" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-4b3d348 e-con-full e-flex e-con e-child" data-eae-slider="71490" data-id="4b3d348" data-element_type="container">
+				<div class="elementor-element elementor-element-31a0f20 dce_masking-none elementor-widget elementor-widget-image" data-id="31a0f20" data-element_type="widget" data-widget_type="image.default">
+				<div class="elementor-widget-container">
+															<img fetchpriority="high" decoding="async" width="800" height="465" src="https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-1024x595.jpg" class="attachment-large size-large wp-image-4021" alt="" srcset="https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-1024x595.jpg 1024w, https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-861x500.jpg 861w, https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-768x446.jpg 768w, https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-1536x892.jpg 1536w, https://csl.sony.fr/wp-content/uploads/2026/08/capture-decran-2026-08-06-a-094956-2048x1190.jpg 2048w" sizes="(max-width: 800px) 100vw, 800px" />															</div>
+				</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-c1275e1 e-con-full e-flex e-con e-child" data-eae-slider="13230" data-id="c1275e1" data-element_type="container">
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-6a7f577 e-flex e-con-boxed e-con e-parent" data-eae-slider="1174" data-id="6a7f577" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-94da576 elementor-widget elementor-widget-spacer" data-id="94da576" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-727716a e-flex e-con-boxed e-con e-parent" data-eae-slider="10604" data-id="727716a" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-10a3616 e-con-full e-flex e-con e-child" data-eae-slider="43194" data-id="10a3616" data-element_type="container">
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-955a7c0 e-con-full e-flex e-con e-child" data-eae-slider="349" data-id="955a7c0" data-element_type="container">
+				<div class="elementor-element elementor-element-7d8215b elementor-widget elementor-widget-text-editor" data-id="7d8215b" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>Quantitative fluorescence microscopy requires knowing how much light reaches the sample.<br />In practice, this is not always straightforward. Instrument settings do not directly provide the intensity delivered at the sample plane, and spatial illumination patterns can vary across systems, wavelengths, and imaging conditions.</p>								</div>
+				</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-4d6d378 e-flex e-con-boxed e-con e-parent" data-eae-slider="42453" data-id="4d6d378" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-f8d88f9 e-con-full e-flex e-con e-child" data-eae-slider="4305" data-id="f8d88f9" data-element_type="container">
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-ac076df e-con-full e-flex e-con e-child" data-eae-slider="3687" data-id="ac076df" data-element_type="container">
+				<div class="elementor-element elementor-element-640e4f1 elementor-widget elementor-widget-text-editor" data-id="640e4f1" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p><a href="https://csl.sony.fr/people/alienor-lahlou/">Aliénor </a>developed fluorescence-based protocols that use organic dyes and fluorescent proteins as actinometers to measure light intensity directly in microscopy systems. The approach can be used to characterize both illumination intensity and spatial light distribution, and to support calibration across instruments and light sources.</p><p> </p><p><img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f97d.png" alt="🥽" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.protocols.io/view/calibrating-a-blue-light-source-with-dronpa-2-eq2ly4kdrlx9/v1">Protocol</a><br /><a href="https://www.youtube.com/watch?v=LaIoRGnTDQ0"><img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4fd.png" alt="📽" class="wp-smiley" style="height: 1em; max-height: 1em;" /> Video</a><br /><a href="https://www.nature.com/articles/s41592-023-02063-y"><img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f5de.png" alt="🗞" class="wp-smiley" style="height: 1em; max-height: 1em;" /> Paper</a></p>								</div>
+				</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-acf898e e-flex e-con-boxed e-con e-parent" data-eae-slider="64521" data-id="acf898e" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-a910203 elementor-widget elementor-widget-spacer" data-id="a910203" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-de548d8 e-flex e-con-boxed e-con e-parent" data-eae-slider="78507" data-id="de548d8" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-b2e4190 dce_masking-none elementor-widget elementor-widget-video" data-id="b2e4190" data-element_type="widget" data-settings="{&quot;youtube_url&quot;:&quot;https:\/\/www.youtube.com\/watch?v=LaIoRGnTDQ0&quot;,&quot;video_type&quot;:&quot;youtube&quot;}" data-widget_type="video.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-wrapper elementor-open-inline">
+			<div class="elementor-video"></div>		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-42649d8 e-flex e-con-boxed e-con e-parent" data-eae-slider="38088" data-id="42649d8" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-2c7447d elementor-widget elementor-widget-spacer" data-id="2c7447d" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-19e424c e-flex e-con-boxed e-con e-parent" data-eae-slider="93066" data-id="19e424c" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-4bd509a e-con-full e-flex e-con e-child" data-eae-slider="75447" data-id="4bd509a" data-element_type="container">
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-a0c7c72 e-con-full e-flex e-con e-child" data-eae-slider="60380" data-id="a0c7c72" data-element_type="container">
+				<div class="elementor-element elementor-element-861b5ff elementor-widget elementor-widget-heading" data-id="861b5ff" data-element_type="widget" data-widget_type="heading.default">
+				<div class="elementor-widget-container">
+					<h2 class="elementor-heading-title elementor-size-default">To make the work easier to access and apply, we have prepared a short explainer video and a practical protocol alongside the paper.</h2>				</div>
+				</div>
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-1638296 e-flex e-con-boxed e-con e-parent" data-eae-slider="10549" data-id="1638296" data-element_type="container">
+					<div class="e-con-inner">
+		<div class="has_eae_slider elementor-element elementor-element-d963861 e-con-full e-flex e-con e-child" data-eae-slider="60319" data-id="d963861" data-element_type="container">
+				<div class="elementor-element elementor-element-c680a4c elementor-widget elementor-widget-text-editor" data-id="c680a4c" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>This resource is intended for microscopy users, imaging facilities, and researchers interested in quantitative illumination calibration.</p><p> </p><p>For any contact:</p><p>Aliénor Lahlou &#8211; <a href="mailto:alienor.lahlou@sony.com">alienor.lahlou@sony.com</a></p>								</div>
+				</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-a3f22d7 e-con-full e-flex e-con e-child" data-eae-slider="80938" data-id="a3f22d7" data-element_type="container">
+				</div>
+					</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-c5fa2b2 e-con-full e-flex e-con e-parent" data-eae-slider="62249" data-id="c5fa2b2" data-element_type="container">
+		<div class="has_eae_slider elementor-element elementor-element-853499b e-con-full e-flex e-con e-child" data-eae-slider="97195" data-id="853499b" data-element_type="container">
+				<div class="elementor-element elementor-element-9cf8d6d elementor-widget-divider--view-line elementor-widget elementor-widget-divider" data-id="9cf8d6d" data-element_type="widget" data-widget_type="divider.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-divider">
+			<span class="elementor-divider-separator">
+						</span>
+		</div>
+						</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-f98f7e2 e-grid e-con-full e-con e-child" data-eae-slider="52687" data-id="f98f7e2" data-element_type="container">
+				<div class="elementor-element elementor-element-824741c elementor-widget elementor-widget-text-editor" data-id="824741c" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>Credits:</p><p>A paper by Aliénor Lahlou, Hessam SEPASI TEHRANI, Ian Coghill, Yuriy Shpinov, Mrinal Mandal, Marie-Aude PLAMONT, Isabelle Aujard, Yuxi Niu, Ladislav Nedbal, Dusan Lazár, Pierre Mahou, Willy Supatto, Emmanuel Beaurepaire, Isabelle Eisenmann, Nicolas Desprat, Vincent CROQUETTE, Raphaël Jeanneret, Thomas Le Saux &amp; Ludovic Jullien <img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f44b.png" alt="👋" class="wp-smiley" style="height: 1em; max-height: 1em;" /></p><p> </p><p>A protocol in collaboration with</p><p>Emma Simon</p><p>Sébastien MARINO</p><p>Théo Beguin</p><p>Hélène Merceron</p><p>Mrinal Mandal</p><p>Marie-Aude PLAMONT</p><p>Thomas Le Saux</p><p>Ludovic Jullien</p>								</div>
+				</div>
+				<div class="elementor-element elementor-element-6276a43 elementor-widget elementor-widget-text-editor" data-id="6276a43" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p><span class="yt-core-attributed-string--link-inherit-color" dir="auto">Research paper: https://www.nature.com/articles/s41592-023-02063-y</span></p><p> </p><p>Protocol: https://www.protocols.io/view/calibrating-a-blue-light-source-with-dronpa-2-eq2ly4kdrlx9/v1</p><p> </p><p>Video: https://www.youtube.com/watch?v=LaIoRGnTDQ0</p>								</div>
+				</div>
+				<div class="elementor-element elementor-element-dba1433 elementor-widget elementor-widget-text-editor" data-id="dba1433" data-element_type="widget" data-widget_type="text-editor.default">
+				<div class="elementor-widget-container">
+									<p>Follow Sony CSL – Paris on social media for the latest updates on our other research projects &amp; prototypes.</p>
+<p><a href="https://x.com/SonyCSLMusic">SonyCSLMusic on X</a></p>
+<p><a href="https://www.instagram.com/sonycslparis_musicteam/">SonyCSL – Paris MusicTeam on Instagram</a></p>
+<p><a href="https://www.linkedin.com/company/sony-csl-music-team">SonyCSLMusicTeam on Linkedin</a></p>								</div>
+				</div>
+				</div>
+				<div class="elementor-element elementor-element-da51d64 elementor-widget elementor-widget-spacer" data-id="da51d64" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+				</div>
+				<div class="elementor-element elementor-element-a95eaa6 elementor-widget elementor-widget-spacer" data-id="a95eaa6" data-element_type="widget" data-widget_type="spacer.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-spacer">
+			<div class="elementor-spacer-inner"></div>
+		</div>
+						</div>
+				</div>
+				</div>
+		<div class="has_eae_slider elementor-element elementor-element-7e5c977 e-flex e-con-boxed e-con e-parent" data-eae-slider="61297" data-id="7e5c977" data-element_type="container">
+					<div class="e-con-inner">
+				<div class="elementor-element elementor-element-8320f52 elementor-widget elementor-widget-post-navigation" data-id="8320f52" data-element_type="widget" data-widget_type="post-navigation.default">
+				<div class="elementor-widget-container">
+							<div class="elementor-post-navigation" role="navigation" aria-label="Post Navigation">
+			<div class="elementor-post-navigation__prev elementor-post-navigation__link">
+				<a href="https://csl.sony.fr/news/vitalic-x-emmanuel-deruty-research-ai-and-tomato-sauce/" rel="prev"><span class="post-navigation__arrow-wrapper post-navigation__arrow-prev"><i aria-hidden="true" class="fas fa-angle-left"></i><span class="elementor-screen-only">Prev</span></span><span class="elementor-post-navigation__link__prev"><span class="post-navigation__prev--label">Previous post</span></span></a>			</div>
+						<div class="elementor-post-navigation__next elementor-post-navigation__link">
+				<a href="https://csl.sony.fr/news/musicalism-delaurentis-new-album-is-out/" rel="next"><span class="elementor-post-navigation__link__next"><span class="post-navigation__next--label">Next post</span></span><span class="post-navigation__arrow-wrapper post-navigation__arrow-next"><i aria-hidden="true" class="fas fa-angle-right"></i><span class="elementor-screen-only">Next</span></span></a>			</div>
+		</div>
+						</div>
+				</div>
+					</div>
+				</div>
+				</div>
+		<p>The post <a href="https://csl.sony.fr/news/fluorescence-to-measure-light-intensity-a-protocol/">Fluorescence to measure light intensity, a protocol</a> appeared first on <a href="https://csl.sony.fr">Sony CSL - Paris</a>.</p>
+]]></content:encoded>
+					
+		
+		
+			</item>
+</channel></rss>

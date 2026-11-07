@@ -1,0 +1,14 @@
+{
+  "name": "newskit",
+  "owner": {
+    "name": "Lauro Foletti",
+    "url": "https://github.com/lfoletti/newskit"
+  },
+  "plugins": [
+    {
+      "name": "newskit",
+      "source": "./",
+      "description": "Un graphe de veille sur n'importe quel sujet, tenu à jour chaque nuit."
+    }
+  ]
+}

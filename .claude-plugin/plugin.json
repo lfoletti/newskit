@@ -1,0 +1,13 @@
+{
+  "name": "newskit",
+  "description": "Un moteur de veille sans thème : un graphe de connaissances sur n'importe quel sujet, né d'un formulaire et tenu à jour chaque nuit sous plafond de dépense. Le skill pilote la commande newskit ; un crochet refuse les appels au modèle quand la fenêtre d'usage est fermée.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lauro Foletti",
+    "email": "25608942+lfoletti@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/lfoletti/newskit",
+  "repository": "https://github.com/lfoletti/newskit",
+  "license": "MIT",
+  "keywords": ["veille", "knowledge-graph", "monitoring", "newsletter", "claude-code"]
+}

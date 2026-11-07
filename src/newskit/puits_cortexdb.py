@@ -62,7 +62,7 @@ CHAMPS_LOT = {
     "output_tokens": "hors classe : coût de l'extraction, tenu par le registre des coûts",
 }
 CHAMPS_NOEUD = {
-    "id": "métadonnée contaixt_id (CortexDB dérive l'identifiant du nom)",
+    "id": "métadonnée newskit_id (CortexDB dérive l'identifiant du nom)",
     "label": "nom de l'entité (après la table d'alias)",
     "file_type": "type de l'entité",
     "source_file": "_source relatif ; document du versement",
@@ -91,7 +91,7 @@ CHAMPS_ARETE = {
 _EN_TETE = "hors classe : dans l'en-tête du document de la fiche"
 _COLLECTE = "hors classe : propre à la collecte"
 CHAMPS_NOEUD_SQUELETTE = {
-    "id": "métadonnée contaixt_id", "label": "nom de l'entité", "kind": "type de l'entité",
+    "id": "métadonnée newskit_id", "label": "nom de l'entité", "kind": "type de l'entité",
     "file_type": "hors classe : `kind` le précise", "source_file": "hors classe : _source est la fiche de l'arête",
     "url": "métadonnée", "date": "métadonnée", "collected": _EN_TETE, "plateforme": _EN_TETE, "arxiv_id": _EN_TETE,
     "texte": _EN_TETE, "version": _EN_TETE, "statut": _EN_TETE, "remplacee_par": _EN_TETE, "partie": _EN_TETE,
@@ -102,7 +102,7 @@ CHAMPS_NOEUD_SQUELETTE = {
     "label_fr": "hors classe : affichage en français, posé à la composition d'après la table du graphe (francais.py)",
 }
 CHAMPS_NOEUD_AST = {
-    "id": "identifiant de l'entité (PREFIXE_TITRE + empreinte) et métadonnée contaixt_id", "label": "nom de l'entité",
+    "id": "identifiant de l'entité (PREFIXE_TITRE + empreinte) et métadonnée newskit_id", "label": "nom de l'entité",
     "file_type": "type de l'entité", "source_file": "_source", "source_location": "métadonnée",
     "_origin": "_producer",
 }
@@ -223,7 +223,7 @@ def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, alias: 
         nom, type_ = sq if sq else (alias.get(n["id"], n["label"]), n.get("file_type") or "concept")
         nom_de[n["id"]] = nom
         e = entites.setdefault(nom, {"name": nom, "type": type_, "chunk_ids": [],
-                                     "metadata": {"_source": source, "_producer": PRODUCTEUR, "contaixt_id": n["id"],
+                                     "metadata": {"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"],
                                                   **{k: n.get(k) for k in ("source_url", "captured_at", "author",
                                                                            "contributor", "source_location")}}})
         if n.get("rationale"):
@@ -338,14 +338,14 @@ def entite_composee(n: dict, source: str, alias: dict[str, str]) -> dict:
     """L'entité d'un nœud du graphe composé, extrémité d'une arête du squelette ou de l'AST."""
     if "kind" in n:
         return {"name": n["label"], "type": n["kind"], "chunk_ids": [],
-                "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_SQUELETTE, "contaixt_id": n["id"],
+                "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_SQUELETTE, "newskit_id": n["id"],
                                      "url": n.get("url"), "date": n.get("date")})}
     if n.get("_origin") == "ast":
         return {"id": PREFIXE_TITRE + court(n["id"]), "name": n["label"], "type": n.get("file_type") or "document",
-                "chunk_ids": [], "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_AST, "contaixt_id": n["id"],
+                "chunk_ids": [], "metadata": chaines({"_source": source, "_producer": PRODUCTEUR_AST, "newskit_id": n["id"],
                                                       "source_location": n.get("source_location")})}
     return {"name": alias.get(n["id"], n["label"]), "type": n.get("file_type") or "concept", "chunk_ids": [],
-            "metadata": chaines({"_source": source, "_producer": PRODUCTEUR, "contaixt_id": n["id"]})}
+            "metadata": chaines({"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"]})}
 
 
 def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None = None) -> tuple[dict[str, dict], dict]:
@@ -414,9 +414,9 @@ def synthese_vers_cortexdb(cid: str, notion: dict, alias: dict[str, str] | None 
     preuves = list(dict.fromkeys(r["fiche"] for ph in notion["phrases"] for r in ph.get("refs") or [] if r.get("fiche")))
     document = {"document_id": court(f"pyramide/{cid}"), "title": nom, "author": "", "collection": COLLECTION_PYRAMIDE,
                 "content": "\n".join([nom, *phrases]), "source_url": "",
-                "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "_grade": "self_consistent", "contaixt_id": cid,
+                "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "_grade": "self_consistent", "newskit_id": cid,
                                      "preuves": preuves, "sources": [court(f) for f in preuves], "empreinte": notion.get("empreinte"), "degre": notion.get("degre")})}
-    entite = {"name": nom, "type": "concept", "chunk_ids": [], "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "contaixt_id": cid})}
+    entite = {"name": nom, "type": "concept", "chunk_ids": [], "metadata": chaines({"_producer": PRODUCTEUR_PYRAMIDE, "newskit_id": cid})}
     return {"document": document, "origine": f"pyramide/{cid}", "entites": [entite], "relations": [], "ecartes": {}}
 
 
@@ -614,11 +614,17 @@ def lots_du_graphe(graphe: str) -> list[Path]:
     return choisir_lots(candidats, set(retenues_d), RACINE)
 
 
+CLE_D_EMPREINTE = ('"newskit_id":', '"contaixt_id":')
+
+
 def empreinte(v: dict) -> str:
-    """L'empreinte d'un versement, avant écriture : document, entités, relations (B15, versement en place)."""
+    """L'empreinte d'un versement, avant écriture : document, entités, relations (B15, versement en place). La clé de
+    l'identifiant du nœud s'y lit sous son ancien nom (contaixt_id, renommée newskit_id à N5) : le renommage ne fait
+    reverser aucun document ; un cerveau prend le nouveau nom au fil des versements qui changent."""
     import hashlib  # noqa: PLC0415
-    return hashlib.sha256(json.dumps({k: v.get(k) for k in ("document", "entites", "relations")}, ensure_ascii=False,
-                                     sort_keys=True, default=str).encode("utf-8")).hexdigest()[:24]
+    texte = json.dumps({k: v.get(k) for k in ("document", "entites", "relations")}, ensure_ascii=False,
+                       sort_keys=True, default=str).replace(*CLE_D_EMPREINTE)
+    return hashlib.sha256(texte.encode("utf-8")).hexdigest()[:24]
 
 
 class EnPlace:

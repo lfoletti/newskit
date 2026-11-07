@@ -115,13 +115,15 @@ def traduire(graphe: str, d: dict, memo: dict, plafond: int = 4000) -> int:
                if str(n.get("id", "")).startswith("concept_") and n["id"] not in memo["anglais"] and n["id"] not in memo["alias"]
                and etranger(n.get("label"), voc)][:plafond]
     faits = 0
+    decl = cfg.graphe_declare(graphe) or {}
+    sujet = decl.get("libelle") or decl.get("domaine") or graphe     # le graphe traduit, jamais un thème du moteur (N5)
     for k0 in range(0, len(a_faire), LOT_TRADUCTION):
         if couts.en_limite():
             print("  ARRÊT : limite d'usage atteinte, les libellés restants attendent", file=sys.stderr)
             break
         lot = a_faire[k0:k0 + LOT_TRADUCTION]
         rep = te.appeler_claude(
-            "Voici des libellés de notions d'un graphe de connaissances sur la gouvernance de l'IA, dans plusieurs langues. "
+            f"Voici des libellés de notions du graphe de connaissances « {sujet} », dans plusieurs langues. "
             "Pour chacun, donne le nom anglais qu'un spécialiste emploierait (le terme établi, au singulier, sans article). "
             "Un nom propre (personne, organisation, tribunal, loi ou autorité nationale), un sigle ou le titre officiel d'un "
             "texte reste tel quel.\n\n" + "\n".join(f"{i}. {l}" for i, (_, l) in enumerate(lot))

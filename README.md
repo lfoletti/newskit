@@ -4,82 +4,103 @@
 [![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](CHANGELOG.md)
 
-Un moteur de veille sans thème, pour Claude Code. Il fait naître un graphe de connaissances sur n'importe quel sujet et le tient à jour chaque nuit : il collecte les sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations, puis compose le graphe, sous plafond de dépense. Chaque réponse tirée du graphe cite sa fiche et sa ligne.
+English | [Français](README.fr.md)
 
-Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
+A topic monitoring engine for Claude Code. You name a subject; Newskit builds a knowledge graph on it and keeps it up to date at regular intervals. At each pass it collects the sources, turns them into notes, extracts from each note the concepts and how they relate, then rebuilds the graph, within a spending cap. Every answer drawn from the graph cites its note and its line.
 
-## Démarrage rapide
+For developers who already use Claude Code: every model call goes through `claude -p`, under your own subscription.
 
-Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
+## How the graph grows
+
+The graph does not stay within the subjects you declared at the start.
+
+- **New themes.** After each pass, the engine looks for clusters of concepts that none of the declared subjects covers. A candidate that comes back three passes in a row joins the subjects; the sources and searches follow it.
+- **Self-completion.** A question the graph could not answer becomes a search for the next pass. A web scout searches the declared subjects; a question agent probes the graph the way a practitioner would; what a language model considers essential and the graph lacks becomes a shopping list of sources to find.
+- **The source list.** The engine assesses a candidate domain before it is declared, and keeps track of every source a user drops in (a link sent from the browser). A source that keeps failing is audited and, when a route exists, repaired on its own (see `sap` below).
+- **Clean concepts.** The same concept found under several labels (a translation, an acronym, a variant) is merged after a model confirms it is exactly the same concept; refusals are kept and never asked again.
+
+## Quick start
+
+You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
 
 ```sh
 pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.4"
-mkdir mon-media && cd mon-media
+mkdir my-media && cd my-media
 newskit temoin nuit
 ```
 
-La dernière commande fait passer une nuit entière au moteur sur un graphe sans rapport (l'apiculture médiévale), rejouée de réponses enregistrées : aucun appel payant, une minute environ. Elle doit finir par « témoin vert ».
+The last command is a dress rehearsal. It runs one full pass of the engine on an unrelated sample graph (medieval beekeeping), with model answers replayed from a recording: no paid call, about one minute. It must end with « témoin vert » (rehearsal passed).
 
-Puis, dans Claude Code :
+Then, in Claude Code:
 
 ```text
 /plugin marketplace add lfoletti/newskit
 /plugin install newskit@newskit
 ```
 
-Demandez ensuite à Claude de suivre un sujet (« fais naître un graphe de veille sur les potagers urbains »). Le skill `newskit` cherche le `config.yaml` du média et, s'il manque, pose ses questions, propose des thèmes tirés des sources que vous donnez, fait naître le graphe et lance une première nuit sous vos yeux.
+Ask Claude to follow a subject (“start a monitoring graph on urban gardening”). The `newskit` skill looks for the media folder's `config.yaml`; if there is none, it asks its questions, suggests themes drawn from the sources you give, creates the graph and runs a first pass in front of you.
 
-## Le dossier du média
+## The media folder
 
-Un média est un dossier qui porte un `config.yaml`. Le moteur s'y accroche : la variable `NEWSKIT_DONNEES` d'abord, sinon le dossier courant. Le code reste dans le paquet installé ; les données (fiches, graphe, registre des coûts) vivent dans le dossier du média.
+A media is a folder that holds a `config.yaml`. The engine attaches to it: the `NEWSKIT_DONNEES` variable first, otherwise the current folder. The code stays in the installed package; the data (notes, graph, cost ledger) live in the media folder.
 
 ```yaml
 version: 1
 media:
   nom: potagers
-  langue: fr                  # la langue des consignes et de la publication
-  traductions: [en]           # fil et lettre traduits ; aucune par défaut
-  frequence: {heure: 5, minute: 30}
-modeles:                      # un modèle par rôle ; un rôle absent garde son défaut
+  langue: fr                  # language of the prompts and of the publication
+  traductions: [en]           # translated feed and newsletter; none by default
+  frequence: {heure: 5, minute: 30}   # time of the scheduled pass
+modeles:                      # one model per role; a missing role keeps its default
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5
-sources: sources.yaml         # le fichier des sources, à part
-# registre_des_graphes: graphes.json   # libellés et sujets déclarés, tenus par le moteur (défaut)
+sources: sources.yaml         # the source list, kept apart
+# registre_des_graphes: graphes.json   # labels and declared subjects, kept by the engine (default)
 graphes:
   potagers-urbains:
     libelle: Potagers urbains
     domaine: "urban gardening: allotments, soil, seed exchange"
 ```
 
-`newskit media` dit ce qui est lu ; un champ inconnu est refusé et nommé. Les rôles : `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
+`newskit media` shows what was read; an unknown field is refused and named. The roles: `extraction`, `analyse`, `redaction`, `lecture`, `traduction`, `questions`.
 
-## Les commandes
+## Commands
 
-| Commande | Ce qu'elle fait |
+| Command | What it does |
 | :- | :- |
-| `newskit` | les commandes, une ligne chacune |
-| `newskit media` | le média lu : langue, traductions, heure de la nuit, modèle par rôle |
-| `newskit nouveau-graphe <nom>` | fait naître un graphe, ou dit ce qui lui manque (`--controle`) |
-| `newskit routine --graphe <nom>` | une nuit : collecte, fiches, couche 2 sous plafond, graphe |
-| `newskit graphe --graphe <nom> chercher "…"` | interroge le graphe, sans appel au modèle ; chaque réponse porte sa provenance |
-| `newskit couts --par graphe` | la dépense des sept derniers jours |
-| `newskit temoin nuit` | le témoin du jour ; une nuit ne part pas sans lui |
+| `newskit` | the commands, one line each |
+| `newskit media` | the media as read: language, translations, time of the pass, model per role |
+| `newskit nouveau-graphe <nom>` | creates a graph, or says what it lacks (`--controle`) |
+| `newskit routine --graphe <nom>` | one pass: collection, notes, concept extraction within the cap, graph |
+| `newskit graphe --graphe <nom> chercher "…"` | queries the graph, no model call; each answer carries its provenance |
+| `newskit couts --par graphe` | spending over the last seven days |
+| `newskit temoin nuit` | today's rehearsal; a pass does not start without it |
 
-## Les gardes
+## Safeguards
 
-- **Le témoin.** Une nuit refuse de partir sans un témoin vert du jour et de la même version du moteur.
-- **Les plafonds.** Chaque étape a son plafond de fiches et de dépense ; chaque appel au modèle entre au registre des coûts, sous un poste et un graphe.
-- **La limite d'usage.** Après trois limites d'affilée, le moteur pose une marque qui vaut trois heures. Le crochet du plugin refuse alors tout appel au modèle lancé depuis Claude Code.
+- **The rehearsal.** Before the real pass, the engine rehearses it on the sample graph with recorded answers. The real pass starts only if a rehearsal passed the same day with the same engine version. An engine update therefore cannot break a pass unnoticed: it stops before spending anything.
+- **The caps.** Each step has its own cap on notes and on spending; every model call is written to the cost ledger, under a step and a graph.
+- **The usage limit.** After three usage limits in a row, the engine sets a marker that lasts three hours. The plugin's hook then refuses any model call started from Claude Code.
 
-## Limites de la version 0.1
+## Works with
 
-- Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
-- macOS et Linux. Les nuits planifiées passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine`.
-- `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
+Newskit runs alone. These tools extend it when they are present.
 
-## Contribuer
+- **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Website access audit. When a source keeps failing, Newskit asks sap which route still reaches it (RSS feed, API, sitemap, plain HTML, browser) and repairs the source.
+- **[CortexDB](https://github.com/lfoletti/cortexdb)**. AI memory and knowledge graph in one SQLite file. A graph can be loaded into a CortexDB brain, each relation tied to the passage that supports it, and queried from any MCP client.
+- **[Thalamus](https://github.com/lfoletti/thalamus)**. A governance layer over CortexDB for an organisation's shared knowledge. Questions left unanswered by Thalamus clients return to the engine as searches.
+- **[graphify](https://github.com/Graphify-Labs/graphify)**. Extraction and validation of the document structure, the first layer of the graph.
+- **[trafilatura](https://trafilatura.readthedocs.io)**. Main text extraction from web pages.
 
-Voir [CONTRIBUTING.md](CONTRIBUTING.md). Une faille se signale en privé : [SECURITY.md](SECURITY.md).
+## Limits of version 0.1
+
+- The prompts to the models are written in French; the only translation is English.
+- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit temoin nuit` then `newskit routine`.
+- `newskit nouveau-graphe` writes the graph's scheduled task under `taches/`, ready to install in `/Library/LaunchDaemons`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report a vulnerability privately: [SECURITY.md](SECURITY.md).
 
 ## Licence
 

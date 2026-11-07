@@ -1,6 +1,6 @@
 {
   "name": "newskit",
-  "description": "Un moteur de veille sans thème : un graphe de connaissances sur n'importe quel sujet, né d'un formulaire et tenu à jour chaque nuit sous plafond de dépense. Le skill pilote la commande newskit ; un crochet refuse les appels au modèle quand la fenêtre d'usage est fermée.",
+  "description": "A topic monitoring engine: a knowledge graph on any subject, started from a form and kept up to date at regular intervals within a spending cap. The skill drives the newskit command; a hook refuses model calls while the usage window is closed.",
   "version": "0.1.4",
   "author": {
     "name": "Lauro Foletti",

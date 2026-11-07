@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ICI = Path(__file__).resolve().parents[2]
-DOCUMENTS = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", "skills/newskit/SKILL.md"]
+DOCUMENTS = ["README.fr.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", "skills/newskit/SKILL.md"]
 FAUTES = [
     (re.compile(r"[ \t ](?=[:;!?](?:\s|$))"), "espace ordinaire devant un signe double"),
     (re.compile(r"(?<=[^\s (\[|*_])(?=[:;!?](?:\s|$))"), "signe double sans espace insécable"),

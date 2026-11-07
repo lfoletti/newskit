@@ -3,9 +3,9 @@ name: newskit
 description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec le moteur Newskit. Le skill trouve ou écrit le config.yaml du média (formulaire), propose les sources et les thèmes, fait naître le graphe, lance une nuit, lit le bilan et l'interroge. Utiliser quand on veut suivre un domaine dans le temps, faire naître un graphe, lancer ou relire une nuit de veille, ou interroger un graphe Newskit.
 ---
 
-# Newskit : un graphe de veille, tenu chaque nuit
+# Newskit : un graphe de veille, tenu à intervalles réguliers
 
-Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
+Newskit est un moteur de veille thématique. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour à intervalles réguliers, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
 Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.4"`) et le redire à l'utilisateur.
 

@@ -447,7 +447,7 @@ def declarer(graphe: str, libelle: str, etat: dict) -> int:
     for script in (REGISTRE_SKILL.parent / "synchroniser.py", CODE / "archiver_skill.py"):
         if script.exists():
             subprocess.run([sys.executable, str(script)], cwd=RACINE, capture_output=True, text=True, timeout=120)
-    print(f"  chaîne lancée : éclaireur et poseur en tête {NUITS_NEUF} nuits, canon redemandé à la prochaine mesure, "
+    print(f"  chaîne lancée : éclaireur et poseur en tête {NUITS_NEUF} passages, canon redemandé à la prochaine mesure, "
           f"sous-jeu du banc par thème à la prochaine routine (ou maintenant : python3 -m newskit.banc_themes --graphe {graphe} --composer --themes \"{libelle[:40]}…\")")
     return 0
 

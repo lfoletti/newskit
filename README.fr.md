@@ -38,7 +38,7 @@ Les mots employés plus bas : le **média** est le dossier du projet ; il port
 1. Installer le moteur et l'essayer dans un dossier vide :
 
    ```sh
-   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
+   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.6"
    mkdir mon-media && cd mon-media
    newskit test
    ```

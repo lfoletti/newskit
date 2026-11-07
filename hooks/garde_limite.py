@@ -3,7 +3,7 @@
 
 Le moteur pose `cache/limite_atteinte` dans le dossier du média quand le modèle répond « usage limit » trois fois
 d'affilée (newskit.couts) ; la marque vaut trois heures. Tant qu'elle est fraîche, ce crochet refuse toute commande
-Bash qui lance `claude -p` ou une nuit (`newskit routine`). La garde tient hors du modèle : elle ne dépend ni du skill
+Bash qui lance `claude -p` ou un passage (`newskit run`, `newskit routine`). La garde tient hors du modèle : elle ne dépend ni du skill
 ni de la session.
 
 Bibliothèque standard seule : le Python qui lance le crochet n'a pas forcément le paquet newskit.

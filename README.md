@@ -38,7 +38,7 @@ The words used below: the **media** is your project folder; it holds one or more
 1. Install the engine and test it in an empty folder:
 
    ```sh
-   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
+   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.6"
    mkdir my-media && cd my-media
    newskit test
    ```

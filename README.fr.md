@@ -84,7 +84,7 @@ graphes:
 
 ## Avec d'autres outils
 
-Newskit tourne seul. Ces outils l'étendent quand ils sont présents.
+Newskit tourne seul. Les outils suivants en étendent les fonctionnalités quand ils sont installés :
 
 - **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Audit d'accès aux sites web. Quand une source échoue plusieurs fois, Newskit demande à sap quelle voie l'atteint encore (flux RSS, API, plan du site, HTML simple, navigateur) et répare la source.
 - **[cortexdb](https://github.com/lfoletti/cortexdb)**. Mémoire d'IA et graphe de connaissances dans un seul fichier SQLite. Un graphe peut être versé dans un cerveau cortexdb, chaque relation rattachée au passage qui la soutient, puis interrogé depuis tout client MCP.

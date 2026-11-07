@@ -84,7 +84,7 @@ graphes:
 
 ## Works with
 
-Newskit runs alone. These tools extend it when they are present.
+Newskit runs alone. The following tools extend its features when they are installed:
 
 - **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Website access audit. When a source keeps failing, Newskit asks sap which route still reaches it (RSS feed, API, sitemap, plain HTML, browser) and repairs the source.
 - **[cortexdb](https://github.com/lfoletti/cortexdb)**. AI memory and knowledge graph in one SQLite file. A graph can be loaded into a cortexdb brain, each relation tied to the passage that supports it, and queried from any MCP client.

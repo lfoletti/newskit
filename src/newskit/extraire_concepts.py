@@ -39,11 +39,11 @@ import re
 import subprocess
 import sys
 import time
-import unicodedata
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.yaml du média
+from newskit.extrait import MOTS_EXTRAIT, _a_plat, atteste  # noqa: E402, F401 — la vérification d'extrait, partagée avec le puits
 # Chemins du graphe principal ; `--graphe` les remplace par ceux du graphe visé
 # (config_sources.chemins_du_graphe), depuis le 27.09.2026 (graphe financier).
 EMPREINTES = RACINE / "graphe" / "couche2" / "empreintes.json"
@@ -95,29 +95,6 @@ SCHEMA = {
     },
     "required": ["nodes", "edges"], "additionalProperties": False,
 }
-
-
-MOTS_EXTRAIT = 3     # un extrait plus court s'atteste par hasard (« AI Act »)
-
-
-def _a_plat(texte: str) -> str:
-    """Le texte comparé : formes Unicode unifiées, liens Markdown réduits à leur texte, apostrophes, guillemets
-    et tirets ramenés à un seul signe, marques de mise en forme retirées, espaces fondus, casse ignorée."""
-    t = unicodedata.normalize("NFKC", texte)
-    t = re.sub(r"\[([^\]]*)\]\([^)\s]*\)", r"\1", t)        # un lien Markdown : son texte, sans l'adresse
-    t = re.sub(r"[\u2018\u2019\u02bc\u0060\u00b4]", "'", t)
-    t = re.sub(r"[\u201c\u201d\u00ab\u00bb\u201e]", '"', t)
-    t = re.sub(r"[\u2010-\u2015\u2212]", "-", t)
-    t = re.sub(r"[*_]", "", t)
-    return re.sub(r"\s+", " ", t).strip().lower()
-
-
-def atteste(extrait: str | None, corps: str) -> bool:
-    """L'extrait figure-t-il mot pour mot dans le texte donné au modèle (07.11.2026, repris d'OntoSmith) ?
-    Le modèle qui extrait ne décide pas seul : un fait sans extrait retrouvé n'entre pas au graphe."""
-    if not extrait or len(str(extrait).split()) < MOTS_EXTRAIT:
-        return False
-    return _a_plat(str(extrait)) in _a_plat(corps)
 
 
 def identifiant_de_fiche(chemin: Path, champs: dict | None = None) -> str:

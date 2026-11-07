@@ -55,14 +55,17 @@ EN = re.compile(r"\b(of|the|and|for|data|protection|regulation|authority|decisio
 ACCENTS = re.compile(r"[ąęłńśźżćőűøåæœäöüßéèêàçùîôâûëïÿãõñ]", re.I)
 MOTS_OUTILS = re.compile(r"\b(de|des|du|la|le|les|et|sur|pour|une|aux|der|die|das|und|für|von|mit|zur|het|een|van|voor|op|"
                          r"jako|oraz|się|dla|przez|della|degli|che|per|il|los|las|del|para|el|y|w|z|i|na|en)\b", re.I)
-DICTIONNAIRE = Path("/usr/share/dict/words")
+# Le vocabulaire anglais : web2 (Webster's Second International, 1934, domaine public ; 234 936 mots), livré avec le
+# moteur. La liste du système (/usr/share/dict/words) manque sous Linux : le même graphe jugeait autrement (07.11.2026).
+DICTIONNAIRE = CODE / "vocabulaire_web2.txt.gz"
 _vocabulaire: set[str] | None = None
 
 
 def vocabulaire() -> set[str]:
     global _vocabulaire
     if _vocabulaire is None:
-        _vocabulaire = {w.strip().lower() for w in DICTIONNAIRE.read_text(errors="ignore").splitlines()} if DICTIONNAIRE.exists() else set()
+        with gzip.open(DICTIONNAIRE, "rt", encoding="utf-8", errors="ignore") as f:
+            _vocabulaire = {w.strip().lower() for w in f}
     return _vocabulaire
 
 

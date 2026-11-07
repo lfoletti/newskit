@@ -16,7 +16,7 @@ Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle pas
 
 ## Comment le graphe grandit
 
-Le graphe ne reste pas dans les sujets déclarés au départ.
+Le graphe ne reste pas dans les sujets déclarés au départ : il s'étend.
 
 - **Thèmes nouveaux.** Après chaque passage, le moteur cherche les groupes de notions qu'aucun sujet déclaré ne couvre. Un candidat qui revient trois passages de suite entre parmi les sujets ; les sources et les recherches le suivent.
 - **Auto-complétion.** Une question à laquelle le graphe n'a pas su répondre devient une recherche du passage suivant. Un éclaireur cherche sur le web autour des sujets déclarés ; un poseur de questions interroge le graphe comme le ferait un praticien ; ce qu'un modèle de langage tient pour essentiel et que le graphe n'a pas devient une liste de sources à trouver.

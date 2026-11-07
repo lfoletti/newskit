@@ -16,7 +16,7 @@ For developers who already use Claude Code: every model call goes through `claud
 
 ## How the graph grows
 
-The graph does not stay within the subjects you declared at the start.
+The graph does not stay within the subjects you declared at the start: it expands.
 
 - **New themes.** After each pass, the engine looks for clusters of concepts that none of the declared subjects covers. A candidate that comes back three passes in a row joins the subjects; the sources and searches follow it.
 - **Auto-completion.** A question the graph could not answer becomes a search for the next pass. A web scout searches the declared subjects; a question agent probes the graph the way a practitioner would; what a language model considers essential and the graph lacks becomes a shopping list of sources to find.

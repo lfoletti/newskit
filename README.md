@@ -6,13 +6,80 @@
 
 English | [Français](README.fr.md)
 
-A topic monitoring engine for Claude Code. You name a subject; Newskit builds a knowledge graph on it and keeps it up to date at regular intervals. At each pass it collects the sources, turns them into notes, extracts from each note the concepts and how they relate, then rebuilds the graph, within a spending cap. Every answer drawn from the graph cites its note and its line.
+Automated topic monitoring for Claude Code. You name a subject and give a few sources; at regular intervals Newskit collects them, writes one note per item, extracts the concepts and how they relate, and keeps a knowledge graph up to date, within a spending cap. Two things set it apart from a feed reader: every answer drawn from the graph cites its note and its line, and the graph extends itself to new themes and new sources.
+
+For developers who already use Claude Code: every model call goes through `claude -p`, under your own subscription.
 
 [![governance.news, an AI governance media built on Newskit](docs/governance-news-en.png)](https://governance.news/en/)
 
 *[governance.news](https://governance.news/en/): a newsletter and a knowledge graph on AI governance in business, built on Newskit.*
 
-For developers who already use Claude Code: every model call goes through `claude -p`, under your own subscription.
+## What you get
+
+All of it lives in your media folder, as plain files:
+
+- **Notes**: one Markdown file per collected item, under `sources/`, with its title, author, date and address.
+- **The graph**: `graphe/<name>/graphe.json`, its map (`carte.md`, the main themes and their concepts) and the report of each pass (`ROUTINE.md`).
+- **Answers with their source**: `newskit query` searches the graph without any model call and gives, for each answer, the note and the line that support it.
+- **A feed and a newsletter**: short posts on the latest items (`fil.json`) and a newsletter of the graph, sent through your own delivery module (`diffusion:` in `config.yaml`).
+
+```text
+$ newskit query --graph ai-governance sources "general-purpose AI model"
+  Sources attestant « General-purpose AI models »
+    sources/ai_compliance/rss/ec_digital/2026-08-02_navigating-ai-act.md L211
+```
+
+## Quick start
+
+You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
+
+1. Install the engine and test it in an empty folder:
+
+   ```sh
+   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
+   mkdir my-media && cd my-media
+   newskit test
+   ```
+
+   The test runs one full pass on a sample graph (medieval beekeeping), with model answers replayed from a recording: no paid call, about one minute. It must end with « témoin vert » (test passed).
+
+2. Open Claude Code in that folder (`claude`) and install the plugin:
+
+   ```text
+   /plugin marketplace add lfoletti/newskit
+   /plugin install newskit@newskit
+   ```
+
+3. Ask Claude to follow a subject: “start a monitoring graph on urban gardening”. The `newskit` skill asks its questions, writes `config.yaml` and `sources.yaml`, suggests themes drawn from the sources you give, creates the graph and runs a first pass in front of you.
+
+4. Read the result: `graphe/<name>/ROUTINE.md` for the report, `newskit query --graph <name> search "…"` for the graph.
+
+5. Schedule the next passes. `newskit new-graph` has written the graph's task under `taches/` and printed the two `sudo` lines that install it in launchd (macOS). On Linux, add a cron line that runs `newskit test` then `newskit run --graph <name>`.
+
+## Sources
+
+Sources are declared in `sources.yaml`, next to `config.yaml`, one block per source, each tied to a graph. Supported: RSS feeds, sitemaps and listing pages (for sites without a feed), Substack, Medium, LinkedIn newsletters, arXiv, journals by ISSN, OpenAlex, GitHub and Hugging Face searches, an e-mail inbox, and local folders of Markdown or PDF files.
+
+```yaml
+version: 1
+sources:
+  - cle: city_farmer
+    plateforme: Flux RSS
+    nom: City Farmer News
+    dossier: potagers/rss
+    abonnement: gratuit
+    graphe: potagers-urbains
+    flux: https://cityfarmer.info/feed/
+  - cle: soil_papers
+    plateforme: OpenAlex
+    nom: OpenAlex, urban soil
+    dossier: potagers/openalex
+    abonnement: gratuit
+    graphe: potagers-urbains
+    requetes: ["urban allotment soil contamination"]
+```
+
+The skill writes this file for you from the addresses you give; a source the engine cannot read is refused with its reason.
 
 ## How the graph grows
 
@@ -22,27 +89,6 @@ The graph does not stay within the subjects you declared at the start: it expand
 - **Auto-completion.** A question the graph could not answer becomes a search for the next pass. A web scout searches the declared subjects; a question agent probes the graph the way a practitioner would; what a language model considers essential and the graph lacks becomes a shopping list of sources to find.
 - **The source list.** The engine assesses a candidate domain before it is declared, and keeps track of every source a user drops in (a link sent from the browser). A source that keeps failing is audited and, when a route exists, repaired on its own (see accesspath below).
 - **Clean concepts.** The same concept found under several labels (a translation, an acronym, a variant) is merged after a model confirms it is exactly the same concept; refusals are kept and never asked again.
-
-## Quick start
-
-You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
-
-```sh
-pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
-mkdir my-media && cd my-media
-newskit test
-```
-
-The last command is a dress rehearsal. It runs one full pass of the engine on an unrelated sample graph (medieval beekeeping), with model answers replayed from a recording: no paid call, about one minute. It must end with « témoin vert » (rehearsal passed).
-
-Then, in Claude Code:
-
-```text
-/plugin marketplace add lfoletti/newskit
-/plugin install newskit@newskit
-```
-
-Ask Claude to follow a subject (“start a monitoring graph on urban gardening”). The `newskit` skill looks for the media folder's `config.yaml`; if there is none, it asks its questions, suggests themes drawn from the sources you give, creates the graph and runs a first pass in front of you.
 
 ## The media folder
 

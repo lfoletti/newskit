@@ -7,7 +7,7 @@ description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec 
 
 Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
-Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.4"`) et le redire à l'utilisateur.
+Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"`) et le redire à l'utilisateur.
 
 ## 1. Trouver le média
 

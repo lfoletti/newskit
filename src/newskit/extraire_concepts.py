@@ -38,6 +38,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -436,8 +437,14 @@ def main() -> int:
         (EMPREINTES.parent / "refus.json").write_text(json.dumps({k: refus[k] for k in sorted(refus)}, indent=1,
                                                                  ensure_ascii=False), encoding="utf-8")
 
+    # Une place par appel simultané : un appel n'en prend une qu'après que le fil principal a traité (écrit) le
+    # résultat qui l'occupait. Sans elles, le pool enchaînait l'appel suivant avant l'écriture du lot précédent, et
+    # une étape tuée perdait des réponses payées (07.11.2026).
+    places = threading.Semaphore(PARALLELE)
+
     def lire(f: Path) -> tuple:
         """Un appel au modèle pour une fiche ; rien n'est écrit ici (fil secondaire)."""
+        places.acquire()
         champs, invite = prompt_de(f)
         t0 = time.time()
         ext, diag = appeler_claude(invite)
@@ -450,45 +457,48 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=PARALLELE) as pool:
         futurs = {pool.submit(lire, f): (f, h) for f, h in retard[:args.plafond]}
         for fut in as_completed(futurs):
-            f, h = futurs[fut]
-            rel = str(f.relative_to(RACINE))
             try:
-                champs, ext, diag, duree = fut.result()
-            except Exception as e:  # noqa: BLE001
-                echecs += 1
-                print(f"  !! {rel} : {e}", file=sys.stderr)
-                continue
-            if ext is None and diag.startswith(LIMITE):
-                # Coupe-circuit (08.10.2026) : la limite d'usage atteinte, les fiches restantes ne sont plus tentées ;
-                # elles restent en retard et reviennent au passage suivant. Une seule ligne, pas une par fiche.
-                limites += 1
-                echecs += 1
-                continue
-            if ext is None:
-                echecs += 1
-                if est_un_refus(diag, None, None):
-                    noter_refus(rel, h)
-                    diag += " — refus noté, la fiche ne sera plus retentée tant que son texte ne change pas"
-                print(f"  !! {rel} : {diag}", file=sys.stderr)
-                continue
-            propre, ecartes = normaliser_extraction(ext, f, champs)
-            erreurs = valider(propre)
-            if erreurs or not propre["nodes"]:
-                echecs += 1
-                if est_un_refus("", propre, erreurs):
-                    noter_refus(rel, h)
-                print(f"  !! {rel} : extraction refusée ({len(propre['nodes'])} nœuds, "
-                      f"{len(erreurs)} erreur(s) de schéma{', ex. ' + erreurs[0][:80] if erreurs else ''})", file=sys.stderr)
-                continue
-            lot = LOTS / f"{identifiant_de_fiche(f, champs)}.json"
-            lot.write_text(json.dumps(propre, indent=1, ensure_ascii=False), encoding="utf-8")
-            connues[rel] = h
-            EMPREINTES.parent.mkdir(parents=True, exist_ok=True)
-            EMPREINTES.write_text(json.dumps({k: connues[k] for k in sorted(connues)}, indent=1, ensure_ascii=False),
-                                  encoding="utf-8")
-            faites += 1
-            print(f"  ok  {rel} : {len(propre['nodes'])} nœuds, {len(propre['edges'])} arêtes"
-                  f"{', ' + str(len(ecartes)) + ' écart(s)' if ecartes else ''} ({duree:.0f} s)", flush=True)
+                f, h = futurs[fut]
+                rel = str(f.relative_to(RACINE))
+                try:
+                    champs, ext, diag, duree = fut.result()
+                except Exception as e:  # noqa: BLE001
+                    echecs += 1
+                    print(f"  !! {rel} : {e}", file=sys.stderr)
+                    continue
+                if ext is None and diag.startswith(LIMITE):
+                    # Coupe-circuit (08.10.2026) : la limite d'usage atteinte, les fiches restantes ne sont plus tentées ;
+                    # elles restent en retard et reviennent au passage suivant. Une seule ligne, pas une par fiche.
+                    limites += 1
+                    echecs += 1
+                    continue
+                if ext is None:
+                    echecs += 1
+                    if est_un_refus(diag, None, None):
+                        noter_refus(rel, h)
+                        diag += " — refus noté, la fiche ne sera plus retentée tant que son texte ne change pas"
+                    print(f"  !! {rel} : {diag}", file=sys.stderr)
+                    continue
+                propre, ecartes = normaliser_extraction(ext, f, champs)
+                erreurs = valider(propre)
+                if erreurs or not propre["nodes"]:
+                    echecs += 1
+                    if est_un_refus("", propre, erreurs):
+                        noter_refus(rel, h)
+                    print(f"  !! {rel} : extraction refusée ({len(propre['nodes'])} nœuds, "
+                          f"{len(erreurs)} erreur(s) de schéma{', ex. ' + erreurs[0][:80] if erreurs else ''})", file=sys.stderr)
+                    continue
+                lot = LOTS / f"{identifiant_de_fiche(f, champs)}.json"
+                lot.write_text(json.dumps(propre, indent=1, ensure_ascii=False), encoding="utf-8")
+                connues[rel] = h
+                EMPREINTES.parent.mkdir(parents=True, exist_ok=True)
+                EMPREINTES.write_text(json.dumps({k: connues[k] for k in sorted(connues)}, indent=1, ensure_ascii=False),
+                                      encoding="utf-8")
+                faites += 1
+                print(f"  ok  {rel} : {len(propre['nodes'])} nœuds, {len(propre['edges'])} arêtes"
+                      f"{', ' + str(len(ecartes)) + ' écart(s)' if ecartes else ''} ({duree:.0f} s)", flush=True)
+            finally:
+                places.release()       # le résultat traité, une place s'ouvre
     reste = len(retard) - faites
     print(f"  -> {faites} extraite(s), {echecs} échec(s), {reste} encore en retard")
     if limites:

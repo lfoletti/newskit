@@ -54,7 +54,7 @@ Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
 
 4. Lire le résultat : `graphe/<nom>/ROUTINE.md` pour le bilan, `newskit query --graph <nom> search "…"` pour le graphe.
 
-5. Planifier les passages suivants. `newskit new-graph` a écrit la tâche du graphe sous `taches/` et imprimé les deux lignes `sudo` qui la posent dans launchd (macOS). Sous Linux, ajouter une ligne de cron qui lance `newskit test` puis `newskit run --graph <nom>`.
+5. Planifier les passages suivants. `newskit new-graph` a écrit la tâche du graphe sous `taches/` et imprimé les deux lignes `sudo` qui la posent dans launchd (macOS). Sous Linux, ajouter une ligne de cron à chaque heure de `passages`, qui lance `newskit test` puis `newskit run --graph <nom> --scheduled` ; un jour hors de l'intervalle, le passage planifié s'arrête de lui-même.
 
 ## Les sources
 
@@ -100,7 +100,7 @@ media:
   nom: potagers
   langue: fr                  # la langue des consignes et de la publication
   traductions: [en]           # fil et lettre traduits ; aucune par défaut
-  frequence: {heure: 5, minute: 30}   # l'heure du passage planifié
+  passages: {tous_les: 1, heures: ["05:30"]}   # tous les N jours, à ces heures
 modeles:                      # un modèle par rôle ; un rôle absent garde son défaut
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5
@@ -119,7 +119,7 @@ graphes:
 | Commande | Ce qu'elle fait |
 | :- | :- |
 | `newskit` | les commandes, une ligne chacune |
-| `newskit media` | le média lu : langue, traductions, heure du passage, modèle par rôle |
+| `newskit media` | le média lu : langue, traductions, passages, modèle par rôle |
 | `newskit new-graph <name>` | fait naître un graphe, ou dit ce qui lui manque (`--check`) |
 | `newskit run --graph <name>` | un passage : collecte, fiches, extraction des notions sous plafond, graphe |
 | `newskit query --graph <name> search "…"` | interroge le graphe, sans appel au modèle ; chaque réponse porte sa provenance |

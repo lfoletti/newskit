@@ -9,7 +9,7 @@ dossier courant s'il porte un `config.yaml` de média, sinon le dépôt du code)
       nom: apiculture
       langue: fr                 # la langue des consignes et de la publication (le français seul, aujourd'hui)
       traductions: [en]          # les langues traduites (fil et lettre anglais) ; aucune par défaut
-      frequence: {heure: 5, minute: 30}   # l'heure de la nuit d'un graphe neuf (nouveau_graphe)
+      passages: {tous_les: 1, heures: ["05:30"]}   # tous les N jours, aux heures dites (nouveau_graphe, routine)
     modeles:                     # un modèle par rôle ; un rôle absent garde le modèle d'aujourd'hui (DEFAUTS)
       extraction: claude-opus-5-5
     sources: sources.yaml        # le fichier des sources, relatif au dossier
@@ -70,7 +70,7 @@ FREQUENCE = (5, 30)              # l'heure par défaut d'un graphe neuf, celle d
 # Les blocs du registre que config.yaml peut tenir à la place du fichier des sources.
 BLOCS = {"graphes", "poseur", "reporter", "eclaireur", "banc", "anciens_noms", "domaines"}
 CHAMPS = {"version", "media", "modeles", "sources", "diffusion", "registre_des_graphes"} | BLOCS
-PROPRES = {"langue", "traductions", "frequence"}      # les champs de `media:` qui ne sont pas de l'ancien `edition:`
+PROPRES = {"langue", "traductions", "frequence", "passages"}      # les champs de `media:` qui ne sont pas de l'ancien `edition:`
 
 
 class ConfigMediaInvalide(ValueError):
@@ -144,6 +144,8 @@ def _valider_media(m: dict, ou: str) -> None:
     t = m.get("traductions", [])
     if not isinstance(t, list) or set(t) - TRADUCTIONS:
         raise ConfigMediaInvalide(f"{ou} : media.traductions : une liste parmi {sorted(TRADUCTIONS)}, lu {t!r}")
+    if "passages" in m:
+        valider_passages(m["passages"], ou, "frequence" in m)
     f = m.get("frequence", {})
     if not isinstance(f, dict) or set(f) - {"heure", "minute"}:
         raise ConfigMediaInvalide(f"{ou} : media.frequence : {{heure, minute}}, lu {f!r} (jour inconnu)")
@@ -181,12 +183,48 @@ def traductions(c: dict | None = None) -> list[str]:
     return list((c.get("media") or {}).get("traductions") or [])
 
 
+HEURE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
+
+
+def valider_passages(p, ou: str, avec_frequence: bool) -> None:
+    """`media.passages` : `tous_les` (jours, entier ≥ 1) et `heures` (liste non vide de « HH:MM ») ; ni autre clé, ni
+    `frequence` à côté (deux réponses à la même question)."""
+    if avec_frequence:
+        raise ConfigMediaInvalide(f"{ou} : media.passages et media.frequence ensemble ; garder passages")
+    if not isinstance(p, dict) or set(p) - {"tous_les", "heures"}:
+        raise ConfigMediaInvalide(f"{ou} : media.passages : {{tous_les, heures}}, lu {p!r}")
+    n = p.get("tous_les", 1)
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raise ConfigMediaInvalide(f"{ou} : media.passages.tous_les : un nombre de jours, entier, 1 au moins ; lu {n!r}")
+    h = p.get("heures", ["05:30"])
+    if not isinstance(h, list) or not h or not all(isinstance(x, str) and HEURE.match(x) for x in h):
+        raise ConfigMediaInvalide(f"{ou} : media.passages.heures : une liste d'heures « HH:MM », lu {h!r}")
+
+
+def passages(c: dict | None = None) -> tuple[int, list[tuple[int, int]]]:
+    """L'intervalle en jours et les heures de départ du jour de passage ; l'ancienne `frequence` vaut un passage par
+    jour à son heure."""
+    c = courant() if c is None else c
+    m = c.get("media") or {}
+    if "passages" not in m:
+        return 1, [frequence(c)]
+    p = m["passages"]
+    heures = [tuple(int(x) for x in HEURE.match(h).groups()) for h in p.get("heures", ["05:30"])]
+    return int(p.get("tous_les", 1)), heures
+
+
 def frequence(c: dict | None = None) -> tuple[int, int]:
     c = courant() if c is None else c
     f = (c.get("media") or {}).get("frequence")
     if not f:
         return FREQUENCE
     return int(f.get("heure", 0)), int(f.get("minute", 0))
+
+
+def _dire_passages(c: dict) -> str:
+    n, heures = passages(c)
+    quand = "chaque jour" if n == 1 else f"tous les {n} jours"
+    return f"{quand} à " + ", ".join(f"{h:02d}:{m:02d}" for h, m in heures)
 
 
 def registre_des_graphes(c: dict | None = None, racine: Path | None = None) -> Path:
@@ -241,7 +279,7 @@ def main() -> int:
         print(f"  aucun config.yaml sous {RACINE} : les valeurs d'aujourd'hui")
     m = c.get("media") or {}
     print(f"  média {m.get('nom', '(sans nom)')} : langue {langue(c)}, traductions {traductions(c) or 'aucune'}, "
-          f"nuit à {frequence(c)[0]:02d}:{frequence(c)[1]:02d}")
+          f"passages {_dire_passages(c)}")
     for role, quoi in ROLES.items():
         print(f"  {role:<11} {modele(role, c):<20} {quoi}")
     return 0

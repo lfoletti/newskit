@@ -54,7 +54,7 @@ You need Python 3.12 or later, git and a logged-in Claude Code (`claude`).
 
 4. Read the result: `graphe/<name>/ROUTINE.md` for the report, `newskit query --graph <name> search "…"` for the graph.
 
-5. Schedule the next passes. `newskit new-graph` has written the graph's task under `taches/` and printed the two `sudo` lines that install it in launchd (macOS). On Linux, add a cron line that runs `newskit test` then `newskit run --graph <name>`.
+5. Schedule the next passes. `newskit new-graph` has written the graph's task under `taches/` and printed the two `sudo` lines that install it in launchd (macOS). On Linux, add a cron line at each time of `passages` that runs `newskit test` then `newskit run --graph <name> --scheduled`; on a day outside the interval, the scheduled run stops by itself.
 
 ## Sources
 
@@ -100,7 +100,7 @@ media:
   nom: potagers
   langue: fr                  # language of the prompts and of the publication
   traductions: [en]           # translated feed and newsletter; none by default
-  frequence: {heure: 5, minute: 30}   # time of the scheduled pass
+  passages: {tous_les: 1, heures: ["05:30"]}   # every N days, at these times
 modeles:                      # one model per role; a missing role keeps its default
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5
@@ -119,7 +119,7 @@ graphes:
 | Command | What it does |
 | :- | :- |
 | `newskit` | the commands, one line each |
-| `newskit media` | the media as read: language, translations, time of the pass, model per role |
+| `newskit media` | the media as read: language, translations, passages, model per role |
 | `newskit new-graph <name>` | creates a graph, or says what it lacks (`--check`) |
 | `newskit run --graph <name>` | one pass: collection, notes, concept extraction within the cap, graph |
 | `newskit query --graph <name> search "…"` | queries the graph, no model call; each answer carries its provenance |
@@ -148,7 +148,7 @@ The following tools extend its features when they are installed:
 ## Limits of version 0.1
 
 - The prompts to the models are written in French; the only translation is English.
-- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit test` then `newskit run`.
+- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line.
 - `newskit new-graph` writes the graph's scheduled task under `taches/`, ready to install in `/Library/LaunchDaemons`.
 
 ## Contributing

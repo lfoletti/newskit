@@ -30,7 +30,8 @@ OPTIONS = {"--graph": "--graphe", "--check": "--controle", "--label": "--libelle
            "--summary": "--resume", "--subjects": "--sujets", "--cap": "--plafond", "--hour": "--heure",
            "--by": "--par", "--since": "--depuis", "--limit": "--limite", "--length": "--longueur",
            "--no-commit": "--sans-commit", "--no-email": "--sans-courriel", "--no-collect": "--sans-collecte",
-           "--days": "--jours", "--no-model": "--sans-modele"}
+           "--days": "--jours", "--no-model": "--sans-modele",
+           "--scheduled": "--planifie"}
 VALEURS = {"--par": {"step": "poste", "graph": "graphe", "model": "modele", "day": "jour"}}
 SOUS_COMMANDES = {"interroger_graphe": {"search": "chercher", "neighbours": "voisinage", "path": "chemin",
                                         "explain": "expliquer", "note": "fiche", "top": "sommets", "gap": "lacune"}}

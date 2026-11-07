@@ -18,6 +18,7 @@
     <string>newskit.routine_hebdo</string>
     <string>--graphe</string>
     <string>__GRAPHE__</string>
+    <string>--planifie</string>
   </array>
 
   <key>WorkingDirectory</key>
@@ -39,12 +40,12 @@
     <string>claude-opus-5-5</string>
   </dict>
 
-  <!-- Tous les jours __HEURE__ h __MINUTE2__, heure locale ; le verrou fait passer les routines une à une. -->
+  <!-- Chaque jour aux heures du média (media.passages), heure locale ; un jour hors de l'intervalle (tous_les), la
+       routine planifiée s'arrête d'elle-même. Le verrou fait passer les routines une à une. -->
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>__HEURE__</integer>
-    <key>Minute</key><integer>__MINUTE__</integer>
-  </dict>
+  <array>
+__CALENDRIER__
+  </array>
 
   <!-- Si la machine dormait à l'heure dite, l'exécution est rattrapée au réveil. -->
   <key>RunAtLoad</key>

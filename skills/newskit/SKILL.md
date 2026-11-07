@@ -7,7 +7,7 @@ description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec 
 
 Newskit est un moteur sans thème. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour chaque nuit, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
-Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.3"`) et le redire à l'utilisateur.
+Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.4"`) et le redire à l'utilisateur.
 
 ## 1. Trouver le média
 
@@ -29,6 +29,7 @@ Les champs :
 - `sources` : le fichier des sources, relatif au dossier (`sources.yaml`).
 - `diffusion` : le module qui sert les abonnés du média (`envoyer`, `lire`, `relever`). Facultatif : sans lui, aucune lettre ne part ; le moteur le dit.
 - `graphes` : un bloc par graphe (libellé, domaine en anglais pour l'extraction).
+- `registre_des_graphes` : facultatif. Le fichier où le moteur tient les libellés et les sujets déclarés de chaque graphe, `graphes.json` du dossier par défaut ; le moteur le réécrit, il ne va donc pas dans `config.yaml`.
 
 Écrire `config.yaml` avec `version: 1`, puis relancer `newskit media` : un champ refusé est nommé par le message, le corriger et relancer.
 

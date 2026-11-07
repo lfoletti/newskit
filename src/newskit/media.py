@@ -14,6 +14,7 @@ dossier courant s'il porte un `config.yaml` de média, sinon le dépôt du code)
       extraction: claude-opus-5-5
     sources: sources.yaml        # le fichier des sources, relatif au dossier
     diffusion: newskit.abonnes   # le module de l'édition qui sert ses abonnés (diffusion.py) ; aucun par défaut
+    registre_des_graphes: graphes.json   # libellés et sujets déclarés des graphes, réécrits par le moteur (défaut)
     graphes: {…}                 # et les autres blocs du registre que le média tient lui-même (BLOCS)
 
 Le registre que lit config_sources est la composition des deux fichiers ; un bloc tenu par les deux est refusé (une
@@ -68,7 +69,7 @@ TRADUCTIONS = {"en"}             # fil_anglais et lettre_anglaise
 FREQUENCE = (5, 30)              # l'heure par défaut d'un graphe neuf, celle de nouveau_graphe avant le dossier
 # Les blocs du registre que config.yaml peut tenir à la place du fichier des sources.
 BLOCS = {"graphes", "poseur", "reporter", "eclaireur", "banc", "anciens_noms", "domaines"}
-CHAMPS = {"version", "media", "modeles", "sources", "diffusion"} | BLOCS
+CHAMPS = {"version", "media", "modeles", "sources", "diffusion", "registre_des_graphes"} | BLOCS
 PROPRES = {"langue", "traductions", "frequence"}      # les champs de `media:` qui ne sont pas de l'ancien `edition:`
 
 
@@ -117,6 +118,9 @@ def charger(chemin: Path = FICHIER) -> dict:
     if f is not None and (not isinstance(f, str) or not f.endswith(".py") or Path(f).is_absolute()
                           or ".." in Path(f).parts):
         raise ConfigMediaInvalide(f"{chemin.name} : diffusion : un module .py relatif au dossier du média, lu {f!r}")
+    r = d.get("registre_des_graphes")
+    if r is not None and (not isinstance(r, str) or not r.strip()):
+        raise ConfigMediaInvalide(f"{chemin.name} : registre_des_graphes : un chemin de fichier, lu {r!r}")
     s = d.get("sources")
     if s is not None:
         if not isinstance(s, str) or not s or Path(s).is_absolute() or ".." in Path(s).parts:
@@ -183,6 +187,23 @@ def frequence(c: dict | None = None) -> tuple[int, int]:
     if not f:
         return FREQUENCE
     return int(f.get("heure", 0)), int(f.get("minute", 0))
+
+
+def registre_des_graphes(c: dict | None = None, racine: Path | None = None) -> Path:
+    """Le registre des graphes du média (libellé, résumé, sujets déclarés, réécrits chaque nuit par les thèmes
+    émergents) : `registre_des_graphes` de config.yaml (« ~ » développé, sinon relatif au dossier du média), sinon
+    `graphes.json` dans le dossier du média. Un config.yaml illisible laisse le défaut (il est signalé ailleurs)."""
+    racine = Path(racine or RACINE)
+    if c is None:
+        try:
+            c = courant()
+        except ConfigMediaInvalide:
+            c = {}
+    v = c.get("registre_des_graphes")
+    if not v:
+        return racine / "graphes.json"
+    p = Path(v).expanduser()
+    return p if p.is_absolute() else racine / p
 
 
 def fichier_des_sources(chemin: Path = FICHIER) -> Path | None:

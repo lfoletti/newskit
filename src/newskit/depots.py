@@ -182,7 +182,8 @@ def deja_declaree(domaine: str) -> str | None:
 def graphes_candidats() -> dict[str, str]:
     """{graphe: ce qu'il couvre} pour les graphes qui ont un dossier de dépôt, sauf ceux que le registre écarte
     (`depots: false`, un graphe local)."""
-    registre = Path.home() / ".claude" / "skills" / "kg" / "graphes.json"
+    from newskit import media  # noqa: PLC0415
+    registre = media.registre_des_graphes()
     skill = json.loads(registre.read_text(encoding="utf-8")) if registre.exists() else {}
     out = {}
     for s in cfg.toutes("Dépôt"):

@@ -13,7 +13,7 @@ Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle pas
 Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
 
 ```sh
-pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.3"
+pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.4"
 mkdir mon-media && cd mon-media
 newskit temoin nuit
 ```
@@ -44,6 +44,7 @@ modeles:                      # un modèle par rôle ; un rôle absent garde son
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5
 sources: sources.yaml         # le fichier des sources, à part
+# registre_des_graphes: graphes.json   # libellés et sujets déclarés, tenus par le moteur (défaut)
 graphes:
   potagers-urbains:
     libelle: Potagers urbains
@@ -74,7 +75,7 @@ graphes:
 
 - Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
 - macOS et Linux. Les nuits planifiées passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine`.
-- `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons` ; les sujets déclarés d'un graphe vivent encore dans le registre du skill `/kg` (`~/.claude/skills/kg/graphes.json`).
+- `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
 
 ## Contribuer
 

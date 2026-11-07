@@ -21,7 +21,7 @@ manquent), pour qu'un nouveau graphe ne dépende plus de la mémoire de qui l'a 
 Arrêter ou remettre une étape de la routine pour un graphe : `graphes.<nom>.etapes: {poseur: false, …}` au registre
 (config_sources.ETAPES). Arrêter le graphe entier : retirer son daemon (`--retirer` ou ANCIENS de l'installateur).
 
-    python3 -m newskit.nouveau_graphe ai-exemple --libelle "…" --domaine "…" --sujets "sujet 1 ; sujet 2" --heure 5 --minute 30
+    python3 -m newskit.nouveau_graphe ai-exemple --libelle "…" --domaine "…" --sujets "sujet 1 ; sujet 2"
     python3 -m newskit.nouveau_graphe ai-exemple --controle        # les pièces présentes et manquantes, rien d'écrit
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402
-from newskit import media  # noqa: E402 — l'heure de la nuit du média
+from newskit import media  # noqa: E402 — les heures des passages du média
 
 SKILL = media.registre_des_graphes()               # le registre des graphes du média (config.yaml, N5)
 
@@ -126,7 +126,7 @@ def chemin_plist(nom: str) -> Path:
     return RACINE / "taches" / f"{etiquette_launchd(nom)}.plist"
 
 
-def ecrire_plist(nom: str, libelle: str, heure: int, minute: int) -> Path:
+def ecrire_plist(nom: str, libelle: str, heures: list[tuple[int, int]]) -> Path:
     """Le daemon launchd du graphe, d'après le modèle à champs ; l'étiquette prend le préfixe et le nom de l'édition
     (bloc `edition:` du registre). Il lance le moteur installé (`-m newskit.routine_hebdo`) avec l'interpréteur qui le
     porte, sur le dossier du média (NEWSKIT_DONNEES). Avec un installateur des daemons, __DEPOT__, __MAISON__ et
@@ -135,8 +135,9 @@ def ecrire_plist(nom: str, libelle: str, heure: int, minute: int) -> Path:
     cible.parent.mkdir(parents=True, exist_ok=True)
     e = cfg.edition()
     champs = {"__ETIQUETTE__": f"{e['launchd']}.{e['nom']}-{nom}", "__GRAPHE__": nom, "__LIBELLE__": libelle,
-              "__DATE__": time.strftime("%d.%m.%Y"), "__HEURE__": str(heure), "__MINUTE2__": f"{minute:02d}",
-              "__MINUTE__": str(minute), "__DOSSIER__": nom_dossier(nom), "__PYTHON__": sys.executable}
+              "__DATE__": time.strftime("%d.%m.%Y"), "__DOSSIER__": nom_dossier(nom), "__PYTHON__": sys.executable,
+              "__CALENDRIER__": "\n".join(f"    <dict><key>Hour</key><integer>{h}</integer>"
+                                          f"<key>Minute</key><integer>{m}</integer></dict>" for h, m in heures)}
     if not INSTALLATEUR.exists():
         (RACINE / "cache").mkdir(parents=True, exist_ok=True)       # le journal de la tâche y est écrit
         champs.update({"__DEPOT__": str(RACINE), "__MAISON__": str(Path.home()), "__UTILISATEUR__": getpass.getuser()})
@@ -145,6 +146,11 @@ def ecrire_plist(nom: str, libelle: str, heure: int, minute: int) -> Path:
         t = t.replace(k, v)
     cible.write_text(t, encoding="utf-8")
     return cible
+
+
+def heures_de(a: argparse.Namespace) -> list[tuple[int, int]]:
+    """Les heures de départ de la tâche : --heure (et --minute) si donnée, sinon celles du média."""
+    return [(a.heure, a.minute)] if a.heure is not None else media.passages()[1]
 
 
 def ecrire_skill(nom: str, libelle: str, resume: str, sujets: list[str]) -> None:
@@ -175,8 +181,7 @@ def fichier_des_graphes() -> Path:
 
 
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
-    """Les options ; l'heure de la nuit par défaut est celle du média (`media.frequence` de config.yaml, 07.11.2026)."""
-    heure, minute = media.frequence()
+    """Les options ; sans --heure, les heures de la tâche sont celles du média (`media.passages` de config.yaml)."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("nom", help="nom du graphe : minuscules, chiffres, tirets (ai-exemple)")
     ap.add_argument("--libelle", help="libellé lisible (« Conformité IA — AI Act, RGPD, nLPD, normes »)")
@@ -184,8 +189,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--resume", help="une ligne en français pour le skill /kg (défaut : le libellé)")
     ap.add_argument("--sujets", help="sujets déclarés, séparés par « ; » (éclaireur, poseur, avance, banc)")
     ap.add_argument("--plafond", type=int, default=40, help="fiches extraites par passage (défaut 40)")
-    ap.add_argument("--heure", type=int, default=heure, help=f"heure de la nuit (défaut du média : {heure})")
-    ap.add_argument("--minute", type=int, default=minute, help=f"minute (défaut du média : {minute})")
+    ap.add_argument("--heure", type=int, help="une heure de départ à la place de celles du média (media.passages)")
+    ap.add_argument("--minute", type=int, default=0, help="la minute de --heure (défaut 0)")
     ap.add_argument("--controle", action="store_true", help="dire les pièces présentes et manquantes, n'écrire rien")
     return ap.parse_args(argv)
 
@@ -208,7 +213,7 @@ def main() -> int:
         (RACINE / "sources" / nom_dossier(nom)).mkdir(parents=True, exist_ok=True)
         sujets = [s.strip() for s in (a.sujets or "").split(";") if s.strip()]
         ecrire_skill(nom, a.libelle, a.resume or "", sujets)
-        plist = ecrire_plist(nom, a.libelle, a.heure, a.minute)
+        plist = ecrire_plist(nom, a.libelle, heures_de(a))
         print(f"  écrit : {base.relative_to(RACINE)}/couche2/fiches, sources/{nom_dossier(nom)}, {SKILL}, {plist.relative_to(RACINE)}")
         print(f"\n  À coller dans {fichier_des_graphes().name}, sous `graphes:` (l'ordre de déclaration est celui des daemons et de la page) :\n")
         print(bloc_registre(nom, a.libelle, a.domaine, a.plafond))

@@ -33,24 +33,25 @@ def media(tmp_path, monkeypatch) -> Path:
 
 
 def test_sans_installateur_la_tache_est_prete_a_poser(media):
-    p = ng.ecrire_plist("ruchers", "Ruchers", 5, 30)
+    p = ng.ecrire_plist("ruchers", "Ruchers", [(5, 30)])
     assert p.parent == media / "taches" and p.name == "com.exemple.apiculture-ruchers.plist"
     texte = p.read_text(encoding="utf-8")
     assert "__" not in texte
     d = plistlib.loads(texte.encode("utf-8"))
     assert d["Label"] == "com.exemple.apiculture-ruchers"
-    assert d["ProgramArguments"] == [sys.executable, "-u", "-m", "newskit.routine_hebdo", "--graphe", "ruchers"]
+    assert d["ProgramArguments"] == [sys.executable, "-u", "-m", "newskit.routine_hebdo", "--graphe", "ruchers",
+                                     "--planifie"]
     assert d["WorkingDirectory"] == str(media)
     assert d["EnvironmentVariables"]["NEWSKIT_DONNEES"] == str(media)
     assert d["EnvironmentVariables"]["HOME"] == str(Path.home())
-    assert d["StartCalendarInterval"] == {"Hour": 5, "Minute": 30}
+    assert d["StartCalendarInterval"] == [{"Hour": 5, "Minute": 30}]
     assert Path(d["StandardOutPath"]).parent.is_dir()            # launchd n'y crée pas le dossier du journal
 
 
 def test_avec_installateur_la_tache_garde_ses_champs_sous_scripts(media):
     ng.INSTALLATEUR.parent.mkdir(parents=True)
     ng.INSTALLATEUR.write_text("TACHES=(\n)\n", encoding="utf-8")
-    p = ng.ecrire_plist("ruchers", "Ruchers", 5, 30)
+    p = ng.ecrire_plist("ruchers", "Ruchers", [(5, 30)])
     assert p == media / "scripts" / "launchd_ruchers.plist.exemple"
     texte = p.read_text(encoding="utf-8")
     assert "__DEPOT__" in texte and "__MAISON__" in texte

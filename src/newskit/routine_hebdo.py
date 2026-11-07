@@ -40,6 +40,7 @@ Usage :
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -1079,6 +1080,35 @@ def prendre_le_verrou(chemin: Path = VERROU, attente: int = ATTENTE_VERROU, grap
             time.sleep(15)
 
 
+def _marque_du_passage(graphe: str) -> Path:
+    return RACINE / "cache" / "dernier_passage" / graphe
+
+
+def dernier_passage(graphe: str) -> datetime.date | None:
+    """Le jour du dernier passage du graphe (cache/dernier_passage/<graphe>), ou None."""
+    try:
+        return datetime.date.fromisoformat(_marque_du_passage(graphe).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
+def noter_le_passage(graphe: str, jour: datetime.date | None = None) -> None:
+    f = _marque_du_passage(graphe)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text((jour or datetime.date.today()).isoformat() + "\n", encoding="utf-8")
+
+
+def jour_de_passage(graphe: str, jour: datetime.date | None = None) -> bool:
+    """Vrai si un passage planifié part ce jour : aucun passage encore, le même jour (une autre heure du même
+    passage), ou au moins `tous_les` jours depuis le dernier."""
+    jour = jour or datetime.date.today()
+    d = dernier_passage(graphe)
+    if d is None:
+        return True
+    ecart = (jour - d).days
+    return ecart <= 0 or ecart >= media.passages()[0]
+
+
 def exiger_le_temoin() -> int | None:
     """La routine ne part pas sur un témoin rouge, d'un autre jour ou d'un autre commit (CHANTIER_GENERIQUE.md § 4.3 :
     le témoin tourne à 00:30 et pose cache/temoin_vert). Dans le témoin lui-même (TEMOIN_REEL), rien n'est exigé.
@@ -1102,6 +1132,8 @@ def main() -> int:
                                                 "Sert au passage court qui suit un lien déposé : seules les dernières arrivées.")
     ap.add_argument("--sans-courriel", action="store_true", help="ne pas envoyer le courriel de fin de passage")
     ap.add_argument("--pyramide-plafond", type=int, help="notions rédigées par la pyramide à ce passage, au plus (défaut : le registre)")
+    ap.add_argument("--planifie", action="store_true", help="lancé par la tâche planifiée : un jour hors de "
+                                                         "l'intervalle du média (media.passages.tous_les), s'arrêter")
     ap.add_argument("--graphe", help="passage limité à un graphe du registre : ses sources, sa couche 1, "
                                      "sa couche 2, sa composition, son rapport (graphe/<nom>/ROUTINE.md)")
     args = ap.parse_args()
@@ -1134,9 +1166,15 @@ def main() -> int:
             print(f"Routines en pause ({pause.relative_to(RACINE)}) : {texte.strip()[:200]}")
             return 0
         print(f"Routines en pause, sauf {', '.join(sorted(exceptes))} : ce passage tourne")
+    if args.planifie and not jour_de_passage(seul or cfg.GRAPHE_PRINCIPAL):
+        n = media.passages()[0]
+        print(f"Pas de passage aujourd'hui : un tous les {n} jours (media.passages), le dernier le "
+              f"{dernier_passage(seul or cfg.GRAPHE_PRINCIPAL)}")
+        return 0
     if (refus := exiger_le_temoin()) is not None:
         return refus
     verrou = prendre_le_verrou(graphe=seul or cfg.GRAPHE_PRINCIPAL)
+    noter_le_passage(seul or cfg.GRAPHE_PRINCIPAL)
     attendre_la_collecte()
     j = Journal()
     debut_passage = time.strftime("%Y-%m-%d %H:%M:%S")       # borne basse du registre des coûts pour ce passage

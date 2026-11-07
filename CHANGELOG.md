@@ -6,6 +6,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Modifié
 
+- `media.passages: {tous_les, heures}` remplace `media.frequence` : plusieurs passages par jour, ou un tous les N jours. La tâche planifiée part à chaque heure avec `--planifie` ; un jour hors de l'intervalle, la routine s'arrête avant le témoin. `frequence` reste lue.
 - Les commandes en anglais : `run`, `new-graph`, `query … search`, `costs --by`, `test`, avec leurs options (`--graph`, `--check`, `--label`, `--domain`, `--subjects`, `--since`, `--limit`, `--no-commit`, `--no-email`…). Les noms français restent acceptés.
 
 ### Modifié

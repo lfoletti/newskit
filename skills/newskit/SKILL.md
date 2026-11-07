@@ -24,7 +24,7 @@ Les champs :
 - `media.nom` : minuscules, chiffres et tirets.
 - `media.langue` : la langue des consignes et de la publication. Le moteur écrit aujourd'hui en `fr` seulement.
 - `media.traductions` : les langues traduites (fil et lettre), `[en]` ou aucune.
-- `media.frequence` : l'heure de la nuit d'un graphe neuf, `{heure: 5, minute: 30}` par défaut.
+- `media.passages` : `tous_les` (l'intervalle en jours, 1 par défaut) et `heures` (les départs du jour de passage, `["05:30"]` par défaut). Trois passages par jour : `{heures: ["06:00", "12:00", "18:00"]}` ; un tous les deux jours : `{tous_les: 2}`. L'ancienne `frequence: {heure, minute}` reste lue.
 - `modeles` : un modèle par rôle ; un rôle absent garde le modèle par défaut (`newskit media` les montre). Les rôles : `extraction` (lire une fiche et en tirer la couche 2), `analyse` (juger un graphe entier), `redaction` (synthèses et lettre), `lecture` (trancher : même notion ?), `traduction`, `questions` (questions d'entraînement de l'encodeur).
 - `sources` : le fichier des sources, relatif au dossier (`sources.yaml`).
 - `diffusion` : le module qui sert les abonnés du média (`envoyer`, `lire`, `relever`). Facultatif : sans lui, aucune lettre ne part ; le moteur le dit.

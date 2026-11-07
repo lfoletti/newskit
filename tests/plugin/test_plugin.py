@@ -50,7 +50,7 @@ def test_le_skill_nomme_chaque_role_de_modele_et_chaque_champ_du_media():
     t = SKILL.read_text(encoding="utf-8")
     for role in media.ROLES:
         assert f"`{role}`" in t, role
-    for champ in ("media.langue", "media.traductions", "media.frequence", "sources", "diffusion", "graphes"):
+    for champ in ("media.langue", "media.traductions", "media.passages", "sources", "diffusion", "graphes"):
         assert f"`{champ}`" in t, champ
 
 

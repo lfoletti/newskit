@@ -103,6 +103,7 @@ media:
   langue: fr                  # la langue des consignes et de la publication
   traductions: [en]           # fil et lettre traduits ; aucune par défaut
   passages: {tous_les: 1, heures: ["05:30"]}   # tous les N jours, à ces heures
+  # service_maj: kg-maj       # le service du serveur lancé par ssh après un passage ; aucun par défaut
 modeles:                      # un modèle par rôle ; un rôle absent garde son défaut
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5

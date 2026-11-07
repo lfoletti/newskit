@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.8] - 2026-11-07
+
+### Modifié
+
+- Le service de mise à jour du serveur se déclare dans `config.yaml` (`media.service_maj`) : le moteur ne lance plus `kg-mcp-maj`, le nom d'un service de la première édition. Sans clé, rien n'est lancé après un passage ; le serveur se met à jour à son heure. Le nom part dans une commande ssh : seuls lettres, chiffres et « @._- » sont admis.
+
 ## [0.1.7] - 2026-11-07
 
 ### Modifié

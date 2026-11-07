@@ -74,10 +74,10 @@ graphes:
 | :- | :- |
 | `newskit` | les commandes, une ligne chacune |
 | `newskit media` | le média lu : langue, traductions, heure du passage, modèle par rôle |
-| `newskit nouveau-graphe <nom>` | fait naître un graphe, ou dit ce qui lui manque (`--controle`) |
-| `newskit routine --graphe <nom>` | un passage : collecte, fiches, extraction des notions sous plafond, graphe |
-| `newskit graphe --graphe <nom> chercher "…"` | interroge le graphe, sans appel au modèle ; chaque réponse porte sa provenance |
-| `newskit couts --par graphe` | la dépense des sept derniers jours |
+| `newskit new-graph <name>` | fait naître un graphe, ou dit ce qui lui manque (`--check`) |
+| `newskit run --graph <name>` | un passage : collecte, fiches, extraction des notions sous plafond, graphe |
+| `newskit query --graph <name> search "…"` | interroge le graphe, sans appel au modèle ; chaque réponse porte sa provenance |
+| `newskit costs --by graph` | la dépense des sept derniers jours |
 | `newskit test` | essaie le moteur sur un graphe d'exemple, sans frais ; un vrai passage ne part qu'après un essai réussi le même jour |
 
 ## Les gardes
@@ -102,8 +102,8 @@ Les outils suivants en étendent les fonctionnalités quand ils sont installés�
 ## Limites de la version 0.1
 
 - Les consignes aux modèles sont écrites en français ; la seule traduction est l'anglais.
-- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit test` puis `newskit routine`.
-- `newskit nouveau-graphe` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
+- macOS et Linux. Les passages planifiés passent par launchd sur macOS ; sous Linux, par une ligne de cron qui lance `newskit test` puis `newskit run`.
+- `newskit new-graph` écrit la tâche planifiée du graphe sous `taches/`, prête à poser dans `/Library/LaunchDaemons`.
 
 ## Contribuer
 

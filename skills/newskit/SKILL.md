@@ -41,9 +41,9 @@ Déclarer chaque source dans le fichier des sources, avec `graphe: <nom>`. Une s
 
 ## 4. Faire naître le graphe
 
-    newskit nouveau-graphe <nom> --libelle "…" --domaine "…" --sujets "thème 1 ; thème 2"
+    newskit new-graph <nom> --label "…" --domain "…" --subjects "thème 1 ; thème 2"
 
-La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--controle` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. La tâche planifiée du graphe est écrite sous `taches/`, prête à poser : la commande dit les deux lignes `sudo` à lancer (macOS) ; sous Linux, une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine --graphe <nom>`.
+La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--check` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. La tâche planifiée du graphe est écrite sous `taches/`, prête à poser : la commande dit les deux lignes `sudo` à lancer (macOS) ; sous Linux, une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine --graphe <nom>`.
 
 ## 5. Le témoin du jour
 
@@ -51,14 +51,14 @@ La commande pose les dossiers et le modèle de tâche planifiée, puis imprime l
 
 ## 6. Une nuit
 
-    newskit routine --graphe <nom> --sans-commit --sans-courriel
+    newskit run --graph <nom> --no-commit --no-email
 
 La première fois, la lancer à la main, sous les yeux de l'utilisateur : elle collecte, écrit les fiches, extrait la couche 2 sous plafond et inscrit chaque appel au modèle au registre des coûts. Le bilan s'imprime étape par étape (`ok`, `--`, `sauté`, `ÉCHEC`). Le relire avec l'utilisateur : une étape en échec dit pourquoi.
 
-Ensuite, les nuits partent de la tâche planifiée. `newskit couts --par graphe` dit ce que les sept derniers jours ont coûté.
+Ensuite, les nuits partent de la tâche planifiée. `newskit costs --by graph` dit ce que les sept derniers jours ont coûté.
 
 Un crochet du plugin refuse tout appel au modèle quand la fenêtre d'usage est fermée (la marque `cache/limite_atteinte` du média, posée après trois limites d'affilée, vaut trois heures). Ne pas la contourner : attendre qu'elle tombe.
 
 ## 7. Interroger le graphe
 
-`newskit graphe --graphe <nom> chercher "…"`, puis `voisinage`, `chemin`, `expliquer`, `sources`, `fiche`. Aucun appel au modèle ; chaque réponse porte sa provenance (fiche et ligne). Citer la provenance dans la réponse à l'utilisateur.
+`newskit query --graph <nom> search "…"`, puis `neighbours`, `path`, `explain`, `sources`, `note`. Aucun appel au modèle ; chaque réponse porte sa provenance (fiche et ligne). Citer la provenance dans la réponse à l'utilisateur.

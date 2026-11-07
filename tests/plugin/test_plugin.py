@@ -42,7 +42,7 @@ def test_chaque_commande_citee_par_le_skill_existe():
     t = SKILL.read_text(encoding="utf-8")
     citees = set(re.findall(r"`newskit ([a-z][a-z_-]*)", t))
     assert citees, "le skill ne cite aucune commande"
-    connues = set(cli.commandes()) | set(cli.ALIAS) | set(cli.COURTES)
+    connues = set(cli.commandes()) | set(cli.ALIAS) | set(cli.COURTES) | set(cli.ANGLAIS)
     assert {c for c in citees if cli.ALIAS.get(c, c.replace("-", "_")) not in connues and c not in connues} == set()
 
 

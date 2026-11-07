@@ -6,6 +6,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Modifié
 
+- Les commandes en anglais : `run`, `new-graph`, `query … search`, `costs --by`, `test`, avec leurs options (`--graph`, `--check`, `--label`, `--domain`, `--subjects`, `--since`, `--limit`, `--no-commit`, `--no-email`…). Les noms français restent acceptés.
+
+### Modifié
+
 - README en anglais (`README.md`) et en français (`README.fr.md`) : comment le graphe grandit, la répétition expliquée, les outils qui l'étendent. Descriptions du plugin en anglais.
 
 ## [0.1.5] - 2026-11-07

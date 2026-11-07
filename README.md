@@ -74,10 +74,10 @@ graphes:
 | :- | :- |
 | `newskit` | the commands, one line each |
 | `newskit media` | the media as read: language, translations, time of the pass, model per role |
-| `newskit nouveau-graphe <nom>` | creates a graph, or says what it lacks (`--controle`) |
-| `newskit routine --graphe <nom>` | one pass: collection, notes, concept extraction within the cap, graph |
-| `newskit graphe --graphe <nom> chercher "…"` | queries the graph, no model call; each answer carries its provenance |
-| `newskit couts --par graphe` | spending over the last seven days |
+| `newskit new-graph <name>` | creates a graph, or says what it lacks (`--check`) |
+| `newskit run --graph <name>` | one pass: collection, notes, concept extraction within the cap, graph |
+| `newskit query --graph <name> search "…"` | queries the graph, no model call; each answer carries its provenance |
+| `newskit costs --by graph` | spending over the last seven days |
 | `newskit test` | tries the engine on a sample graph, at no cost; a real pass starts only after a successful test the same day |
 
 ## Safeguards
@@ -102,8 +102,8 @@ The following tools extend its features when they are installed:
 ## Limits of version 0.1
 
 - The prompts to the models are written in French; the only translation is English.
-- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit test` then `newskit routine`.
-- `newskit nouveau-graphe` writes the graph's scheduled task under `taches/`, ready to install in `/Library/LaunchDaemons`.
+- macOS and Linux. Scheduled passes run through launchd on macOS; on Linux, through a cron line that runs `newskit test` then `newskit run`.
+- `newskit new-graph` writes the graph's scheduled task under `taches/`, ready to install in `/Library/LaunchDaemons`.
 
 ## Contributing
 

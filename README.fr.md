@@ -16,7 +16,7 @@ Le graphe ne reste pas dans les sujets déclarés au départ.
 
 - **Thèmes nouveaux.** Après chaque passage, le moteur cherche les groupes de notions qu'aucun sujet déclaré ne couvre. Un candidat qui revient trois passages de suite entre parmi les sujets ; les sources et les recherches le suivent.
 - **Auto-complétion.** Une question à laquelle le graphe n'a pas su répondre devient une recherche du passage suivant. Un éclaireur cherche sur le web autour des sujets déclarés ; un poseur de questions interroge le graphe comme le ferait un praticien ; ce qu'un modèle de langage tient pour essentiel et que le graphe n'a pas devient une liste de sources à trouver.
-- **La liste des sources.** Le moteur étudie un domaine candidat avant de le déclarer et garde la mémoire de chaque source qu'un lecteur dépose (un lien envoyé depuis le navigateur). Une source qui échoue plusieurs fois est auditée et, quand une voie existe, réparée d'elle-même (voir `sap` plus bas).
+- **La liste des sources.** Le moteur étudie un domaine candidat avant de le déclarer et garde la mémoire de chaque source qu'un lecteur dépose (un lien envoyé depuis le navigateur). Une source qui échoue plusieurs fois est auditée et, quand une voie existe, réparée d'elle-même (voir accesspath plus bas).
 - **Des notions nettes.** La même notion sous plusieurs libellés (traduction, sigle, variante) est fondue après qu'un modèle a confirmé qu'il s'agit exactement de la même ; les refus sont gardés et jamais redemandés.
 
 ## Démarrage rapide
@@ -86,7 +86,7 @@ graphes:
 
 Newskit tourne seul. Les outils suivants en étendent les fonctionnalités quand ils sont installés :
 
-- **[sap](https://github.com/lfoletti/accesspath)** (accesspath). Audit d'accès aux sites web. Quand une source échoue plusieurs fois, Newskit demande à sap quelle voie l'atteint encore (flux RSS, API, plan du site, HTML simple, navigateur) et répare la source.
+- **[accesspath](https://github.com/lfoletti/accesspath)** (sap). Audit d'accès aux sites web. Quand une source échoue plusieurs fois, Newskit demande à sap quelle voie l'atteint encore (flux RSS, API, plan du site, HTML simple, navigateur) et répare la source.
 - **[cortexdb](https://github.com/lfoletti/cortexdb)**. Mémoire d'IA et graphe de connaissances dans un seul fichier SQLite. Un graphe peut être versé dans un cerveau cortexdb, chaque relation rattachée au passage qui la soutient, puis interrogé depuis tout client MCP.
 - **[thalamus](https://github.com/lfoletti/thalamus)**. Une couche de gouvernance sur cortexdb pour le savoir partagé d'une organisation. Les questions restées sans réponse chez ses clients reviennent au moteur comme recherches.
 - **[graphify](https://github.com/Graphify-Labs/graphify)**. Lit la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés.

@@ -4,6 +4,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.7] - 2026-11-07
+
+### Modifié
+
+- Newskit est publié sur PyPI : `pip install newskit`. Publication par Trusted Publishing à chaque tag, répétition sur TestPyPI (`testpypi.yml`). Description du paquet en anglais ; liens du README absolus, pour la page PyPI.
+- Format du code vérifié en CI et au pre-push (`ruff format --check`) ; modèles d'issue et de PR en anglais ; Discussions.
+
 ## [0.1.6] - 2026-11-07
 
 ### Modifié
@@ -61,7 +68,8 @@ Première version, sortie du dépôt de l'édition où le moteur est né.
 - Le témoin : une nuit entière sur un graphe sans rapport, rejouée de réponses enregistrées, sans appel payant (`newskit temoin nuit`) ; une nuit ne part pas sans un témoin vert du jour.
 - Le plugin de Claude Code : le skill `newskit` (formulaire du média, sources et thèmes de départ, naissance, nuit, interrogation) et un crochet qui refuse les appels au modèle quand la fenêtre d'usage est fermée.
 
-[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.6...HEAD
+[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/lfoletti/newskit/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/lfoletti/newskit/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/lfoletti/newskit/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/lfoletti/newskit/compare/v0.1.3...v0.1.4

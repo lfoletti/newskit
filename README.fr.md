@@ -1,16 +1,16 @@
 # Newskit
 
 [![ci](https://github.com/lfoletti/newskit/actions/workflows/ci.yml/badge.svg)](https://github.com/lfoletti/newskit/actions/workflows/ci.yml)
-[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](CHANGELOG.md)
+[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/lfoletti/newskit/blob/main/LICENSE)
+[![version](https://img.shields.io/github/v/tag/lfoletti/newskit?label=version)](https://github.com/lfoletti/newskit/blob/main/CHANGELOG.md)
 
-[English](README.md) | Français
+[English](https://github.com/lfoletti/newskit/blob/main/README.md) | Français
 
 Une veille automatique pour Claude Code. Vous nommez un sujet et donnez quelques sources ; à intervalles réguliers, Newskit les collecte, écrit une fiche par article, en extrait les notions et leurs relations et tient à jour un graphe de connaissances, sous plafond de dépense. Deux choses le distinguent d'un lecteur de flux : chaque réponse tirée du graphe cite sa fiche et sa ligne ; le graphe s'étend de lui-même à des thèmes et à des sources nouveaux.
 
 Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement Claude. Les fiches, le fil et la lettre s'écrivent en français ; une traduction anglaise peut s'y ajouter (`traductions: [en]`).
 
-[![governance.news, un média sur la gouvernance de l'IA bâti sur Newskit](docs/governance-news-fr.png)](https://governance.news/)
+[![governance.news, un média sur la gouvernance de l'IA bâti sur Newskit](https://raw.githubusercontent.com/lfoletti/newskit/main/docs/governance-news-fr.png)](https://governance.news/)
 
 *[governance.news](https://governance.news/) : un bulletin et un graphe de connaissances sur la gouvernance de l'IA en entreprise, bâtis sur Newskit.*
 
@@ -38,7 +38,7 @@ Les mots employés plus bas : le **média** est le dossier du projet ; il port
 1. Installer le moteur et l'essayer dans un dossier vide :
 
    ```sh
-   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.6"
+   pip install newskit
    mkdir mon-media && cd mon-media
    newskit test
    ```
@@ -160,8 +160,8 @@ Les outils suivants en étendent les fonctionnalités quand ils sont installés�
 
 ## Contribuer
 
-Voir [CONTRIBUTING.md](CONTRIBUTING.md). Une faille se signale en privé : [SECURITY.md](SECURITY.md).
+Voir [CONTRIBUTING.md](https://github.com/lfoletti/newskit/blob/main/CONTRIBUTING.md). Une faille se signale en privé : [SECURITY.md](https://github.com/lfoletti/newskit/blob/main/SECURITY.md).
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](https://github.com/lfoletti/newskit/blob/main/LICENSE).

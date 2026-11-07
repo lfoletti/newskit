@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "newskit"
 dynamic = ["version"]
-description = "Un moteur de veille sans thème : il fait naître un graphe de connaissances sur un sujet et le tient à jour chaque nuit, piloté depuis Claude Code."
+description = "Automated topic monitoring for Claude Code: collects your sources, writes one cited note per item and keeps a knowledge graph up to date."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -32,7 +32,7 @@ dependencies = [
     "trafilatura>=1.12",
     "lxml>=5.0",
     "graphifyy>=0.9",
-    "pytest>=8.0",              # le témoin : une nuit ne part pas sans lui (newskit temoin nuit)
+    "pytest>=8.0",              # l'essai du moteur : un passage ne part pas sans lui (newskit test)
 ]
 
 [project.optional-dependencies]
@@ -53,6 +53,7 @@ newskit = "newskit.cli:main"
 [project.urls]
 Source = "https://github.com/lfoletti/newskit"
 Issues = "https://github.com/lfoletti/newskit/issues"
+Changelog = "https://github.com/lfoletti/newskit/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "src/newskit/__init__.py"     # une seule source de la version

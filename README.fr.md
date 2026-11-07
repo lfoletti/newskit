@@ -6,13 +6,80 @@
 
 [English](README.md) | Français
 
-Un moteur de veille thématique pour Claude Code. Vous nommez un sujet ; Newskit en fait un graphe de connaissances et le tient à jour à intervalles réguliers. À chaque passage, il collecte les sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations, puis recompose le graphe, sous plafond de dépense. Chaque réponse tirée du graphe cite sa fiche et sa ligne.
+Une veille automatique pour Claude Code. Vous nommez un sujet et donnez quelques sources ; à intervalles réguliers, Newskit les collecte, écrit une fiche par article, en extrait les notions et leurs relations et tient à jour un graphe de connaissances, sous plafond de dépense. Deux choses le distinguent d'un lecteur de flux : chaque réponse tirée du graphe cite sa fiche et sa ligne ; le graphe s'étend de lui-même à des thèmes et à des sources nouveaux.
+
+Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
 
 [![governance.news, un média sur la gouvernance de l'IA bâti sur Newskit](docs/governance-news-fr.png)](https://governance.news/)
 
 *[governance.news](https://governance.news/) : un bulletin et un graphe de connaissances sur la gouvernance de l'IA en entreprise, bâtis sur Newskit.*
 
-Pour des développeurs qui ont déjà Claude Code : chaque appel au modèle passe par `claude -p`, sous votre abonnement.
+## Ce que vous obtenez
+
+Tout vit dans le dossier du média, en fichiers ordinaires :
+
+- **Des fiches** : un fichier Markdown par article collecté, sous `sources/`, avec son titre, son auteur, sa date et son adresse.
+- **Le graphe** : `graphe/<nom>/graphe.json`, sa carte (`carte.md`, les grands thèmes et leurs notions) et le bilan de chaque passage (`ROUTINE.md`).
+- **Des réponses sourcées** : `newskit query` cherche dans le graphe sans appel au modèle et donne, pour chaque réponse, la fiche et la ligne qui l'attestent.
+- **Un fil et une lettre** : des billets courts sur les derniers articles (`fil.json`) et une lettre du graphe, envoyée par votre propre module de diffusion (`diffusion:` dans `config.yaml`).
+
+```text
+$ newskit query --graph ai-governance sources "general-purpose AI model"
+  Sources attestant « General-purpose AI models »
+    sources/ai_compliance/rss/ec_digital/2026-08-02_navigating-ai-act.md L211
+```
+
+## Démarrage rapide
+
+Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
+
+1. Installer le moteur et l'essayer dans un dossier vide :
+
+   ```sh
+   pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
+   mkdir mon-media && cd mon-media
+   newskit test
+   ```
+
+   L'essai fait faire au moteur un passage entier sur un graphe d'exemple (l'apiculture médiévale), avec des réponses du modèle rejouées d'un enregistrement : aucun appel payant, une minute environ. Il doit finir par « témoin vert » (essai réussi).
+
+2. Ouvrir Claude Code dans ce dossier (`claude`) et installer le plugin :
+
+   ```text
+   /plugin marketplace add lfoletti/newskit
+   /plugin install newskit@newskit
+   ```
+
+3. Demander à Claude de suivre un sujet : « fais naître un graphe de veille sur les potagers urbains ». Le skill `newskit` pose ses questions, écrit `config.yaml` et `sources.yaml`, propose des thèmes tirés des sources que vous donnez, fait naître le graphe et lance un premier passage sous vos yeux.
+
+4. Lire le résultat : `graphe/<nom>/ROUTINE.md` pour le bilan, `newskit query --graph <nom> search "…"` pour le graphe.
+
+5. Planifier les passages suivants. `newskit new-graph` a écrit la tâche du graphe sous `taches/` et imprimé les deux lignes `sudo` qui la posent dans launchd (macOS). Sous Linux, ajouter une ligne de cron qui lance `newskit test` puis `newskit run --graph <nom>`.
+
+## Les sources
+
+Les sources se déclarent dans `sources.yaml`, à côté de `config.yaml`, un bloc par source, chacune rattachée à un graphe. Pris en charge : flux RSS, plans de site et pages de liste (pour les sites sans flux), Substack, Medium, lettres LinkedIn, arXiv, revues par ISSN, OpenAlex, recherches GitHub et Hugging Face, une boîte de courriel, des dossiers locaux de fichiers Markdown ou PDF.
+
+```yaml
+version: 1
+sources:
+  - cle: city_farmer
+    plateforme: Flux RSS
+    nom: City Farmer News
+    dossier: potagers/rss
+    abonnement: gratuit
+    graphe: potagers-urbains
+    flux: https://cityfarmer.info/feed/
+  - cle: soil_papers
+    plateforme: OpenAlex
+    nom: OpenAlex, urban soil
+    dossier: potagers/openalex
+    abonnement: gratuit
+    graphe: potagers-urbains
+    requetes: ["urban allotment soil contamination"]
+```
+
+Le skill écrit ce fichier pour vous à partir des adresses que vous donnez ; une source que le moteur ne sait pas lire est refusée avec sa raison.
 
 ## Comment le graphe grandit
 
@@ -22,27 +89,6 @@ Le graphe ne reste pas dans les sujets déclarés au départ : il s'étend.
 - **Auto-complétion.** Une question à laquelle le graphe n'a pas su répondre devient une recherche du passage suivant. Un éclaireur cherche sur le web autour des sujets déclarés ; un poseur de questions interroge le graphe comme le ferait un praticien ; ce qu'un modèle de langage tient pour essentiel et que le graphe n'a pas devient une liste de sources à trouver.
 - **La liste des sources.** Le moteur étudie un domaine candidat avant de le déclarer et garde la mémoire de chaque source qu'un lecteur dépose (un lien envoyé depuis le navigateur). Une source qui échoue plusieurs fois est auditée et, quand une voie existe, réparée d'elle-même (voir accesspath plus bas).
 - **Des notions nettes.** La même notion sous plusieurs libellés (traduction, sigle, variante) est fondue après qu'un modèle a confirmé qu'il s'agit exactement de la même ; les refus sont gardés et jamais redemandés.
-
-## Démarrage rapide
-
-Il faut Python 3.12 ou plus récent, git et Claude Code (`claude`) connecté.
-
-```sh
-pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"
-mkdir mon-media && cd mon-media
-newskit test
-```
-
-La dernière commande est une répétition générale. Elle fait faire au moteur un passage entier sur un graphe d'exemple sans rapport (l'apiculture médiévale), avec des réponses du modèle rejouées d'un enregistrement : aucun appel payant, une minute environ. Elle doit finir par « témoin vert » (répétition réussie).
-
-Puis, dans Claude Code :
-
-```text
-/plugin marketplace add lfoletti/newskit
-/plugin install newskit@newskit
-```
-
-Demandez ensuite à Claude de suivre un sujet (« fais naître un graphe de veille sur les potagers urbains »). Le skill `newskit` cherche le `config.yaml` du média et, s'il manque, pose ses questions, propose des thèmes tirés des sources que vous donnez, fait naître le graphe et lance un premier passage sous vos yeux.
 
 ## Le dossier du média
 

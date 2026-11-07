@@ -1,5 +1,5 @@
 """La typographie des textes publiés du dépôt : en français, l'espace devant « : », « ; », « ! », « ? » et celles des
-guillemets sont insécables, hors du code."""
+guillemets sont insécables, hors du code ; pas de virgule devant « et »."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ FAUTES = [
     (re.compile(r"(?<=[^\s (\[|*_])(?=[:;!?](?:\s|$))"), "signe double sans espace insécable"),
     (re.compile(r"«(?! )"), "« sans espace insécable"),
     (re.compile(r"(?<! )»"), "» sans espace insécable"),
+    (re.compile(r",\s+et\s"), "virgule devant « et »"),
 ]
 
 
@@ -44,4 +45,5 @@ def test_les_espaces_sont_insecables(nom):
 
 
 def test_la_garde_voit_une_faute():
-    assert [q for _, l in prose("Un mot : la suite « citée ».") for m, q in FAUTES if m.search(l)]
+    vues = {q for _, l in prose("Un mot : la suite « citée », et la fin.") for m, q in FAUTES if m.search(l)}
+    assert vues == {q for _, q in FAUTES} - {"signe double sans espace insécable"}

@@ -1,0 +1,16 @@
+name: Idée
+description: Une chose que le moteur devrait savoir faire.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Le besoin
+      description: Ce que vous voulez faire, et ce qui vous en empêche aujourd'hui.
+    validations:
+      required: true
+  - type: textarea
+    id: proposition
+    attributes:
+      label: La proposition
+      description: Ce que vous imaginez, s'il y a lieu.

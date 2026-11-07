@@ -1,0 +1,79 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: installation
+        run: pip install -e ".[dev]"
+      - name: ruff
+        run: ruff check .
+      - name: pytest
+        run: python -m pytest -q --basetemp=/tmp/essais
+      - name: consignes du témoin sans réponse enregistrée
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consignes-manquantes-${{ matrix.python }}
+          path: /tmp/essais/**/manquantes/*.json
+          if-no-files-found: ignore
+
+  temoin:
+    # Le paquet construit, installé hors du dépôt : le témoin passe une nuit depuis la roue, comme chez un utilisateur.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: roue
+        run: pip install build && python -m build --wheel --outdir dist
+      - name: installation hors du dépôt
+        run: python -m venv /tmp/v && /tmp/v/bin/pip install "$(ls dist/*.whl)"
+      - name: une nuit du témoin, dans un dossier vide
+        run: |
+          git config --global user.name ci && git config --global user.email ci@example.invalid
+          mkdir /tmp/media && cd /tmp/media && /tmp/v/bin/newskit test
+          grep -q '"vert": true' cache/temoin_vert
+      - name: le détail d'un témoin rouge
+        if: failure()
+        run: |
+          cd /tmp/media
+          d=$(/tmp/v/bin/python -c "import newskit, pathlib; print(pathlib.Path(newskit.__file__).parent / 'donnees_temoin' / 'tests')")
+          /tmp/v/bin/python -m pytest -q -p no:cacheprovider --basetemp=/tmp/essais-temoin -rf "$d" || true
+      - name: consignes du témoin sans réponse enregistrée
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consignes-manquantes-temoin
+          path: /tmp/essais-temoin/**/manquantes/*.json
+          if-no-files-found: ignore
+
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read        # l'action lit les commits de la PR
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

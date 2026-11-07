@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+.DS_Store
+# Les données d'un média ne vivent jamais dans le dépôt du moteur.
+/cache/
+/graphe/
+/sources/
+/config.yaml
+/sources.yaml
+/EXTRAIT.json
+/dist/

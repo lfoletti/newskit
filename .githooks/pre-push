@@ -1,0 +1,52 @@
+#!/bin/sh
+# Le crochet pre-push du dépôt de Newskit. À installer une fois :
+#   git config core.hooksPath .githooks
+# Il refuse un envoi quand :
+#   1. le fichier des termes privés manque (la garde échoue fermée) ;
+#   2. une ligne ajoutée ou un message de commit des commits envoyés contient un terme privé (une expression
+#      régulière étendue par ligne, casse ignorée, dans .git/info/termes-prives, que git ne suit pas) ;
+#   3. les commits envoyés touchent le code, les tests, le skill ou les crochets, et ruff ou pytest échouent.
+# Ne jamais le contourner par --no-verify.
+
+zero=0000000000000000000000000000000000000000
+racine=$(git rev-parse --show-toplevel) || exit 1
+termes="$(git rev-parse --git-common-dir)/info/termes-prives"
+
+if [ ! -s "$termes" ]; then
+	echo "pre-push : $termes manque ou est vide ; écrire d'abord les termes privés, un par ligne" >&2
+	exit 1
+fi
+
+statut=0
+touches=""
+while read -r ref_locale sha_local ref_distante sha_distant; do
+	[ "$sha_local" = "$zero" ] && continue # une branche supprimée n'envoie rien
+	if [ "$sha_distant" = "$zero" ]; then
+		plage="$sha_local --not --remotes"
+	else
+		plage="$sha_distant..$sha_local"
+	fi
+	# shellcheck disable=SC2086
+	trouves=$({
+		git log --format='%B' $plage
+		git log -p --format= $plage | grep '^+' | grep -v '^+++ '
+	} | grep -i -E -f "$termes")
+	if [ -n "$trouves" ]; then
+		echo "pre-push : $ref_locale ajoute un texte qui contient un terme privé :" >&2
+		echo "$trouves" | cut -c1-160 >&2
+		statut=1
+	fi
+	# shellcheck disable=SC2086
+	touches="$touches $(git log --name-only --format= $plage)"
+done
+[ $statut -ne 0 ] && exit $statut
+
+if echo "$touches" | grep -q -E '(^| )(src/|tests/|skills/|hooks/|conftest.py|pyproject.toml)'; then
+	py="$racine/.venv/bin/python"
+	[ -x "$py" ] || py=python3
+	(cd "$racine" && "$py" -m ruff check . && "$py" -m pytest -q) || {
+		echo "pre-push : ruff ou pytest a échoué" >&2
+		exit 1
+	}
+fi
+exit 0

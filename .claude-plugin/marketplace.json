@@ -1,0 +1,17 @@
+{
+  "name": "newskit",
+  "owner": {
+    "name": "Lauro Foletti",
+    "url": "https://github.com/lfoletti/newskit"
+  },
+  "metadata": {
+    "description": "Newskit: a topic monitoring engine for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "newskit",
+      "source": "./",
+      "description": "A knowledge graph on any subject, kept up to date at regular intervals."
+    }
+  ]
+}

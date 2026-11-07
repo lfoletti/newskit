@@ -5,13 +5,13 @@
     "url": "https://github.com/lfoletti/newskit"
   },
   "metadata": {
-    "description": "Newskit : un moteur de veille sans thème pour Claude Code."
+    "description": "Newskit: a topic monitoring engine for Claude Code."
   },
   "plugins": [
     {
       "name": "newskit",
       "source": "./",
-      "description": "Un graphe de veille sur n'importe quel sujet, tenu à jour chaque nuit."
+      "description": "A knowledge graph on any subject, kept up to date at regular intervals."
     }
   ]
 }

@@ -104,6 +104,8 @@ media:
   traductions: [en]           # fil et lettre traduits ; aucune par défaut
   passages: {tous_les: 1, heures: ["05:30"]}   # tous les N jours, à ces heures
   # service_maj: kg-maj       # le service du serveur lancé par ssh après un passage ; aucun par défaut
+  # cerveau_du_site: media-site    # le cerveau Thalamus du graphe du site ; « <média>/<graphe> » par défaut
+  # cerveau_lacunes: media-lacunes # le cerveau Thalamus des lacunes signalées ; « lacunes-signalees » par défaut
 modeles:                      # un modèle par rôle ; un rôle absent garde son défaut
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5

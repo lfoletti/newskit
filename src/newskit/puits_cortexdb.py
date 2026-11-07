@@ -682,7 +682,7 @@ def carte_pour_thalamus(carte: str) -> str:
     """La carte de kg-mcp renvoie à `newskit.interroger_graphe`, qu'un agent ne lance pas par Thalamus (parcours K4,
     31.10.2026) : la section « Creuser » est remplacée par les outils de Thalamus, et les renvois au script retirés.
     La carte finit par la consigne « Signaler ce qui manque » (05.11.2026)."""
-    from newskit import lacunes as la  # noqa: PLC0415 — le nom du cerveau des lacunes signalées
+    from newskit import config_sources as cfg  # noqa: PLC0415 — le nom du cerveau des lacunes signalées
 
     if "\n## Creuser" in carte:
         carte = carte[: carte.index("\n## Creuser")]
@@ -715,7 +715,7 @@ def carte_pour_thalamus(carte: str) -> str:
                 # (05.11.2026) : la forme attendue n'était écrite que dans le code de la relève.
                 "## Signaler ce qui manque",
                 "",
-                f"Quand ce graphe n'a pas su répondre, dites ce qui a manqué : `th_add` dans le cerveau `{la.CERVEAU_LACUNES}`.",
+                f"Quand ce graphe n'a pas su répondre, dites ce qui a manqué : `th_add` dans le cerveau `{cfg.cerveau_des_lacunes()}`.",
                 "",
                 "- `content` : un objet précis par ligne, 10 au plus (un nom, un texte, un article de loi, un produit ; "
                 "jamais une phrase) ;",

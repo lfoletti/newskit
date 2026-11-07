@@ -41,7 +41,6 @@ from newskit import config_sources as cfg  # noqa: E402
 
 ESSAIS = 2  # recherches web sans effet avant « à trancher »
 LONGUEUR = 300
-CERVEAU_LACUNES = "lacunes-signalees"  # nommé `manques` jusqu'au 05.11.2026 (mainteneur : « clarifier son rôle »)
 PAR_RELEVE = 100
 ACCES_RELEVE = Path.home() / ".secrets" / "th_releve.env"
 
@@ -228,16 +227,17 @@ def relever_lacunes_signalees(appeler) -> dict:
     est accepté ; mal formé ou d'un graphe inconnu, il est refusé sans rien noter. Noter avant d'accepter : une
     acceptation perdue fait relire le document, jamais perdre un manque."""
     bilan = {"notes": 0, "acceptes": 0, "refuses": 0}
-    for h in appeler("th_pending", brain=CERVEAU_LACUNES, top_k=PAR_RELEVE).get("results") or []:
+    cerveau = cfg.cerveau_des_lacunes()  # media.cerveau_lacunes ; nommé `manques` jusqu'au 05.11.2026
+    for h in appeler("th_pending", brain=cerveau, top_k=PAR_RELEVE).get("results") or []:
         kid = h["knowledge_id"]
-        lu = lacunes_du_document(appeler("th_get", brain=CERVEAU_LACUNES, knowledge_id=kid))
+        lu = lacunes_du_document(appeler("th_get", brain=cerveau, knowledge_id=kid))
         if lu is None or lu[0] not in cfg.graphes():
-            appeler("th_review", brain=CERVEAU_LACUNES, knowledge_id=kid, decision="rejected")
+            appeler("th_review", brain=cerveau, knowledge_id=kid, decision="rejected")
             bilan["refuses"] += 1
             continue
         graphe, manques, question = lu
         bilan["notes"] += sum(noter(graphe, m, "signaler", "signale", question=question) for m in manques)
-        appeler("th_review", brain=CERVEAU_LACUNES, knowledge_id=kid, decision="accepted")
+        appeler("th_review", brain=cerveau, knowledge_id=kid, decision="accepted")
         bilan["acceptes"] += 1
     return bilan
 

@@ -1433,7 +1433,7 @@ def main() -> int:
             # La chaîne d'approfondissement des sujets neufs, où elle en est.
             for lib, v in te.lire_etat(g)["nouveaux"].items():
                 if v.get("statut") == "en cours":
-                    j.dire(f"  sujet neuf{etiquette} « {lib[:60]} » (depuis le {v.get('date')}) : éclaireur nuit {v.get('nuits', 0)}/{te.NUITS_NEUF}, "
+                    j.dire(f"  sujet neuf{etiquette} « {lib[:60]} » (depuis le {v.get('date')}) : éclaireur passage {v.get('nuits', 0)}/{te.NUITS_NEUF}, "
                            f"arXiv {len(v.get('arxiv') or [])} expression(s), banc par thème : pas encore tenu")
             for n, (_, c) in enumerate(te.retenus(json.loads(p_themes.read_text(encoding="utf-8"))), 1):
                 j.signal(f"thème émergent{etiquette} : « {c.get('libelle') or c['etiquette']} » — {c['taille']} notions, "

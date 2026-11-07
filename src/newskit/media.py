@@ -228,7 +228,7 @@ def _dire_passages(c: dict) -> str:
 
 
 def registre_des_graphes(c: dict | None = None, racine: Path | None = None) -> Path:
-    """Le registre des graphes du média (libellé, résumé, sujets déclarés, réécrits chaque nuit par les thèmes
+    """Le registre des graphes du média (libellé, résumé, sujets déclarés, réécrits à chaque passage par les thèmes
     émergents) : `registre_des_graphes` de config.yaml (« ~ » développé, sinon relatif au dossier du média), sinon
     `graphes.json` dans le dossier du média. Un config.yaml illisible laisse le défaut (il est signalé ailleurs)."""
     racine = Path(racine or RACINE)

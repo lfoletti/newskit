@@ -1,19 +1,19 @@
 ---
 name: newskit
-description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec le moteur Newskit. Le skill trouve ou écrit le config.yaml du média (formulaire), propose les sources et les thèmes, fait naître le graphe, lance une nuit, lit le bilan et l'interroge. Utiliser quand on veut suivre un domaine dans le temps, faire naître un graphe, lancer ou relire une nuit de veille, ou interroger un graphe Newskit.
+description: Créer et tenir un graphe de veille sur n'importe quel sujet, avec le moteur Newskit. Le skill trouve ou écrit le config.yaml du média (formulaire), propose les sources et les thèmes, fait naître le graphe, lance un passage, lit le bilan et l'interroge. Utiliser quand on veut suivre un domaine dans le temps, faire naître un graphe, lancer ou relire un passage de veille, ou interroger un graphe Newskit.
 ---
 
 # Newskit : un graphe de veille, tenu à intervalles réguliers
 
 Newskit est un moteur de veille thématique. Il collecte des sources, en tire des fiches, extrait de chaque fiche les notions et leurs relations (la couche 2), puis tient le graphe à jour à intervalles réguliers, sous plafond de dépense. Ce skill le pilote : il ne fait pas le travail du modèle lui-même, il lance la commande `newskit` qui le fait.
 
-Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.5"`) et le redire à l'utilisateur.
+Avant tout : `newskit --version` doit répondre. Sinon, l'installer (`pip install "newskit @ git+https://github.com/lfoletti/newskit@v0.1.6"`) et le redire à l'utilisateur.
 
 ## 1. Trouver le média
 
 Un média est un dossier qui porte un `config.yaml` avec un bloc `media:`. Le moteur s'y accroche dans cet ordre : la variable `NEWSKIT_DONNEES`, sinon le dossier courant s'il porte ce fichier, sinon le dossier courant tel quel.
 
-Lancer `newskit media`. La commande dit le média lu, sa langue, ses traductions, l'heure de sa nuit et le modèle de chaque rôle. Si elle répond qu'il n'y a aucun `config.yaml`, passer au formulaire.
+Lancer `newskit media`. La commande dit le média lu, sa langue, ses traductions, ses passages et le modèle de chaque rôle. Si elle répond qu'il n'y a aucun `config.yaml`, passer au formulaire.
 
 ## 2. Le formulaire
 
@@ -43,19 +43,19 @@ Déclarer chaque source dans le fichier des sources, avec `graphe: <nom>`. Une s
 
     newskit new-graph <nom> --label "…" --domain "…" --subjects "thème 1 ; thème 2"
 
-La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--check` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. La tâche planifiée du graphe est écrite sous `taches/`, prête à poser : la commande dit les deux lignes `sudo` à lancer (macOS) ; sous Linux, une ligne de cron qui lance `newskit temoin nuit` puis `newskit routine --graphe <nom>`.
+La commande pose les dossiers et le modèle de tâche planifiée, puis imprime le bloc `graphes.<nom>` à coller dans `config.yaml` : le registre est commenté à la main et ne se réécrit pas par programme. `--check` dit les pièces présentes et manquantes sans rien écrire ; le relancer jusqu'à ce que rien ne manque. La tâche planifiée du graphe est écrite sous `taches/`, prête à poser : la commande dit les deux lignes `sudo` à lancer (macOS) ; sous Linux, une ligne de cron qui lance `newskit test` puis `newskit run --graph <nom> --scheduled`.
 
 ## 5. Le témoin du jour
 
-`newskit test` (ancien nom : `newskit temoin nuit`) fait passer une nuit entière au moteur sur un graphe sans rapport (l'apiculture médiévale), avec des réponses enregistrées et sans aucun appel payant. Le lancer dans le dossier du média : vert, il pose `cache/temoin_vert`, avec la date et la version du moteur. Une nuit refuse de partir sans un témoin vert du jour et de la même version ; la tâche planifiée le lance d'abord.
+`newskit test` (ancien nom : `newskit temoin nuit`) fait faire au moteur un passage entier sur un graphe sans rapport (l'apiculture médiévale), avec des réponses enregistrées et sans aucun appel payant. Le lancer dans le dossier du média : vert, il pose `cache/temoin_vert`, avec la date et la version du moteur. Un passage refuse de partir sans un témoin vert du jour et de la même version ; la tâche planifiée le lance d'abord.
 
-## 6. Une nuit
+## 6. Un passage
 
     newskit run --graph <nom> --no-commit --no-email
 
 La première fois, la lancer à la main, sous les yeux de l'utilisateur : elle collecte, écrit les fiches, extrait la couche 2 sous plafond et inscrit chaque appel au modèle au registre des coûts. Le bilan s'imprime étape par étape (`ok`, `--`, `sauté`, `ÉCHEC`). Le relire avec l'utilisateur : une étape en échec dit pourquoi.
 
-Ensuite, les nuits partent de la tâche planifiée. `newskit costs --by graph` dit ce que les sept derniers jours ont coûté.
+Ensuite, les passages partent de la tâche planifiée. `newskit costs --by graph` dit ce que les sept derniers jours ont coûté.
 
 Un crochet du plugin refuse tout appel au modèle quand la fenêtre d'usage est fermée (la marque `cache/limite_atteinte` du média, posée après trois limites d'affilée, vaut trois heures). Ne pas la contourner : attendre qu'elle tombe.
 

@@ -614,7 +614,7 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.fil : {{fr, en}} → {{titre, description}}, des textes non vides")
         cp = v.get("cartes_plafond")
         if cp is not None and (type(cp) is not int or cp < 0):
-            raise ConfigInvalide(f"{p.name} : graphes.{nom}.cartes_plafond : un entier positif ou nul (cartes de sujets par nuit)")
+            raise ConfigInvalide(f"{p.name} : graphes.{nom}.cartes_plafond : un entier positif ou nul (cartes de sujets par passage)")
         sg = v.get("sous_graphe_de")
         if sg is not None and (sg not in graphes_decl or sg == nom or (graphes_decl.get(sg) or {}).get("sous_graphe_de")):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.sous_graphe_de doit nommer un autre graphe déclaré, lui-même sans parent")

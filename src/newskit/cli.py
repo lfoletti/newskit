@@ -21,7 +21,7 @@ from importlib import resources
 import newskit
 
 ALIAS = {"routine": "routine_hebdo", "nouveau-graphe": "nouveau_graphe", "graphe": "interroger_graphe"}
-COURTES = {"test": ["temoin", "nuit"]}      # une commande courte pour une commande avec ses arguments (07.11.2026)
+COURTES = {"test": ["temoin", "passage"]}      # une commande courte pour une commande avec ses arguments (07.11.2026)
 
 # Les commandes en anglais (07.11.2026) : le nom, puis les options et leurs valeurs, traduits avant le module ; les
 # noms français restent acceptés (la première édition et ses daemons les appellent).

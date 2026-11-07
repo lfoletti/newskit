@@ -379,7 +379,7 @@ def reenregistrer(t: Temoin, plafond: int = PLAFOND, claude: Path | None = None,
     return bilan
 
 
-# --- La nuit (CHANTIER_GENERIQUE.md § 4.3) ------------------------------------------------------------------------------
+# --- Le passage entier (CHANTIER_GENERIQUE.md § 4.3) ------------------------------------------------------------------------------
 
 MARQUE = "temoin_vert"          # sous cache/ des vraies données : date, commit, verdict du dernier passage
 
@@ -459,9 +459,9 @@ def main(argv: list[str] | None = None) -> int:
     e = sp.add_parser("reenregistrer", help="paie les consignes manquantes d'un témoin déjà passé, sous un plafond")
     e.add_argument("dossier", type=Path)
     e.add_argument("--plafond", type=int, default=PLAFOND)
-    sp.add_parser("nuit", help="passe le témoin entier et pose cache/temoin_vert (le daemon de 00:30)")
+    sp.add_parser("passage", aliases=["nuit"], help="passe le témoin entier et pose cache/temoin_vert (le daemon de 00:30)")
     a = ap.parse_args(argv)
-    if a.cmd == "nuit":
+    if a.cmd in ("passage", "nuit"):
         return nuit()
     if a.cmd == "reenregistrer":
         t = Temoin(a.dossier.resolve(), (TEMOIN / "reponses").resolve())

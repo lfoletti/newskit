@@ -8,7 +8,8 @@ manquent), pour qu'un nouveau graphe ne dépende plus de la mémoire de qui l'a 
   1. le registre (`config.yaml` du média, sinon `sources.yaml`) : bloc `graphes.<nom>` (libellé, domaine, bornes) — imprimé, à coller : le registre
      est commenté à la main et ne se réécrit pas par programme ;
   2. ses dossiers : `graphe/<nom>/couche2/fiches/`, `sources/<nom_>/` ;
-  3. le registre du skill /kg (`~/.claude/skills/kg/graphes.json`) : libellé, chemins, outil, sujets déclarés — c'est
+  3. le registre des graphes du média (`graphes.json`, ou `registre_des_graphes` de config.yaml) : libellé, chemins,
+     outil, sujets déclarés — c'est
      lui que lisent l'éclaireur, le poseur, la mesure d'avance et les thèmes émergents ;
   4. au moins une source déclarée pour lui dans `sources.yaml` (`graphe: <nom>`) ;
   5. sa tâche planifiée (launchd), qui lance `-m newskit.routine_hebdo` sur le média : sous `taches/`, prête à poser
@@ -37,7 +38,8 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code 
 from newskit import config_sources as cfg  # noqa: E402
 from newskit import media  # noqa: E402 — l'heure de la nuit du média
 
-SKILL = Path.home() / ".claude" / "skills" / "kg" / "graphes.json"
+SKILL = media.registre_des_graphes()               # le registre des graphes du média (config.yaml, N5)
+
 MODELE_PLIST = CODE / "launchd_graphe.plist.modele"   # un modèle à champs, sans nom de graphe (N2)
 INSTALLATEUR = RACINE / "deploiement" / "installer_daemons_mac.sh"
 INSTALLATEUR_VPS = RACINE / "deploiement" / "installer_vps.sh"
@@ -57,7 +59,7 @@ def pieces(nom: str) -> list[tuple[bool, str, str]]:
                 "relancer sans --controle"))
     skill = json.loads(SKILL.read_text(encoding="utf-8")) if SKILL.exists() else {}
     e = skill.get(nom) or {}
-    out.append((bool(e.get("sujets")), f"skill /kg : {SKILL.name} → {nom} avec ses sujets déclarés "
+    out.append((bool(e.get("sujets")), f"registre des graphes : {SKILL.name} → {nom} avec ses sujets déclarés "
                 f"({len(e.get('sujets') or [])} sujet(s))", "relancer avec --sujets « a ; b ; c »"))
     try:
         n_sources = len(cfg.toutes(graphe=nom))

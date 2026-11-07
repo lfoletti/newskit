@@ -60,7 +60,7 @@ def test_temoin_ne_touche_pas_au_reel(tmp_path):
     assert _journal(t) == []                                           # aucune tentative vers le réel
     assert registre.is_relative_to(t.donnees) and len(registre.read_text(encoding="utf-8").splitlines()) == 1
     assert marque.is_relative_to(t.donnees) and marque.exists()
-    assert skill.is_relative_to(t.maison) and skill.exists()
+    assert skill.is_relative_to(t.donnees) and skill.exists()                 # le registre des graphes du média
 
 
 def test_le_canari_refuse_une_ecriture_vers_le_reel_et_la_journalise(tmp_path):

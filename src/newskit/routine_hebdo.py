@@ -63,6 +63,7 @@ EMPREINTES = RACINE / "graphe" / "couche2" / "empreintes.json"
 # ici après avoir été déclarée là-bas.
 from newskit import commun  # noqa: E402
 from newskit import config_sources as cfg  # noqa: E402
+from newskit import media  # noqa: E402 — le registre des graphes du média
 from newskit import couts  # noqa: E402
 
 DOSSIERS_DENSES = cfg.dossiers_denses()
@@ -222,7 +223,7 @@ def skill_a_synchroniser(graphes, registre: Path | None = None) -> bool:
     """Vrai quand le skill /kg du poste déclare l'un de ces graphes sous cette racine de données. Sinon (un témoin, une
     autre racine), le synchroniseur recompterait des graphes qui ne sont pas les nôtres, dans un autre dépôt (N1)."""
     try:
-        d = json.loads((registre or SKILL_KG / "graphes.json").read_text(encoding="utf-8"))
+        d = json.loads((registre or media.registre_des_graphes()).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     d = d.get("graphes", d) if isinstance(d, dict) else {}

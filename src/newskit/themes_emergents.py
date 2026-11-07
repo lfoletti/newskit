@@ -70,7 +70,7 @@ from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.y
 from newskit import couts  # noqa: E402
 from newskit import digerer_graphe as dg  # noqa: E402
 
-REGISTRE_SKILL = Path.home() / ".claude" / "skills" / "kg" / "graphes.json"
+REGISTRE_SKILL = media.registre_des_graphes()     # le registre des graphes du média (config.yaml, N5)
 MIN_NOTIONS = 10
 MIN_PASSAGES = 2
 MIN_PASSAGES_AUTO = 3       # passages consécutifs avant qu'un candidat entre de lui-même parmi les sujets (09.10.2026)

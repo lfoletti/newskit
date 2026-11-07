@@ -25,7 +25,14 @@ jobs:
       - name: ruff
         run: ruff check .
       - name: pytest
-        run: python -m pytest -q
+        run: python -m pytest -q --basetemp=/tmp/essais
+      - name: consignes du témoin sans réponse enregistrée
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consignes-manquantes-${{ matrix.python }}
+          path: /tmp/essais/**/manquantes/*.json
+          if-no-files-found: ignore
 
   temoin:
     # Le paquet construit, installé hors du dépôt : le témoin passe une nuit depuis la roue, comme chez un utilisateur.
@@ -44,9 +51,25 @@ jobs:
           git config --global user.name ci && git config --global user.email ci@example.invalid
           mkdir /tmp/media && cd /tmp/media && /tmp/v/bin/newskit temoin nuit
           grep -q '"vert": true' cache/temoin_vert
+      - name: le détail d'un témoin rouge
+        if: failure()
+        run: |
+          cd /tmp/media
+          d=$(/tmp/v/bin/python -c "import newskit, pathlib; print(pathlib.Path(newskit.__file__).parent / 'donnees_temoin' / 'tests')")
+          /tmp/v/bin/python -m pytest -q -p no:cacheprovider --basetemp=/tmp/essais-temoin -rf "$d" || true
+      - name: consignes du témoin sans réponse enregistrée
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consignes-manquantes-temoin
+          path: /tmp/essais-temoin/**/manquantes/*.json
+          if-no-files-found: ignore
 
   secrets:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read        # l'action lit les commits de la PR
     steps:
       - uses: actions/checkout@v4
         with:

@@ -25,6 +25,7 @@ import unicodedata
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+from newskit.extrait import atteste  # noqa: E402 — la vérification d'extrait de la couche 2
 from newskit import fiche  # noqa: E402
 from newskit.commun import normaliser_etiquette  # noqa: E402
 
@@ -71,6 +72,8 @@ CHAMPS_NOEUD = {
     "author": "métadonnée",
     "contributor": "métadonnée",
     "rationale": "description de l'entité",
+    "evidence": "hors classe : citation de la fiche qui fonde le rationale, vérifiée à l'extraction ; jamais versée "
+                "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
 }
 CHAMPS_ARETE = {
     "source": "from (nom de l'entité source)",
@@ -82,6 +85,8 @@ CHAMPS_ARETE = {
     "source_location": "métadonnée",
     "weight": "métadonnée",
     "contributor": "métadonnée",
+    "evidence": "rattachement : choisit le morceau de la relation (`rattacher`) ; le texte cité n'est jamais versé "
+                "(droits : notice d'une fiche réservée, extrait servi de 120 mots au plus)",
 }
 _EN_TETE = "hors classe : dans l'en-tête du document de la fiche"
 _COLLECTE = "hors classe : propre à la collecte"
@@ -235,7 +240,8 @@ def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, alias: 
         relations.append({"from": nom_de[a["source"]], "to": nom_de[a["target"]], "type": a["relation"],
                           "inferred": a.get("confidence") != "EXTRACTED", "chunk_ids": [],
                           "metadata": {"_source": source, "_producer": PRODUCTEUR, "confidence": a.get("confidence"),
-                                       **{k: a.get(k) for k in ("confidence_score", "weight", "contributor", "source_location")}}})
+                                       **{k: a.get(k) for k in ("confidence_score", "weight", "contributor", "source_location")}},
+                          **({"extrait": a["evidence"]} if a.get("evidence") else {})})
     document = document_de(source, entete, corps, PRODUCTEUR)
     for x in [*entites.values(), *relations]:
         x["metadata"] = chaines(x["metadata"])
@@ -430,8 +436,10 @@ def morceau_de(noms: list[str], morceaux: list[tuple[str, str]]) -> str | None:
 
 
 def rattacher(v: dict, morceaux: list[tuple[str, str]]) -> None:
-    """Chaque entité à un seul morceau, celui qui la nomme ; chaque relation au morceau qui nomme l'une de ses
-    extrémités. Rattacher à tous les morceaux de la fiche répétait chaque lien (un graphe d'éthique, 23.10.2026 : 1 981 466
+    """Chaque entité à un seul morceau, celui qui la nomme ; chaque relation au morceau qui porte son extrait
+    (07.11.2026 : le morceau deviné par le nom d'une extrémité était faux pour la moitié des relations d'un essai sur
+    huit fiches), à défaut à celui qui nomme l'une de ses extrémités. L'extrait est retiré de la relation : son texte
+    ne part pas au cerveau. Rattacher à tous les morceaux de la fiche répétait chaque lien (un graphe d'éthique, 23.10.2026 : 1 981 466
     mentions pour 55 616 couples fiche–notion, 4 Go d'arêtes sur 5,6)."""
     noms = {}
     for e in v["entites"]:
@@ -441,7 +449,9 @@ def rattacher(v: dict, morceaux: list[tuple[str, str]]) -> None:
         m = morceau_de(noms[cle], morceaux)
         e["chunk_ids"] = [m] if m else []
     for r in v["relations"]:
-        m = morceau_de(noms.get(r["from"], [r["from"]]) + noms.get(r["to"], [r["to"]]), morceaux)
+        cite = r.pop("extrait", None)
+        m = next((cid for cid, texte in morceaux if atteste(cite, texte)), None) if cite else None
+        m = m or morceau_de(noms.get(r["from"], [r["from"]]) + noms.get(r["to"], [r["to"]]), morceaux)
         r["chunk_ids"] = [m] if m else []
 
 

@@ -489,6 +489,21 @@ def graphe_du_site() -> str:
     return e.get("graphe_du_site") or e["principal"]
 
 
+def cerveau_thalamus(graphe: str) -> str:
+    """Le cerveau de Thalamus d'un graphe : `cerveau_du_site` du bloc `edition:` pour le graphe du site s'il est
+    déclaré, sinon « <nom de l'édition>/<graphe> » (07.11.2026)."""
+    e = edition()
+    if e.get("cerveau_du_site") and graphe == graphe_du_site():
+        return e["cerveau_du_site"]
+    return f"{e['nom']}/{graphe}"
+
+
+def cerveau_des_lacunes() -> str:
+    """Le cerveau de Thalamus où un lecteur signale ce qu'un graphe n'a pas su lui dire : `cerveau_lacunes` du bloc
+    `edition:`, sinon « lacunes-signalees » (07.11.2026)."""
+    return edition().get("cerveau_lacunes") or "lacunes-signalees"
+
+
 def sites_de_l_edition() -> list[str]:
     """Les sites de l'édition, sans barre finale : celui de la lettre, le site, puis les anciens (`anciens_sites`, un
     site qui a changé de nom). Une page de l'un d'eux n'est ni un éditeur ni une preuve ; une image de lettre y est admise."""

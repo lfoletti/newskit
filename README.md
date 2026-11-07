@@ -104,6 +104,8 @@ media:
   traductions: [en]           # translated feed and newsletter; none by default
   passages: {tous_les: 1, heures: ["05:30"]}   # every N days, at these times
   # service_maj: kg-maj       # the server service started over ssh after a pass; none by default
+  # cerveau_du_site: media-site    # the Thalamus brain of the site graph; "<media>/<graph>" by default
+  # cerveau_lacunes: media-lacunes # the Thalamus brain of reported gaps; "lacunes-signalees" by default
 modeles:                      # one model per role; a missing role keeps its default
   extraction: claude-opus-5-5
   redaction: claude-sonnet-5-5

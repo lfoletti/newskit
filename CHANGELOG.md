@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.9] - 2026-11-07
+
+### Modifié
+
+- Les noms des cerveaux de Thalamus se déclarent dans `config.yaml` : `media.cerveau_du_site`, le cerveau que la station « Interroger le graphe » interroge ; `media.cerveau_lacunes`, le cerveau où un lecteur signale ce qu'un graphe n'a pas su lui dire (relève et carte servie). Vides, ils gardent les noms d'avant : « <média>/<graphe du site> » et « lacunes-signalees ». Minuscules, chiffres et « -/ » seulement.
+
 ## [0.1.8] - 2026-11-07
 
 ### Modifié

@@ -29,10 +29,10 @@ DELAI = 30  # secondes accordées à la passerelle
 
 
 def cerveau() -> str:
-    """Le cerveau du graphe du site dans Thalamus : `<nom de l'édition>/<graphe du site>` (bloc `edition:`)."""
+    """Le cerveau du graphe du site dans Thalamus (config_sources.cerveau_thalamus, bloc `edition:`)."""
     from newskit import config_sources as cfg  # noqa: PLC0415
 
-    return f"{cfg.edition()['nom']}/{cfg.graphe_du_site()}"
+    return cfg.cerveau_thalamus(cfg.graphe_du_site())
 
 
 def _extrait(texte: str, mots: int = MOTS_EXTRAIT) -> str:

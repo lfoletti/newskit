@@ -13,7 +13,7 @@ L'index et son encodeur partent ensemble : un index calculé avec un modèle se 
 Accès : celui de depots.py (~/.secrets/vps_kg.env : VPS_HOTE, VPS_UTILISATEUR, VPS_CLE ; VPS_CLONE facultatif,
 `edition.clone` du registre par défaut). rsync tourne en sudo côté serveur, les fichiers reviennent à kg:kg.
 Le serveur recharge un index changé sans redémarrer (synthese.index lit la date de vecteurs.npy) ; les modèles,
-chargés une fois, demandent un redémarrage du service (kg-mcp-maj le fait au prochain changement de script).
+chargés une fois, demandent un redémarrage du service (le service de mise à jour du serveur, media.service_maj, le fait au prochain changement de script).
 
     python3 -m newskit.publier_index --graphe <graphe>            # index + modèles du graphe
     python3 -m newskit.publier_index                                   # tous les graphes qui ont un index

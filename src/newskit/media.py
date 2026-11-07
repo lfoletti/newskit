@@ -50,9 +50,11 @@ IDENTITE = {
     "lettre_site": "",  # le site public cité au pied de la lettre de la semaine (lettre.py, B16)
     "anciens_sites": "",  # les sites d'avant, séparés par des virgules : encore des sites de l'édition
     "graphe_du_site": "",  # le graphe du site (fil, lettre, station) ; vide : le graphe principal
-    "robot_contact": "",
-}  # l'adresse que le robot donne aux sites des sources (commun.agent_robot)
+    "robot_contact": "",  # l'adresse que le robot donne aux sites des sources (commun.agent_robot)
+    "service_maj": "",  # le service du serveur qui avance son clone et refait les pages ; vide : aucun
+}
 NOM = re.compile(r"^[a-z0-9][a-z0-9-]{1,40}$")  # un nom de média ou de graphe
+SERVICE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9@._-]{0,79}$")  # un nom de service systemd, passé à ssh tel quel
 
 # Les modèles d'aujourd'hui, par rôle (relevé du 7.11.2026 dans 11 scripts). Un rôle, un travail :
 ROLES = {
@@ -154,6 +156,8 @@ def _valider_media(m: dict, ou: str) -> None:
     for cle in ("nom", "principal"):
         if cle in m and not NOM.match(m[cle]):
             raise ConfigMediaInvalide(f"{ou} : media.{cle} : minuscules, chiffres et tirets")
+    if m.get("service_maj") and not SERVICE.match(m["service_maj"]):
+        raise ConfigMediaInvalide(f"{ou} : media.service_maj : lettres, chiffres et « @._- », lu {m['service_maj']!r}")
     if "langue" in m and m["langue"] not in LANGUES:
         raise ConfigMediaInvalide(f"{ou} : media.langue : {m['langue']!r} ; le moteur écrit en {sorted(LANGUES)}")
     t = m.get("traductions", [])

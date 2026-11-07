@@ -435,28 +435,32 @@ def suivre() -> list[str]:
                 "elles passeront à la routine du matin"
             )
         )
-    try:
-        acces = lire_env(ACCES)
-        subprocess.run(
-            [
-                "ssh",
-                "-i",
-                str(Path(acces["VPS_CLE"]).expanduser()),
-                "-o",
-                "BatchMode=yes",
-                "-o",
-                "ConnectTimeout=20",
-                f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}",
-                "sudo systemctl start kg-mcp-maj.service",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=180,
-            check=True,
-        )
-        lignes.append("  serveur en ligne : mis à jour")
-    except Exception as e:  # noqa: BLE001 — il se mettra à jour seul, à l'heure
-        lignes.append(f"  serveur en ligne : mise à jour non déclenchée ({str(e)[:80]}), il la fera à l'heure")
+    commande = cfg.commande_maj_serveur()
+    if commande is None:
+        lignes.append("  serveur en ligne : aucun service de mise à jour déclaré (media.service_maj)")
+    else:
+        try:
+            acces = lire_env(ACCES)
+            subprocess.run(
+                [
+                    "ssh",
+                    "-i",
+                    str(Path(acces["VPS_CLE"]).expanduser()),
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "ConnectTimeout=20",
+                    f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}",
+                    commande,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=180,
+                check=True,
+            )
+            lignes.append("  serveur en ligne : mis à jour")
+        except Exception as e:  # noqa: BLE001 — il se mettra à jour seul, à l'heure
+            lignes.append(f"  serveur en ligne : mise à jour non déclenchée ({str(e)[:80]}), il la fera à l'heure")
     for l in lignes:
         print(l)
     return lignes

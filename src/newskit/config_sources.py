@@ -475,6 +475,13 @@ def edition() -> dict:
     return {**EDITION, **e}
 
 
+def commande_maj_serveur() -> str | None:
+    """La commande qui fait avancer le serveur tout de suite après un envoi : `media.service_maj` de config.yaml ;
+    None sans service déclaré (le serveur se met alors à jour à son heure)."""
+    s = edition().get("service_maj")
+    return f"sudo systemctl start {s}.service" if s else None
+
+
 def graphe_du_site() -> str:
     """Le graphe dont le site de l'édition sert le fil, la lettre et la station « Interroger le graphe » : la clé
     `graphe_du_site` du bloc `edition:`, sinon le graphe principal (coupe moteur-édition, 06.11.2026)."""

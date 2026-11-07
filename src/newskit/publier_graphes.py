@@ -2,7 +2,7 @@
 """Envoi des graphes au serveur hors de git (24.10.2026).
 
 Décision du porteur : seul un graphe de test reste dans le dépôt. Le serveur recevait les graphes par le `git pull`
-de kg-mcp-maj ; ce script les envoie par rsync, dans le clone du serveur, à la fin de chaque passage :
+du service de mise à jour du serveur (media.service_maj) ; ce script les envoie par rsync, dans le clone du serveur, à la fin de chaque passage :
 
   les fichiers de graphe/<g>/ (graphe/ pour le graphe principal, sans les dossiers des autres graphes)
   que git ne suit pas
@@ -10,7 +10,7 @@ de kg-mcp-maj ; ce script les envoie par rsync, dans le clone du serveur, à la 
 Avant la purge, git les suit tous : rien ne part, le pull garde la main (un fichier suivi réécrit sous le pull
 l'arrêterait). Après, tout part sauf le graphe de test, que git apporte. Jamais de --delete : un fichier propre au
 serveur reste. rsync écrit à côté puis renomme : un graphe n'est jamais lu à moitié, et le serveur le recharge à chaud
-(date du fichier). La marque graphe/.envoi dit à kg-mcp-maj de régénérer les pages sans commit nouveau.
+(date du fichier). La marque graphe/.envoi dit au service de mise à jour de régénérer les pages sans commit nouveau.
 Accès : celui de publier_index (~/.secrets/vps_kg.env).
 
     python3 -m newskit.publier_graphes                     # tous les graphes du registre

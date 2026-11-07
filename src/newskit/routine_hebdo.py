@@ -907,6 +907,10 @@ def publier_en_ligne() -> None:
             publier_cerveau.publier(graphes)
     except Exception as e:  # noqa: BLE001
         print(f"Cerveaux en ligne : non envoyés ({type(e).__name__} {str(e)[:80]}).")
+    commande = cfg.commande_maj_serveur()
+    if commande is None:
+        print("Serveur en ligne : aucun service de mise à jour déclaré (media.service_maj), il se mettra à jour seul.")
+        return
     try:
         acces = {
             k.strip(): v.strip().strip("\"'")
@@ -926,7 +930,7 @@ def publier_en_ligne() -> None:
                 "-o",
                 "ConnectTimeout=20",
                 f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}",
-                "sudo systemctl start kg-mcp-maj.service",
+                commande,
             ],
             capture_output=True,
             text=True,

@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.2] - 2026-11-07
+
+### Corrigé
+
+- Un article, une fiche, une langue : la collecte n'écrit plus une seconde fiche pour la version d'un article dans une autre langue. Le contrôle des doublons d'identité nomme les fiches d'un même document.
+
 ## [0.1.1] - 2026-11-07
 
 ### Corrigé
@@ -22,6 +28,7 @@ Première version, sortie du dépôt de l'édition où le moteur est né.
 - Le témoin : une nuit entière sur un graphe sans rapport, rejouée de réponses enregistrées, sans appel payant (`newskit temoin nuit`) ; une nuit ne part pas sans un témoin vert du jour.
 - Le plugin de Claude Code : le skill `newskit` (formulaire du média, sources et thèmes de départ, naissance, nuit, interrogation) et un crochet qui refuse les appels au modèle quand la fenêtre d'usage est fermée.
 
-[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.1...HEAD
+[Non publié]: https://github.com/lfoletti/newskit/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/lfoletti/newskit/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/lfoletti/newskit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/lfoletti/newskit/releases/tag/v0.1.0

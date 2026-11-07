@@ -239,14 +239,43 @@ def url_canonique(url: str) -> str:
     return urlunsplit((s.scheme.lower(), s.netloc.lower(), s.path.rstrip("/"), urlencode(q), s.fragment))
 
 
+# Un article publié en plusieurs langues (mainteneur, 07.11.2026 : « il ne faudrait pas non plus que deux versions de
+# langues différentes du même article soient extraites parallèlement ») : ses adresses ne diffèrent que par un segment
+# de langue (/en/, /ko/, /fr-ch/), ou par sa présence (/blog/x, /zh-Hans/blog/x). Elles partagent la clé `article:`,
+# l'adresse sans segment de langue ; la seconde version est refusée à l'écriture.
+LANGUES_D_ADRESSE = frozenset("en fr de es it pt nl ko ja zh ru ar pl sv da no nb fi cs sk ro tr hu id ca hr vi uk el "
+                              "he hi th bg sr fa".split())
+RE_SEGMENT_LANGUE = re.compile(r"([a-z]{2})(?:[-_][a-z]{2,4})?", re.I)
+
+
+def _langue_du_segment(seg: str) -> str:
+    m = RE_SEGMENT_LANGUE.fullmatch(seg)
+    return m.group(1).lower() if m and m.group(1).lower() in LANGUES_D_ADRESSE else ""
+
+
+def langue_de_l_adresse(url: str) -> str:
+    """La langue que déclare un segment du chemin de l'adresse (/en/, /ko/), vide sinon."""
+    return next((l for seg in urlsplit(url or "").path.split("/") if (l := _langue_du_segment(seg))), "")
+
+
+def cle_d_article(url: str) -> str:
+    """L'adresse canonique sans ses segments de langue : la même pour /blog/x, /en/blog/x et /zh-Hans/blog/x."""
+    s = urlsplit(url_canonique(url))
+    chemin = "/".join(x for x in s.path.split("/") if not _langue_du_segment(x))
+    return urlunsplit((s.scheme, s.netloc, chemin, s.query, s.fragment))
+
+
 def cles_d_identite(champs: dict) -> frozenset:
-    """Les clés d'identité d'une fiche : `url:<canonique>` (avec `|partie:` pour un texte découpé),
-    `arxiv:<identifiant sans version>` (champ, adresse abs/pdf, DOI 10.48550), `doi:<minuscules>`."""
+    """Les clés d'identité d'une fiche : `url:<canonique>` (avec `|partie:` pour un texte découpé), `article:` l'adresse
+    sans segments de langue, `arxiv:<identifiant sans version>` (champ, adresse abs/pdf, DOI 10.48550),
+    `doi:<minuscules>`."""
     k: set[str] = set()
     url = str(champs.get("url") or "").strip()
     if re.match(r"https?://", url, re.I):
         partie = str(champs.get("partie") or "").strip()
         k.add("url:" + url_canonique(url) + (f"|partie:{partie}" if partie else ""))
+        if a := cle_d_article(url):
+            k.add("article:" + a + (f"|partie:{partie}" if partie else ""))
         if m := RE_ARXIV.search(url):
             k.add("arxiv:" + m.group(1).lower())
         if RE_DOI_URL.match(url):
@@ -291,7 +320,7 @@ def _carte(racine: Path) -> dict[str, list[str]]:
 def cles_du_fichier(p: Path) -> frozenset:
     try:
         with open(p, encoding="utf-8", errors="replace") as f:
-            return cles_d_identite(lire(f.read(TETE))[0])
+            return _cles_a_verifier(p, lire(f.read(TETE))[0])
     except OSError:
         return frozenset()
 
@@ -335,6 +364,13 @@ def graphes_du_chemin(chemin: Path) -> list[str] | None:
     return [g for g, ds in _carte(racine).items() if any(rel.is_relative_to(d) for d in ds)]
 
 
+def _cles_a_verifier(chemin: Path, champs: dict) -> frozenset:
+    """Les clés d'identité vérifiées à l'écriture. Un texte de référence (dossier `textes`) garde ses langues : la clé
+    `article:` ne le compte pas (nLPD en français et en anglais, choix du mainteneur)."""
+    k = cles_d_identite(champs)
+    return frozenset(x for x in k if not x.startswith("article:")) if "textes" in Path(chemin).parts else k
+
+
 def _verifier_identite(chemin: Path, champs: dict, hors_graphe: bool, remplace: Path | None) -> list[str]:
     graphes = graphes_du_chemin(chemin)
     if graphes is None:
@@ -346,7 +382,7 @@ def _verifier_identite(chemin: Path, champs: dict, hors_graphe: bool, remplace: 
     soi = {Path(chemin).resolve(), *([Path(remplace).resolve()] if remplace else [])}
     for g in graphes:
         idx = index_du_graphe(g)
-        for k in sorted(cles_d_identite(champs)):
+        for k in sorted(_cles_a_verifier(chemin, champs)):
             e = idx.get(k)
             if e and e not in soi and e.exists():
                 raise IdentiteDejaVue(chemin, e, k, g)
@@ -358,7 +394,7 @@ def _noter(chemin: Path, champs: dict, graphes: list[str], remplace: Path | None
     ancienne = Path(remplace).resolve() if remplace else None
     for g in graphes:
         idx = index_du_graphe(g)
-        for k in cles_d_identite(champs):
+        for k in _cles_a_verifier(chemin, champs):
             if not (idx.get(k) and idx[k] not in (p, ancienne) and idx[k].exists()):
                 idx[k] = p
 

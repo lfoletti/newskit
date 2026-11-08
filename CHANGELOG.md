@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.15] - 2026-11-08
+
+### Modifié
+
+- 30 mots au plus par phrase partout, lettre comprise. Les gabarits anglais demandent en première phrase ce que la source établit.
+
 ## [0.1.14] - 2026-11-08
 
 ### Ajouté

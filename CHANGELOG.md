@@ -4,6 +4,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- `media_sample/`, un dossier de média complet à copier.
+
 ## [0.1.15] - 2026-11-08
 
 ### Modifié

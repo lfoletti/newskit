@@ -1,0 +1,9 @@
+version: 1
+sources:
+  - cle: city_farmer
+    plateforme: Flux RSS
+    nom: City Farmer News
+    dossier: potagers/rss
+    abonnement: gratuit
+    graphe: potagers-urbains
+    flux: https://cityfarmer.info/feed/

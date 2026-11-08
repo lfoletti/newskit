@@ -1,0 +1,20 @@
+format: racine:feuille
+champs_entete:
+  - organisation
+  - pays
+racines:
+  - cle: pratiques
+    fr: Pratiques
+    en: Practices
+    etat: validee
+    champs: [organisation, pays, constats, suite]
+    feuilles:
+      - {cle: sols, fr: Sols, en: Soil, etat: validee}
+      - {cle: semences, fr: Semences, en: Seeds, etat: validee}
+  - cle: politique
+    fr: Politique locale
+    en: Local policy
+    etat: validee
+    champs: [organisation, pays, mesure, suite]
+    feuilles:
+      - {cle: terrains, fr: Terrains, en: Land, etat: validee}

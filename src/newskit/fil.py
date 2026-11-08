@@ -531,7 +531,7 @@ def depense_du_jour(F: dict, jour: str) -> float:
     return float((F.get("depense") or {}).get(jour) or 0)
 
 
-def demander(inv: str, schema: dict, graphe: str, note: str) -> tuple[dict, float]:
+def demander(inv: str, schema: dict, graphe: str, note: str, modele: str | None = None) -> tuple[dict, float]:
     """Un appel au modèle sans outil, réponse au schéma, ligne au registre des coûts ; rend l'objet et son coût. Une
     réponse illisible rend un objet vide."""
     args = [
@@ -542,13 +542,13 @@ def demander(inv: str, schema: dict, graphe: str, note: str) -> tuple[dict, floa
         "--output-format",
         "json",
         "--model",
-        lt.MODELE,
+        modele or lt.MODELE,
         "--json-schema",
         json.dumps(schema),
     ]
     t0 = time.time()
     r = subprocess.run(args, input=inv, capture_output=True, text=True, timeout=900, cwd=RACINE, check=False)
-    env = couts.enregistrer(POSTE, graphe, lt.MODELE, r, time.time() - t0, note=note)
+    env = couts.enregistrer(POSTE, graphe, modele or lt.MODELE, r, time.time() - t0, note=note)
     try:
         brut = env.get("structured_output") or json.loads(
             re.sub(r"^```(?:json)?\s*|\s*```$", "", str(env.get("result") or "{}").strip()) or "{}"

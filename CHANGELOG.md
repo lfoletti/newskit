@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.10] - 2026-11-08
+
 ### Ajouté
 
 - Fiches du fil au format résumé, catégorie, éléments, en français et en anglais, pour un graphe qui déclare `arbre_fiches`. Chaque élément est prouvé par une citation exacte de la source, gardée hors de la copie publique. La rédaction et la relecture lisent l'article entier.

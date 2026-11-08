@@ -976,7 +976,7 @@ def tournure(texte_: str) -> str | None:
     return m.group(1) if m else None
 
 
-MOTS_PAR_PHRASE = 25  # français simplifié d'après ASD-STE100 (mainteneur, 03.11.2026)
+MOTS_PAR_PHRASE = 30  # français simplifié d'après ASD-STE100 (mainteneur, 03.11.2026)
 PHRASES_PAR_PARAGRAPHE = 6
 ABREVIATIONS = {
     "art",

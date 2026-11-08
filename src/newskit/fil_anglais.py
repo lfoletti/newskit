@@ -58,7 +58,7 @@ source only: write from the source, every name, number and fact comes from it. R
   of the source; it is understood alone, by a reader who does not know the topic; it names the person the source names;
   a little-known person or organisation is followed by its role; no question; {mots} words and {max} characters at most.
 - texte: the lead of the fact, 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence
-  says the fact in plain words, who, where, what; the country where the fact happens is named in the title or in that
+  says what the source establishes or argues; the country where the fact happens is named in the title or in that
   sentence when the fact belongs to a country (an election, a law, an authority, a study run in a country); each
   sentence carries one fact; a short source gives a short text, without padding. The speaker carries the attribution
   ("According to Name (Institution), ..."). Never "According to <publisher>" when the publisher is the source. A
@@ -108,8 +108,7 @@ item you receive the refused title and text, the reviewer's objections and the s
 - titre: the result that matters to the reader, in one simple sentence with a verb; understood alone; a common word
   replaces the jargon word; a little-known person or organisation is followed by its role, or replaced by it; no
   question; {mots} words and {max} characters at most;
-- texte: 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence says the fact, who,
-  where, what; the speaker carries the attribution ("According to Name (Institution), ...").
+- texte: 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence says what the source establishes or argues; the speaker carries the attribution ("According to Name (Institution), ...").
 {regles}Return the object {{"billets": [...]}}.
 
 Items:

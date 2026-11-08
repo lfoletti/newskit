@@ -276,9 +276,15 @@ def normaliser_auteurs(brut: str) -> list[str]:
     on retire le suffixe ; on ne fusionne jamais par similarité approximative,
     seule l'égalité après normalisation fusionne.
     """
-    if not brut or not brut.strip():
+    brut = fiche.separer_auteur(brut)[0]
+    if not brut:
         return []
-    segments = [s.strip() for s in re.split(r",| et | and |&|;", brut) if s.strip()]
+    # Un « & » de raison sociale ne sépare pas deux personnes (Clyde & Co LLP)
+    segments = [
+        s.strip()
+        for s in re.split(r",| et | and |&(?!\s*(?:Co|Company|Partners|Associates|Sons)\b)|;", brut)
+        if s.strip()
+    ]
     noms = [
         s
         for s in segments

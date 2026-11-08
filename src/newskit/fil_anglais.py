@@ -84,6 +84,8 @@ Return {{"n": number, "absents": [...], "clair": true or false, "motif": ..., "p
   it keeps a jargon word that a common word replaces; it starts with a name the reader does not know, without saying
   who it is; it is telegraphic, without a verb; one cannot tell who does what; it reads two ways. False also when the
   title and the text do not tell the same fact, or when the text keeps a jargon word the reader does not understand.
+  False also when the first sentence of the text only says that someone spoke or that a document came out, or gives
+  the venue, the format or the speakers, while the source gives a content: that content must come first.
 - motif: what stops the reader, in fifteen words at most; empty when the item is clear.
 - pays: the country, or the group of countries, where the fact happens, when the fact belongs to a country (an
   election, a law, an authority, a court, an administration, a study run in a country or by a university of that

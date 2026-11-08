@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.13] - 2026-11-08
+
+### Modifié
+
+- Le relecteur refuse un texte dont la première phrase ne dit que la parution ou l'intervention.
+
 ## [0.1.12] - 2026-11-08
 
 ### Modifié

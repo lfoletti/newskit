@@ -131,18 +131,20 @@ def refus(b: dict, reproches: list[str]) -> dict:
 # Le format validé le 08.11.2026 (mainteneur : « la fiche met en valeur l'extraction, ce n'est pas une réécriture ») : un
 # résumé, une catégorie et des éléments, chacun prouvé par une citation mot pour mot que la page ne montre pas. Il vaut pour
 # les graphes qui déclarent `arbre_fiches` (l'arbre des catégories) et pour les seules fiches pas encore écrites.
-ELEMENTS_MIN = 2  # éléments prouvés au moins
+ELEMENTS_MIN = 2
+TITRE_MAX = 90  # éléments prouvés au moins
 REDACTION_ELEMENTS = """Tu rédiges la fiche de recension d'articles pour un fil d'actualité sur {nom}, en français et en anglais.
 Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas. Pour chaque billet, rends :
 - n : son numéro ;
 - categorie : une feuille de l'arbre, sous la forme racine:feuille ;
+- titre, titre_en : 16 mots et 90 caractères au plus ;
 - resume, resume_en : 30 à 70 mots ; le résumé porte ce que l'article apporte de plus que le fait de son titre ;
 - elements : un élément par champ de la catégorie ; un champ sans contenu est omis. Pour chacun : champ et champ_en, le nom
   du champ pour un lecteur, d'un ou deux mots ; texte et texte_en, qui nomment qui fait ou affirme quoi, à propos de quoi,
   avec les noms propres, les intitulés de textes, les chiffres et les dates de l'article ; citation, recopiée mot pour mot
   de la source, 300 caractères au plus, qui porte l'élément.
 Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
-Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le résumé et les éléments portent ce qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants sont des informations mineures, de contextualisation uniquement.
+Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le titre, le résumé et les éléments portent ce qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants sont des informations mineures, de contextualisation uniquement.
 Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
 Les règles de la lettre d'information :
 {regles}Arbre des catégories :
@@ -160,12 +162,14 @@ SCHEMA_ELEMENTS = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["n", "categorie", "resume", "resume_en", "elements"],
+                "required": ["n", "categorie", "titre", "titre_en", "resume", "resume_en", "elements"],
                 "properties": {
                     "n": {"type": "integer"},
                     "categorie": _TXT,
                     "resume": _TXT,
                     "resume_en": _TXT,
+                    "titre": _TXT,
+                    "titre_en": _TXT,
                     "elements": {
                         "type": "array",
                         "items": {
@@ -215,15 +219,19 @@ def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str
         return None, [f"catégorie hors de l'arbre : {x.get('categorie')}"]
     if not all(str(x.get(k) or "").strip() for k in ("resume", "resume_en")):
         return None, ["résumé absent dans une langue"]
+    if not all(0 < len(str(x.get(k) or "").strip()) <= TITRE_MAX for k in ("titre", "titre_en")):
+        return None, [f"titre absent ou de plus de {TITRE_MAX} caractères dans une langue"]
     bons = [e for e in x.get("elements") or [] if ex.atteste(e["citation"][:300], corps)]
     if len(bons) < ELEMENTS_MIN:
         return None, [f"{len(bons)} éléments prouvés par une citation exacte, {ELEMENTS_MIN} au moins"]
     return {
         "texte": "\n\n".join(e["texte"] for e in bons),
+        "titre": x["titre"],
         "resume": x["resume"],
         "categorie": cat[0],
         "elements": [{"champ": e["champ"], "texte": e["texte"], "citation": e["citation"][:300]} for e in bons],
         "en": {
+            "titre": x["titre_en"],
             "resume": x["resume_en"],
             "categorie": cat[1],
             "elements": [{"champ": e["champ_en"], "texte": e["texte_en"]} for e in bons],
@@ -234,7 +242,7 @@ def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str
 
 def _lu(f: dict) -> str:
     """Résumé et éléments d'une langue, pour le relecteur."""
-    return "\n".join([f["resume"], *(f"{e['champ']} : {e['texte']}" for e in f["elements"])])
+    return "\n".join([f["titre"], f["resume"], *(f"{e['champ']} : {e['texte']}" for e in f["elements"])])
 
 
 def _reproches(v: dict) -> list[str]:

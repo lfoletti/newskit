@@ -195,7 +195,8 @@ def arbre(graphe: str) -> dict | None:
 
 
 def corps_de(b: dict) -> str:
-    return fil.extrait(b, SOURCE_MAX)
+    """L'article entier (mainteneur, 08.11.2026 : « la rédaction doit lire l'article en entier »)."""
+    return fil.extrait(b, None)
 
 
 def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str]]:
@@ -234,12 +235,19 @@ def _reproches(v: dict) -> list[str]:
     ]
 
 
-def _etoffer_elements(F: dict, graphe: str, feuilles: dict) -> float:
+def _etoffer_elements(F: dict, graphe: str, feuilles: dict, reste: float) -> float:
+    """Un appel par billet, l'article entier à chaque fois ; le passage s'arrête quand `reste` est dépensé."""
     billets = a_ecrire(F)
     fiches = lt.charger_fiches([b["chemin"] for b in billets]) if billets else {}
-    lot = [(b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches]
-    if not lot:
-        return 0.0
+    cout = 0.0
+    for paire in ((b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches):
+        if cout >= reste:
+            break
+        cout += _une_fiche([paire], graphe, feuilles)
+    return cout
+
+
+def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> float:
     corps = [corps_de(b) for b, _ in lot]
     r, cout = fil.demander(
         REDACTION_ELEMENTS.format(
@@ -282,7 +290,7 @@ def _etoffer_elements(F: dict, graphe: str, feuilles: dict) -> float:
         for n in rangs
         for p in ((lot[n][0]["titre"], _lu(pretes[n]), *lot[n]), (lot[n][0]["titre"], _lu(pretes[n]["en"]), *lot[n]))
     ]
-    verdicts, c = fil.juger(paires, graphe)
+    verdicts, c = fil.juger(paires, graphe, source=None)
     for k, n in enumerate(rangs):
         fr, en = verdicts.get(2 * k), verdicts.get(2 * k + 1)
         if fr is None or en is None:
@@ -299,7 +307,7 @@ def etoffer(F: dict, graphe: str, reste: float) -> float:
     if reste < 0.10:
         return 0.0
     feuilles = arbre(graphe)
-    cout = _etoffer(F, graphe) if feuilles is None else _etoffer_elements(F, graphe, feuilles)
+    cout = _etoffer(F, graphe) if feuilles is None else _etoffer_elements(F, graphe, feuilles, reste)
     d = F.setdefault("depense_fiche", {})
     d[jour] = float(d.get(jour) or 0) + cout
     return cout

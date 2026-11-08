@@ -61,15 +61,22 @@ def banc(monkeypatch, tmp_path):
         etat["modele"], etat["invite"] = modele, inv
         return {"billets": etat["reponses"]}, 1.5
 
-    def juger(paires, graphe):
-        etat["paires"] = paires
+    def juger(paires, graphe, source=3000):
+        etat["paires"], etat["source"] = paires, source
         return (
             {i: {"absents": [], "clair": True, "motif": ""} for i in range(len(paires))}
             if etat["verdicts"] is None
             else etat["verdicts"]
         ), 0.5
 
-    monkeypatch.setattr(fil, "demander", demander)
+    etat["appels"] = 0
+    _demander = demander
+
+    def compte(*a, **k):
+        etat["appels"] += 1
+        return _demander(*a, **k)
+
+    monkeypatch.setattr(fil, "demander", compte)
     monkeypatch.setattr(fil, "juger", juger)
     return etat
 
@@ -186,9 +193,46 @@ def test_le_plafond_du_jour_est_de_dix_dollars():
     assert ff.FICHE_USD_JOUR == 10.0
 
 
-def test_corps_de_lit_la_source_entiere(monkeypatch):
-    monkeypatch.setattr(fil, "extrait", lambda b, n: str(n))
-    assert ff.corps_de({}) == str(ff.SOURCE_MAX)
+def test_corps_de_lit_la_source_entiere(monkeypatch, tmp_path):
+    # Mainteneur, 08.11.2026 : « la rédaction doit lire l'article en entier ».
+    long = "mot " * 5000
+    (tmp_path / "c.md").write_text("---\nt: 1\n---\n" + long, encoding="utf-8")
+    monkeypatch.setattr(fil, "RACINE", tmp_path)
+    assert ff.corps_de({"chemin": "c.md"}) == long.strip()
+
+
+def test_le_relecteur_lit_aussi_la_source_entiere(banc):
+    ff.etoffer({"billets": [billet()]}, "g", 20)
+    assert banc["source"] is None
+
+
+@pytest.mark.parametrize(("source", "attendu"), [(None, 8000), (3000, 3000)])
+def test_juger_donne_la_longueur_demandee(monkeypatch, tmp_path, source, attendu):
+    (tmp_path / "c.md").write_text("x" * 8000, encoding="utf-8")
+    monkeypatch.setattr(fil, "RACINE", tmp_path)
+    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {"libelle": "IA"})
+    vu = {}
+
+    def demander(inv, schema, graphe, note):
+        vu["n"] = inv.count("x")
+        return {"billets": []}, 0.0
+
+    monkeypatch.setattr(fil, "demander", demander)
+    monkeypatch.setattr(fil, "doutes", lambda t, x, f: [])
+    fil.juger([("T", "", {"chemin": "c.md"}, {})], "g", source=source)
+    assert attendu <= vu["n"] < attendu + 2000
+
+
+def test_un_appel_par_billet(banc):
+    F = {"billets": [billet(), {**billet(), "chemin": "d.md"}]}
+    assert ff.etoffer(F, "g", 20) == 4.0
+    assert banc["appels"] == 2 and F["billets"][0]["fiche"]["tenu"] is True and F["billets"][1]["fiche"]["tenu"] is True
+
+
+def test_le_passage_s_arrete_au_plafond(banc):
+    F = {"billets": [billet(), {**billet(), "chemin": "d.md"}]}
+    assert ff.etoffer(F, "g", 2.0) == 2.0
+    assert banc["appels"] == 1 and "fiche" not in F["billets"][1]
 
 
 def test_la_copie_publique_montre_les_elements_sans_les_citations(monkeypatch):

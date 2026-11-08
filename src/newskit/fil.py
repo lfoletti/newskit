@@ -518,7 +518,7 @@ def classer(billets: list[dict]) -> list[dict]:
     return sorted(billets, key=lambda b: (str(b.get("date") or ""), str(b.get("ajoute") or "")), reverse=True)
 
 
-def extrait(f: dict, n: int = 1200) -> str:
+def extrait(f: dict, n: int | None = 1200) -> str:
     try:
         t = (RACINE / f["chemin"]).read_text(encoding="utf-8")
     except OSError:
@@ -608,7 +608,9 @@ def terme_du_billet(terme, titre: str, texte: str) -> str:
     return t if t and lt.plier(t) in lt.plier(f"{titre} {texte}") else ""
 
 
-def juger(paires: list[tuple[str, str, dict, dict]], graphe: str) -> tuple[dict[int, dict], float]:
+def juger(
+    paires: list[tuple[str, str, dict, dict]], graphe: str, source: int | None = 3000
+) -> tuple[dict[int, dict], float]:
     """Le relecteur adverse sur des (titre, texte, billet, fiche) : rend {rang: {absents, clair, motif, terme}} et le
     coût. `terme` : la notion que le lecteur ne connaît pas et que la source n'explique pas. Un rang sans réponse n'a pas de
     verdict."""
@@ -618,7 +620,7 @@ def juger(paires: list[tuple[str, str, dict, dict]], graphe: str) -> tuple[dict[
             nom=nom,
             billets="\n".join(
                 json.dumps(
-                    {"n": n, "titre": t, "texte": x, "a_verifier": doutes(t, x, f), "source": extrait(b, 3000)},
+                    {"n": n, "titre": t, "texte": x, "a_verifier": doutes(t, x, f), "source": extrait(b, source)},
                     ensure_ascii=False,
                 )
                 for n, (t, x, b, f) in enumerate(paires)

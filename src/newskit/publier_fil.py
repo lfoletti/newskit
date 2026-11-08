@@ -84,7 +84,13 @@ def elements(b: dict) -> dict:
     tenue = f if f.get("tenu") is True else {}
     en = tenue.get("en") or {}
     garde = lambda d: [{"champ": e["champ"], "texte": e["texte"]} for e in d.get("elements") or []]  # noqa: E731
+    titres = (
+        {"titre": tenue["titre"], "descriptif": tenue["resume"], "titre_en": en["titre"], "descriptif_en": en["resume"]}
+        if tenue.get("titre")
+        else {}
+    )
     return {
+        **titres,
         "resume": tenue.get("resume", ""),
         "categorie": tenue.get("categorie", ""),
         "elements": garde(tenue),

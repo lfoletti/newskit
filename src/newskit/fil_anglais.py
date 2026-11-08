@@ -353,7 +353,7 @@ def main() -> None:
             reste = [b["chemin"] for b in a_ecrire(F)]
             if not reste or reste == avant:  # le même lot qu'au passage d'avant : il n'avance plus
                 break
-            cout = anglais(F, a.graphe, fil.plafond(jour) - fil.depense_du_jour(F, jour))
+            cout = anglais(F, a.graphe, fil.plafond(jour, a.graphe) - fil.depense_du_jour(F, jour))
             F.setdefault("depense", {})[jour] = fil.depense_du_jour(F, jour) + cout
             fil.ecrire(a.graphe, F)
         avant = reste

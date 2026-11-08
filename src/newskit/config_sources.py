@@ -728,6 +728,7 @@ def _valider(d: dict, p: Path) -> dict:
             "arbre_fiches",
             "fiche_modele",
             "fiche_usd_jour",
+            "fil_usd_jour",
         }
         if surplus:
             raise ConfigInvalide(f"{p.name} : graphes.{nom} : champs inconnus {sorted(surplus)}")

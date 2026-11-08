@@ -39,6 +39,8 @@ def reponse(n=0, **autre):
     return {
         "n": n,
         "categorie": "conformite:dsa",
+        "titre": "Titre du résultat",
+        "titre_en": "Result title",
         "resume": "Résumé.",
         "resume_en": "Summary.",
         "elements": [element(), element()],
@@ -307,3 +309,59 @@ def test_la_clarte_de_la_version_anglaise_ne_refuse_pas_la_fiche(banc):
     b = billet()
     ff.etoffer({"billets": [b]}, "g", 20)
     assert b["fiche"]["tenu"] is True
+
+
+def test_la_consigne_demande_le_contenu_pas_la_parution():
+    # Mainteneur, 08.11.2026 : « ce qui est intéressant quand un rapport sort, c'est son contenu, pas le fait qu'il est sorti ».
+    assert "ce qu'ils établissent" in ff.REDACTION_ELEMENTS
+    assert "informations mineures, de contextualisation uniquement" in ff.REDACTION_ELEMENTS
+
+
+def test_la_fiche_tenue_porte_le_titre_dans_les_deux_langues(banc):
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert b["fiche"]["titre"] == "Titre du résultat" and b["fiche"]["en"]["titre"] == "Result title"
+
+
+def test_la_consigne_applique_la_regle_au_titre():
+    assert "le titre, le résumé et les éléments portent" in ff.REDACTION_ELEMENTS
+    assert "titre, titre_en" in ff.REDACTION_ELEMENTS
+
+
+@pytest.mark.parametrize("k", ["titre", "titre_en"])
+def test_un_titre_absent_refuse_la_fiche(k):
+    assert ff._valider(reponse(**{k: " "}), CITE, {"conformite:dsa": ("C", "CE", ["a"])})[0] is None
+
+
+@pytest.mark.parametrize("k", ["titre", "titre_en"])
+def test_un_titre_trop_long_refuse_la_fiche(k):
+    assert ff._valider(reponse(**{k: "x" * 91}), CITE, {"conformite:dsa": ("C", "CE", ["a"])})[0] is None
+
+
+def test_le_relecteur_lit_le_titre_de_la_fiche():
+    assert "Le titre" in ff._lu({"titre": "Le titre", "resume": "R", "elements": []})
+
+
+def test_la_copie_publique_prend_titre_et_chapeau_de_la_fiche_tenue():
+    fiche = {
+        "tenu": True,
+        "titre": "TF",
+        "resume": "RF",
+        "texte": "x",
+        "elements": [],
+        "en": {"titre": "TE", "resume": "RE", "elements": []},
+    }
+    p = publier_fil.public({"billets": [{**billet(), "fiche": fiche}]})["billets"][0]
+    assert (p["titre"], p["descriptif"], p["titre_en"], p["descriptif_en"]) == ("TF", "RF", "TE", "RE")
+
+
+def test_une_fiche_refusee_laisse_titre_et_chapeau_du_billet():
+    p = publier_fil.public({"billets": [{**billet(), "fiche": {"tenu": False, "titre": "TF", "resume": "RF"}}]})[
+        "billets"
+    ][0]
+    assert p["titre"] == "T" and p["descriptif"] != "RF"
+
+
+def test_une_fiche_sans_titre_laisse_titre_et_chapeau_du_billet():
+    p = publier_fil.public({"billets": [{**billet(), "fiche": {"tenu": True, "texte": "x"}}]})["billets"][0]
+    assert p["titre"] == "T"

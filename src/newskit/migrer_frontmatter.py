@@ -60,6 +60,7 @@ def main() -> int:
             continue
         if not args.essai:
             chemin.write_text(fiche.rendre(normalises, corps), encoding="utf-8")
+            fiche.noter_contacts(str(champs.get("author") or ""), str(normalises.get("url") or ""))
 
     verbe = "seraient modifiées" if args.essai else "modifiées"
     print(f"\n{len(chemins)} fiches examinées, {modifiees} {verbe}")

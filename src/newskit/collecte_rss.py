@@ -705,6 +705,13 @@ def _texte(el) -> str:
     return "".join(el.itertext()).strip() if el is not None else ""
 
 
+def _auteur_de(el) -> str:
+    """Le nom d'un auteur. Atom range nom, adresse et courriel dans des sous-balises : leur texte mis bout à bout les colle."""
+    fils = {x.tag.split("}")[-1]: _texte(x) for x in el}
+    texte = fils.get("name") or _texte(el)
+    return " ".join(f"{texte} <{fils['email']}>".split()) if fils.get("email") else " ".join(texte.split())
+
+
 def _date(brut: str) -> str:
     """Rend une date AAAA-MM-JJ. Les flux mêlent RFC 822 et ISO 8601."""
     brut = (brut or "").strip()
@@ -790,7 +797,7 @@ def entrees(brut: bytes) -> list[dict]:
             elif t in ("pubDate", "published", "updated", "date"):
                 d["date"] = d["date"] or _date(_texte(enfant))
             elif t in ("creator", "author", "name"):
-                a = " ".join(_texte(enfant).split())
+                a = _auteur_de(enfant)
                 if a and not d["auteur"]:
                     d["auteur"] = a
             elif t == "encoded":  # content:encoded, flux complet

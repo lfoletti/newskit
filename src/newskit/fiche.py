@@ -18,6 +18,8 @@ Le squeletteur ne lit que les champs décrits ici.
 
 from __future__ import annotations
 
+import ast
+import html
 import json
 import re
 from pathlib import Path
@@ -522,15 +524,68 @@ def lire_fichier(chemin: Path) -> tuple[dict, str]:
 # --- Normalisation ---------------------------------------------------------
 
 
+RE_COURRIEL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+RE_ADRESSE_WEB = re.compile(r"(?:https?://|www\.)\S*")
+RE_BALISE = re.compile(r"<[^>]+>")
+COURRIELS_DE_REDACTION = {
+    "admin", "contact", "editor", "editors", "hello", "info", "mail", "media", "news", "newsroom", "office", "press",
+    "presse", "redaction", "support", "tips",
+}  # fmt: skip
+
+
+def separer_auteur(brut: str) -> tuple[str, list[str]]:
+    """Le nom d'un champ auteur, et ses courriels à part. Idempotente sur le nom.
+
+    Les flux donnent « courriel (Nom) », « Nom <courriel> », des entités HTML, des balises ; Atom colle nom, adresse et
+    courriel quand on prend le texte de <author> (Blogger : « Georgia Jenkinshttp://…noreply@blogger.com »). Les adresses
+    de service (noreply) ne sont pas des courriels.
+    """
+    t = html.unescape(brut or "")
+    courriels = [c for c in RE_COURRIEL.findall(t) if "noreply" not in c.lower() and "no-reply" not in c.lower()]
+    avait_un_courriel = "@" in t
+    if t.strip().startswith("[") and t.strip().endswith("]"):  # une liste Python écrite telle quelle par un collecteur
+        try:
+            t = ", ".join(str(x) for x in ast.literal_eval(t.strip()))
+        except (SyntaxError, ValueError):
+            pass
+    t = RE_COURRIEL.sub(" ", RE_ADRESSE_WEB.sub(" ", RE_BALISE.sub(" ", t.replace('\\"', '"'))))
+    if avait_un_courriel:  # « courriel (Nom) » : les parenthèses ne servaient qu'à loger le nom
+        t = re.sub(r"\(([^()]*)\)", r"\1", t)
+    return " ".join(t.split()).strip(' ,;:|-[]"'), courriels
+
+
+def type_de_courriel(courriel: str) -> str:
+    return "redaction" if courriel.split("@")[0].lower() in COURRIELS_DE_REDACTION else "auteur"
+
+
+def noter_contacts(auteur_brut: str, url: str) -> None:
+    """Range les courriels d'un champ auteur dans cache/contacts_auteurs.jsonl, interne : ils ne vont jamais sur la fiche."""
+    nom, courriels = separer_auteur(auteur_brut)
+    if not courriels:
+        return
+    f = racine_des_donnees() / "cache" / "contacts_auteurs.jsonl"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    connus = set()
+    if f.exists():
+        connus = {(d["courriel"], d["url"]) for d in map(json.loads, f.read_text(encoding="utf-8").splitlines())}
+    with f.open("a", encoding="utf-8") as sortie:
+        for c in courriels:
+            if (c, url) not in connus:
+                ligne = {"courriel": c, "nom": nom, "type": type_de_courriel(c), "url": url}
+                sortie.write(json.dumps(ligne, ensure_ascii=False) + "\n")
+
+
 def normaliser(champs: dict, corps: str = "") -> dict:
     """Complète une fiche pour qu'elle respecte le contrat. Idempotente.
 
     Additive : aucun champ existant n'est écrasé, seuls les manques sont
-    comblés. `source`, hérité des premiers collecteurs, est conservé tel quel ;
+    comblés, sauf `author`, ramené à un nom (separer_auteur). `source`, hérité des premiers collecteurs, est conservé tel quel ;
     il est descriptif et remplacé fonctionnellement par plateforme + publication.
     """
     c = dict(champs)
     url = c.get("url", "") or ""
+    if "author" in c:
+        c["author"] = separer_auteur(str(c["author"] or ""))[0]
 
     c.setdefault("plateforme", deduire_plateforme(url))
     if c["plateforme"] not in PLATEFORMES:
@@ -708,6 +763,7 @@ def ecrire(
     graphes = [] if chemin.exists() else _verifier_identite(chemin, c, hors_graphe, remplace)
     chemin.parent.mkdir(parents=True, exist_ok=True)
     chemin.write_text(rendre(c, corps), encoding="utf-8")
+    noter_contacts(str(champs.get("author") or ""), c.get("url") or "")
     if graphes:
         _noter(chemin, c, graphes, remplace)
     return avertissements

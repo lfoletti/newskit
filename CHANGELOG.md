@@ -4,6 +4,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- Les fiches portent un en-tête (`meta`) et l'auteur de la source. L'arbre déclare ses champs dans `champs_entete`.
+
 ## [0.1.10] - 2026-11-08
 
 ### Ajouté

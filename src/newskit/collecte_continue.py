@@ -66,7 +66,7 @@ def surveiller_fraicheur(graphe: str, maintenant: str | None = None) -> None:
     objet = f"{graphe} : fil sans billet neuf depuis {age:.0f} h"
     corps = (
         f"Dernier billet du fil : {dernier}.\n"
-        f"Dépense du fil aujourd'hui : {depense:.2f} $ sur un plafond de {fil.FIL_USD_JOUR:.2f} $.\n"
+        f"Dépense du fil aujourd'hui : {depense:.2f} $ sur un plafond de {fil.plafond(jour, graphe):.2f} $.\n"
         f"Journal de la collecte horaire : cache/collecte_continue.log.\n"
     )
     if nc.envoyer(objet, corps) == 0:

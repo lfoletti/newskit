@@ -34,9 +34,10 @@ LECTEUR = (
     "know the topic in advance."
 )
 REGLES = f"""Plain English: {MOTS_PAR_PHRASE} words at most per sentence; one subject per sentence, active voice, present or
-past tense; the conditional only when the source itself presents the fact as a hypothesis; one word, one meaning: keep
+past tense; the conditional only when the source itself presents the fact as a hypothesis, or, in a title, for a fact put forward by one source and not established; one word, one meaning: keep
 the word of the source, no synonym for variety; numbers in figures with their unit ("3,000 start-ups", "$6.43
 billion"); an acronym is spelled out at its first mention, the acronym in brackets, except AI, EU, AI Act, GDPR, OECD.
+Attribution in a title: « Anthropic may have crossed … » when the fact matters more than who puts it forward and is not established; « For Tencent's chief AI scientist, AI could soon … » for an opinion; « According to X, … » for a fact X claims; never « X says … ».
 Vocabulary of evidence: attribution verbs say, write, announce, claim, according to; never admit, reveal, denounce,
 confess, pretend. A preprint or a vendor's page about its own product gives claimed results: every result figure is
 attributed ("according to the authors", "the company claims"). No evaluative adjective outside a quotation (historic,

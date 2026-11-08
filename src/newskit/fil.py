@@ -712,7 +712,7 @@ def relire(billets: list[dict], graphe: str) -> float:
             REECRITURE.format(
                 nom=nom,
                 max=TITRE_MAX,
-                regles=lt.REGLES,
+                regles=lt.regles(graphe),
                 billets="\n".join(
                     json.dumps(
                         {
@@ -805,7 +805,7 @@ def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dic
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
     inv = CONSIGNE.format(
         nom=nom,
-        regles=lt.REGLES,
+        regles=lt.regles(graphe),
         rubriques=", ".join(r["nom"] for r in cfg.rubriques(graphe) or []) or "(aucune)",
         recents="\n".join(
             f"{i}. {b['titre']} — {str(b.get('descriptif') or '')[:RECENT_MAX]}" for i, b in enumerate(recents)

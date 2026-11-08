@@ -829,6 +829,27 @@ def _suite(fa: dict) -> str:
     )
 
 
+def _graphe_du_site() -> str | None:
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    return cfg.graphe_du_site()
+
+
+def regles(graphe: str | None = None, langue: str = "fr") -> str:
+    """Les règles de rédaction d'une langue : la section `# fr` ou `# en` du fichier `regles_redaction` du média,
+    éditable sans version ; sans fichier déclaré ou sans la section, celles du paquet."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+    from newskit import fil_anglais as fa  # noqa: PLC0415
+
+    defaut = fa.REGLES if langue == "en" else REGLES
+    chemin = cfg.graphe_declare(graphe).get("regles_redaction") if graphe else None
+    if not chemin:
+        return defaut
+    sections = re.split(r"^# (fr|en)[ \t]*$", (RACINE / chemin).read_text(encoding="utf-8"), flags=re.M)
+    lu = dict(zip(sections[1::2], sections[2::2], strict=True))
+    return lu[langue].strip() + "\n" if lu.get(langue, "").strip() else defaut
+
+
 def _invite(faits: list[dict], fiches: dict[str, dict], autres=(), brefs=()) -> str:
     blocs = []
     for i, fa in enumerate(faits, 1):
@@ -872,7 +893,7 @@ def _invite(faits: list[dict], fiches: dict[str, dict], autres=(), brefs=()) -> 
         "ce que le texte impose sur le point traité (qui doit faire quoi, depuis quand), d'après les sources du bloc "
         "seulement ; les lecteurs ne connaissent pas les enjeux du texte. Si les sources ne le disent pas, n'écris rien "
         "sur ce point, et jamais de phrase sur les sources elles-mêmes.\n"
-        + REGLES
+        + regles(_graphe_du_site())
         + 'Réponds en JSON : {"faits": [{"n": 1, "titre": "…", "paragraphe": "…"}, …], '
         '"autres": [{"n": 1, "titre": "…", "descriptif": "…"}, …]} ; les AUTRE puis les BRÈVE partagent la '
         "numérotation de « autres ».\n\n" + "\n\n".join(blocs)

@@ -325,7 +325,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
     r, cout = fil.demander(
         REDACTION_ELEMENTS.format(
             nom=cfg.graphe_declare(graphe).get("libelle") or graphe,
-            regles=lt.REGLES,
+            regles=lt.regles(graphe),
             entete=", ".join(entete(graphe)),
             arbre="\n".join(f"- {k} ; champs : {', '.join(v[2])}" for k, v in feuilles.items()),
             billets="\n".join(
@@ -406,7 +406,7 @@ def _etoffer(F: dict, graphe: str) -> float:
             nom=nom,
             mini=MOTS_MIN,
             maxi=MOTS_MAX,
-            regles=lt.REGLES,
+            regles=lt.regles(graphe),
             billets="\n".join(
                 json.dumps(
                     {

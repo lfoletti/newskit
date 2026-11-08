@@ -41,8 +41,13 @@ def public(F: dict) -> dict:
 
 
 def _typo(p: dict) -> dict:
-    fr = {k: lt.typographie(p[k], "fr") for k in ("titre", "descriptif", "fiche")}
-    return {**p, **fr, **{k: lt.typographie(p[k], "en") for k in ("titre_en", "descriptif_en")}}
+    fr = {k: lt.typographie(p[k], "fr") for k in ("titre", "descriptif", "fiche", "resume", "categorie")}
+    en = {k: lt.typographie(p[k], "en") for k in ("titre_en", "descriptif_en", "resume_en", "categorie_en")}
+    els = {
+        k: [{c: lt.typographie(e[c], lg) for c in ("champ", "texte")} for e in p[k]]
+        for k, lg in (("elements", "fr"), ("elements_en", "en"))
+    }
+    return {**p, **fr, **en, **els}
 
 
 def liens(b: dict) -> dict:
@@ -66,9 +71,27 @@ def _public(F: dict) -> list[dict]:
             "langue": b.get("langue", ""),
             "fiche": (b.get("fiche") or {}).get("texte", "") if (b.get("fiche") or {}).get("tenu") is True else "",
             **anglais(b),
+            **elements(b),
         }
         for b in (F.get("billets") or [])[:MAX]
     ]
+
+
+def elements(b: dict) -> dict:
+    """La fiche au format résumé, catégorie, éléments, dans les deux langues ; les citations restent internes. Vide pour une
+    fiche d'avant ce format ou refusée."""
+    f = b.get("fiche") or {}
+    tenue = f if f.get("tenu") is True else {}
+    en = tenue.get("en") or {}
+    garde = lambda d: [{"champ": e["champ"], "texte": e["texte"]} for e in d.get("elements") or []]  # noqa: E731
+    return {
+        "resume": tenue.get("resume", ""),
+        "categorie": tenue.get("categorie", ""),
+        "elements": garde(tenue),
+        "resume_en": en.get("resume", ""),
+        "categorie_en": en.get("categorie", ""),
+        "elements_en": garde(en),
+    }
 
 
 def anglais(b: dict) -> dict:

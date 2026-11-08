@@ -11,6 +11,7 @@ partie du verdict.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -149,7 +150,10 @@ def test_une_consigne_inconnue_rend_98_et_va_dans_manquantes(tmp_path):
     }
 
 
-def test_la_copie_est_un_depot_sans_distant_avec_le_moteur(tmp_path):
+def test_la_copie_est_un_depot_sans_distant_avec_le_moteur(tmp_path, monkeypatch):
+    # un hook pre-push exporte GIT_DIR : sans ce retrait, git lit le dépôt qui pousse au lieu de la copie
+    for k in [k for k in os.environ if k.startswith("GIT_")]:
+        monkeypatch.delenv(k)
     t = temoin.preparer(tmp_path / "t")
     assert (t.code / "newskit" / "routine_hebdo.py").exists()
     r = subprocess.run(["git", "-C", str(t.code), "remote"], capture_output=True, text=True, check=True)

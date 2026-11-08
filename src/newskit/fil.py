@@ -518,7 +518,7 @@ def classer(billets: list[dict]) -> list[dict]:
     return sorted(billets, key=lambda b: (str(b.get("date") or ""), str(b.get("ajoute") or "")), reverse=True)
 
 
-def extrait(f: dict, n: int = 1200) -> str:
+def extrait(f: dict, n: int | None = 1200) -> str:
     try:
         t = (RACINE / f["chemin"]).read_text(encoding="utf-8")
     except OSError:
@@ -531,7 +531,7 @@ def depense_du_jour(F: dict, jour: str) -> float:
     return float((F.get("depense") or {}).get(jour) or 0)
 
 
-def demander(inv: str, schema: dict, graphe: str, note: str) -> tuple[dict, float]:
+def demander(inv: str, schema: dict, graphe: str, note: str, modele: str | None = None) -> tuple[dict, float]:
     """Un appel au modèle sans outil, réponse au schéma, ligne au registre des coûts ; rend l'objet et son coût. Une
     réponse illisible rend un objet vide."""
     args = [
@@ -542,13 +542,13 @@ def demander(inv: str, schema: dict, graphe: str, note: str) -> tuple[dict, floa
         "--output-format",
         "json",
         "--model",
-        lt.MODELE,
+        modele or lt.MODELE,
         "--json-schema",
         json.dumps(schema),
     ]
     t0 = time.time()
     r = subprocess.run(args, input=inv, capture_output=True, text=True, timeout=900, cwd=RACINE, check=False)
-    env = couts.enregistrer(POSTE, graphe, lt.MODELE, r, time.time() - t0, note=note)
+    env = couts.enregistrer(POSTE, graphe, modele or lt.MODELE, r, time.time() - t0, note=note)
     try:
         brut = env.get("structured_output") or json.loads(
             re.sub(r"^```(?:json)?\s*|\s*```$", "", str(env.get("result") or "{}").strip()) or "{}"
@@ -608,7 +608,9 @@ def terme_du_billet(terme, titre: str, texte: str) -> str:
     return t if t and lt.plier(t) in lt.plier(f"{titre} {texte}") else ""
 
 
-def juger(paires: list[tuple[str, str, dict, dict]], graphe: str) -> tuple[dict[int, dict], float]:
+def juger(
+    paires: list[tuple[str, str, dict, dict]], graphe: str, source: int | None = 3000
+) -> tuple[dict[int, dict], float]:
     """Le relecteur adverse sur des (titre, texte, billet, fiche) : rend {rang: {absents, clair, motif, terme}} et le
     coût. `terme` : la notion que le lecteur ne connaît pas et que la source n'explique pas. Un rang sans réponse n'a pas de
     verdict."""
@@ -618,7 +620,7 @@ def juger(paires: list[tuple[str, str, dict, dict]], graphe: str) -> tuple[dict[
             nom=nom,
             billets="\n".join(
                 json.dumps(
-                    {"n": n, "titre": t, "texte": x, "a_verifier": doutes(t, x, f), "source": extrait(b, 3000)},
+                    {"n": n, "titre": t, "texte": x, "a_verifier": doutes(t, x, f), "source": extrait(b, source)},
                     ensure_ascii=False,
                 )
                 for n, (t, x, b, f) in enumerate(paires)

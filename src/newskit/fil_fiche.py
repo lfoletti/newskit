@@ -17,7 +17,10 @@ import json
 import time
 from pathlib import Path
 
+import yaml
+
 from newskit import config_sources as cfg
+from newskit import extrait as ex
 from newskit import fil
 from newskit import lettre as lt
 from newskit import publier_fil
@@ -31,7 +34,7 @@ ESSAIS = 3  # essais d'un texte refusé, ses reproches donnés au suivant (maint
 MOTS_PAR_PHRASE = 30
 # Les textes de fiche ont leur plafond du jour, pris dans celui du fil : les billets neufs passent d'abord (mainteneur,
 # 07.11.2026 ; le matin, les réécritures de textes longs avaient vidé le budget du fil sans un billet). F["depense_fiche"].
-FICHE_USD_JOUR = 3.0
+FICHE_USD_JOUR = 3.0  # défaut ; un graphe déclare le sien (fiche_usd_jour)
 SOURCE_MAX = 3000  # caractères de la source : ceux que lit aussi le relecteur (fil.juger)
 
 REDACTION = """Tu écris le texte de la fiche des billets d'un fil d'actualité sur {nom}, en français. Le lecteur a lu
@@ -125,13 +128,194 @@ def refus(b: dict, reproches: list[str]) -> dict:
     }
 
 
+# Le format validé le 08.11.2026 (mainteneur : « la fiche met en valeur l'extraction, ce n'est pas une réécriture ») : un
+# résumé, une catégorie et des éléments, chacun prouvé par une citation mot pour mot que la page ne montre pas. Il vaut pour
+# les graphes qui déclarent `arbre_fiches` (l'arbre des catégories) et pour les seules fiches pas encore écrites.
+ELEMENTS_MIN = 2  # éléments prouvés au moins
+REDACTION_ELEMENTS = """Tu rédiges la fiche de recension d'articles pour un fil d'actualité sur {nom}, en français et en anglais.
+Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas. Pour chaque billet, rends :
+- n : son numéro ;
+- categorie : une feuille de l'arbre, sous la forme racine:feuille ;
+- resume, resume_en : 30 à 70 mots ; le résumé porte ce que l'article apporte de plus que le fait de son titre ;
+- elements : un élément par champ de la catégorie ; un champ sans contenu est omis. Pour chacun : champ et champ_en, le nom
+  du champ pour un lecteur, d'un ou deux mots ; texte et texte_en, qui nomment qui fait ou affirme quoi, à propos de quoi,
+  avec les noms propres, les intitulés de textes, les chiffres et les dates de l'article ; citation, recopiée mot pour mot
+  de la source, 300 caractères au plus, qui porte l'élément.
+Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
+Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
+Les règles de la lettre d'information :
+{regles}Arbre des catégories :
+{arbre}
+Rends l'objet {{"billets": [...]}}.
+
+Billets :
+{billets}"""
+_TXT = {"type": "string"}
+SCHEMA_ELEMENTS = {
+    "type": "object",
+    "required": ["billets"],
+    "properties": {
+        "billets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["n", "categorie", "resume", "resume_en", "elements"],
+                "properties": {
+                    "n": {"type": "integer"},
+                    "categorie": _TXT,
+                    "resume": _TXT,
+                    "resume_en": _TXT,
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["champ", "champ_en", "texte", "texte_en", "citation"],
+                            "properties": {k: _TXT for k in ("champ", "champ_en", "texte", "texte_en", "citation")},
+                        },
+                    },
+                },
+            },
+        }
+    },
+}
+
+
+def plafond(graphe: str) -> float:
+    return float(cfg.graphe_declare(graphe).get("fiche_usd_jour") or FICHE_USD_JOUR)
+
+
+def modele(graphe: str) -> str | None:
+    """Le modèle déclaré par le graphe (fiche_modele) ; sans déclaration, celui de la lettre."""
+    return cfg.graphe_declare(graphe).get("fiche_modele")
+
+
+def arbre(graphe: str) -> dict | None:
+    """Les feuilles de l'arbre déclaré par le graphe : {racine:feuille: (nom fr, nom en, champs)} ; None sans arbre."""
+    chemin = cfg.graphe_declare(graphe).get("arbre_fiches")
+    if not chemin:
+        return None
+    A = yaml.safe_load((RACINE / chemin).read_text(encoding="utf-8"))
+    return {
+        f"{r['cle']}:{x['cle']}": (f"{r['fr']} : {x['fr']}", f"{r['en']}: {x['en']}", x.get("champs") or r["champs"])
+        for r in A["racines"]
+        for x in r["feuilles"]
+    }
+
+
+def corps_de(b: dict) -> str:
+    """L'article entier (mainteneur, 08.11.2026 : « la rédaction doit lire l'article en entier »)."""
+    return fil.extrait(b, None)
+
+
+def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str]]:
+    """La fiche d'une réponse du modèle, ses éléments prouvés seuls gardés ; ou None et les reproches."""
+    cat = feuilles.get(x.get("categorie"))
+    if cat is None:
+        return None, [f"catégorie hors de l'arbre : {x.get('categorie')}"]
+    if not all(str(x.get(k) or "").strip() for k in ("resume", "resume_en")):
+        return None, ["résumé absent dans une langue"]
+    bons = [e for e in x.get("elements") or [] if ex.atteste(e["citation"][:300], corps)]
+    if len(bons) < ELEMENTS_MIN:
+        return None, [f"{len(bons)} éléments prouvés par une citation exacte, {ELEMENTS_MIN} au moins"]
+    return {
+        "texte": "\n\n".join(e["texte"] for e in bons),
+        "resume": x["resume"],
+        "categorie": cat[0],
+        "elements": [{"champ": e["champ"], "texte": e["texte"], "citation": e["citation"][:300]} for e in bons],
+        "en": {
+            "resume": x["resume_en"],
+            "categorie": cat[1],
+            "elements": [{"champ": e["champ_en"], "texte": e["texte_en"]} for e in bons],
+        },
+        "tenu": True,
+    }, []
+
+
+def _lu(f: dict) -> str:
+    """Résumé et éléments d'une langue, pour le relecteur."""
+    return "\n".join([f["resume"], *(f"{e['champ']} : {e['texte']}" for e in f["elements"])])
+
+
+def _reproches(v: dict) -> list[str]:
+    return [
+        *(f"absent de la source : {a}" for a in v["absents"]),
+        *([v["motif"] or "pas clair"] if not v["clair"] else []),
+    ]
+
+
+def _etoffer_elements(F: dict, graphe: str, feuilles: dict, reste: float) -> float:
+    """Un appel par billet, l'article entier à chaque fois ; le passage s'arrête quand `reste` est dépensé."""
+    billets = a_ecrire(F)
+    fiches = lt.charger_fiches([b["chemin"] for b in billets]) if billets else {}
+    cout = 0.0
+    for paire in ((b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches):
+        if cout >= reste:
+            break
+        cout += _une_fiche([paire], graphe, feuilles)
+    return cout
+
+
+def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> float:
+    corps = [corps_de(b) for b, _ in lot]
+    r, cout = fil.demander(
+        REDACTION_ELEMENTS.format(
+            nom=cfg.graphe_declare(graphe).get("libelle") or graphe,
+            regles=lt.REGLES,
+            arbre="\n".join(f"- {k} ; champs : {', '.join(v[2])}" for k, v in feuilles.items()),
+            billets="\n".join(
+                json.dumps(
+                    {
+                        "n": n,
+                        "titre": b["titre"],
+                        "source": corps[n],
+                        **({"a_corriger": b["fiche"]["reproches"]} if (b.get("fiche") or {}).get("reproches") else {}),
+                    },
+                    ensure_ascii=False,
+                )
+                for n, (b, _) in enumerate(lot)
+            ),
+        ),
+        SCHEMA_ELEMENTS,
+        graphe,
+        "fiche",
+        modele=modele(graphe),
+    )
+    pretes = {}
+    for x in r.get("billets") or []:
+        n = x.get("n")
+        if not isinstance(n, int) or not 0 <= n < len(lot):
+            continue
+        f, ec = _valider(x, corps[n], feuilles)
+        if f is None:
+            lot[n][0]["fiche"] = refus(lot[n][0], ec)
+        else:
+            pretes[n] = f
+    if not pretes:
+        return cout
+    rangs = list(pretes)
+    paires = [
+        p
+        for n in rangs
+        for p in ((lot[n][0]["titre"], _lu(pretes[n]), *lot[n]), (lot[n][0]["titre"], _lu(pretes[n]["en"]), *lot[n]))
+    ]
+    verdicts, c = fil.juger(paires, graphe, source=None)
+    for k, n in enumerate(rangs):
+        fr, en = verdicts.get(2 * k), verdicts.get(2 * k + 1)
+        if fr is None or en is None:
+            continue  # sans verdict : reste à écrire
+        reproches = _reproches(fr) + _reproches(en)
+        lot[n][0]["fiche"] = refus(lot[n][0], reproches) if reproches else pretes[n]
+    return cout + c
+
+
 def etoffer(F: dict, graphe: str, reste: float) -> float:
     """Les textes de fiche d'un passage, sous `reste` et sous FICHE_USD_JOUR ; rend leur coût, inscrit au jour."""
     jour = time.strftime("%Y-%m-%d")
-    reste = min(reste, FICHE_USD_JOUR - float((F.get("depense_fiche") or {}).get(jour) or 0))
+    reste = min(reste, plafond(graphe) - float((F.get("depense_fiche") or {}).get(jour) or 0))
     if reste < 0.10:
         return 0.0
-    cout = _etoffer(F, graphe)
+    feuilles = arbre(graphe)
+    cout = _etoffer(F, graphe) if feuilles is None else _etoffer_elements(F, graphe, feuilles, reste)
     d = F.setdefault("depense_fiche", {})
     d[jour] = float(d.get(jour) or 0) + cout
     return cout

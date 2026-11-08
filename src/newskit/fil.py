@@ -1437,8 +1437,13 @@ def paraitre(graphe: str, F: dict) -> int:
     """Le pas de la pile à chaque passage du fil : rend le nombre de billets parus."""
     if not F.get("pile"):
         return 0
-    quand = maintenant()
-    return liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand))
+    from newskit import fil_fiche  # noqa: PLC0415 — fil_fiche importe ce module
+
+    quand, attente = maintenant(), fil_fiche.en_attente(F, graphe)
+    F["pile"] = [b for b in F["pile"] if not any(b is x for x in attente)]
+    n = liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand))
+    F["pile"] = F["pile"] + attente
+    return n
 
 
 def enrichir(b: dict) -> None:

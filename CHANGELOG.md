@@ -7,7 +7,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 ### Ajouté
 
 - Fiches du fil au format résumé, catégorie, éléments, en français et en anglais, pour un graphe qui déclare `arbre_fiches`. Chaque élément est prouvé par une citation exacte de la source, gardée hors de la copie publique. La rédaction et la relecture lisent l'article entier.
-- Une fiche tenue donne aussi le titre et le chapeau du billet.
+- Une fiche tenue donne le titre et le chapeau du billet, repris par le fil et la lettre. Pour un graphe à arbre, le billet attend sa fiche avant de paraître.
 - Un graphe peut déclarer `fiche_modele` et `fiche_usd_jour`. Il peut aussi déclarer `fil_usd_jour`, le plafond du jour du fil.
 
 ## [0.1.9] - 2026-11-07

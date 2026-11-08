@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.12] - 2026-11-08
+
+### Modifié
+
+- Dans un titre, l'attribution vient en tête.
+
 ## [0.1.11] - 2026-11-08
 
 ### Ajouté

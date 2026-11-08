@@ -37,6 +37,7 @@ REGLES = f"""Plain English: {MOTS_PAR_PHRASE} words at most per sentence; one su
 past tense; the conditional only when the source itself presents the fact as a hypothesis; one word, one meaning: keep
 the word of the source, no synonym for variety; numbers in figures with their unit ("3,000 start-ups", "$6.43
 billion"); an acronym is spelled out at its first mention, the acronym in brackets, except AI, EU, AI Act, GDPR, OECD.
+Attribution in a title comes first (« For Tencent's chief AI scientist, AI could soon … », « According to X, … »); never « X says … ».
 Vocabulary of evidence: attribution verbs say, write, announce, claim, according to; never admit, reveal, denounce,
 confess, pretend. A preprint or a vendor's page about its own product gives claimed results: every result figure is
 attributed ("according to the authors", "the company claims"). No evaluative adjective outside a quotation (historic,

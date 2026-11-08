@@ -1466,9 +1466,11 @@ def a_relire(F: dict) -> list[dict]:
     return [b for b in F["pile"] + F["billets"] if "tenu" not in b]
 
 
-def plafond(jour: str) -> float:
-    """Le plafond du jour : FIL_USD_JOUR, sauf un jour levé par le mainteneur."""
-    return float("inf") if jour in JOURS_SANS_PLAFOND else FIL_USD_JOUR
+def plafond(jour: str, graphe: str) -> float:
+    """Le plafond du jour : celui du graphe (fil_usd_jour) ou FIL_USD_JOUR, sauf un jour levé par le mainteneur."""
+    if jour in JOURS_SANS_PLAFOND:
+        return float("inf")
+    return float(cfg.graphe_declare(graphe).get("fil_usd_jour") or FIL_USD_JOUR)
 
 
 def billets_anglais_a_ecrire(F: dict) -> list:
@@ -1521,11 +1523,11 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         print(f"{len(cands)} fiche(s) candidate(s)" + etat)
         return len(cands)
     print(f"{len(cands)} fiche(s) candidate(s)" + (f", {len(anciens)} billet(s) d'avant à relire" if anciens else ""))
-    reste = plafond(jour) - depense_du_jour(F, jour)
+    reste = plafond(jour, graphe) - depense_du_jour(F, jour)
     if (reste < 0.10 and not hors_plafond) or couts.en_limite():
         if change:
             ecrire(graphe, F)
-        print(f"plafond du jour atteint ({plafond(jour)} $) ou limite d'usage : rien de rédigé" + etat)
+        print(f"plafond du jour atteint ({plafond(jour, graphe)} $) ou limite d'usage : rien de rédigé" + etat)
         return len(cands)
     lot = cands[:PAR_PASSAGE]
     rubs = cfg.rubriques(graphe)

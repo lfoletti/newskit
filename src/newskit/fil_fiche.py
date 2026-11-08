@@ -142,7 +142,7 @@ Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas
   avec les noms propres, les intitulés de textes, les chiffres et les dates de l'article ; citation, recopiée mot pour mot
   de la source, 300 caractères au plus, qui porte l'élément.
 Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
-Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le résumé et les éléments portent ce qu'ils établissent : résultats, chiffres, exemples, positions. Le fait de la parution, le format (émission, podcast), la date d'un événement et la liste des intervenants ne sont pas une information.
+Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le résumé et les éléments portent ce qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants sont des informations mineures, de contextualisation uniquement.
 Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
 Les règles de la lettre d'information :
 {regles}Arbre des catégories :

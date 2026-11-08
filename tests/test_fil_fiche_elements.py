@@ -312,4 +312,4 @@ def test_la_clarte_de_la_version_anglaise_ne_refuse_pas_la_fiche(banc):
 def test_la_consigne_demande_le_contenu_pas_la_parution():
     # Mainteneur, 08.11.2026 : « ce qui est intéressant quand un rapport sort, c'est son contenu, pas le fait qu'il est sorti ».
     assert "ce qu'ils établissent" in ff.REDACTION_ELEMENTS
-    assert "Le fait de la parution" in ff.REDACTION_ELEMENTS
+    assert "informations mineures, de contextualisation uniquement" in ff.REDACTION_ELEMENTS

@@ -1640,8 +1640,14 @@ LECTEUR_NON_INITIE = (
 # Les règles de rédaction de la lettre, en un seul texte. Le rédacteur de la lettre et celui du fil les reçoivent
 # (mainteneur, 05.11.2026 : « le titre et le texte de chaque billet doivent correspondre aux mêmes standards que les
 # newsletter »).
+CONTENU_D_ABORD = (
+    "Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le titre et le texte portent ce "
+    "qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants "
+    "sont des informations mineures, de contextualisation uniquement.\n"
+)
 REGLES = (
     LECTEUR_NON_INITIE
+    + CONTENU_D_ABORD
     + f"Français simplifié : {MOTS_PAR_PHRASE} mots au plus par phrase ; un sujet par phrase, voix active, présent ou passé composé ; le conditionnel "
     "seulement si la source présente elle-même le fait comme une hypothèse ; un mot, un sens : garde le mot de "
     "la source, sans synonyme pour varier ; pas plus de trois noms à la suite (« la révision de la clause du "

@@ -78,14 +78,26 @@ def _source_de(f: dict) -> str:
     return fil._source_de(f)
 
 
+def _a_faire(b: dict) -> bool:
+    f = b.get("fiche")
+    fini = f is not None and (f.get("tenu") is not False or f.get("essais", 1) >= ESSAIS)
+    return b.get("tenu") is not False and not fini and existe(b["chemin"])
+
+
+def en_attente(F: dict, graphe: str) -> list[dict]:
+    """Les billets de la pile qui ne paraissent pas encore : leur fiche donnera leur titre et leur chapeau. Vide pour un
+    graphe sans arbre des catégories."""
+    if arbre(graphe) is None:
+        return []
+    return [b for b in F.get("pile") or [] if _a_faire(b)]
+
+
 def a_ecrire(F: dict) -> list[dict]:
     """Les billets qui attendent le texte de leur fiche : la pile d'abord, puis les billets de la copie publique ; ni
     refusés par la relecture, ni déjà écrits, et dont la fiche se lit."""
     vus, out = set(), []
     for b in (F.get("pile") or []) + (F.get("billets") or [])[: publier_fil.MAX]:
-        f = b.get("fiche")
-        fini = f is not None and (f.get("tenu") is not False or f.get("essais", 1) >= ESSAIS)
-        if b.get("tenu") is False or fini or b["chemin"] in vus or not existe(b["chemin"]):
+        if not _a_faire(b) or b["chemin"] in vus:
             continue
         vus.add(b["chemin"])
         out.append(b)
@@ -131,8 +143,8 @@ def refus(b: dict, reproches: list[str]) -> dict:
 # Le format validé le 08.11.2026 (mainteneur : « la fiche met en valeur l'extraction, ce n'est pas une réécriture ») : un
 # résumé, une catégorie et des éléments, chacun prouvé par une citation mot pour mot que la page ne montre pas. Il vaut pour
 # les graphes qui déclarent `arbre_fiches` (l'arbre des catégories) et pour les seules fiches pas encore écrites.
-ELEMENTS_MIN = 2
-TITRE_MAX = 90  # éléments prouvés au moins
+ELEMENTS_MIN = 2  # éléments prouvés au moins
+TITRE_MAX = 90
 REDACTION_ELEMENTS = """Tu rédiges la fiche de recension d'articles pour un fil d'actualité sur {nom}, en français et en anglais.
 Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas. Pour chaque billet, rends :
 - n : son numéro ;
@@ -144,7 +156,6 @@ Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas
   avec les noms propres, les intitulés de textes, les chiffres et les dates de l'article ; citation, recopiée mot pour mot
   de la source, 300 caractères au plus, qui porte l'élément.
 Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
-Quand la source rend compte d'un rapport, d'une étude, d'une décision ou d'un débat, le titre, le résumé et les éléments portent ce qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants sont des informations mineures, de contextualisation uniquement.
 Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
 Les règles de la lettre d'information :
 {regles}Arbre des catégories :
@@ -252,6 +263,17 @@ def _reproches(v: dict) -> list[str]:
     ]
 
 
+def _reporter(b: dict, f: dict) -> None:
+    """La fiche tenue, qui a lu l'article entier, donne au billet son titre et son chapeau : le fil et la lettre les lisent là."""
+    b["avant_fiche"] = {"titre": b["titre"], "descriptif": b["descriptif"]}
+    b["titre"], b["descriptif"] = f["titre"], f["resume"]
+    b["en"] = {**(b.get("en") or {}), "titre": f["en"]["titre"], "texte": f["en"]["resume"], "tenu": True}
+    if b.get("terme") and str(b["terme"]) not in f["resume"]:
+        b.pop("terme")
+        b.pop("definition", None)
+    fil.enrichir(b)
+
+
 def _etoffer_elements(F: dict, graphe: str, feuilles: dict, reste: float) -> float:
     """Un appel par billet, l'article entier à chaque fois ; le passage s'arrête quand `reste` est dépensé."""
     billets = a_ecrire(F)
@@ -315,7 +337,11 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         reproches = _reproches(fr) + [
             f"absent de la source : {a}" for a in en["absents"]
         ]  # le relecteur juge la clarté en français
-        lot[n][0]["fiche"] = refus(lot[n][0], reproches) if reproches else pretes[n]
+        if reproches:
+            lot[n][0]["fiche"] = refus(lot[n][0], reproches)
+        else:
+            lot[n][0]["fiche"] = pretes[n]
+            _reporter(lot[n][0], pretes[n])
     return cout + c
 
 

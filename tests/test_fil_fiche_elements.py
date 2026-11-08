@@ -88,6 +88,8 @@ def banc(monkeypatch, tmp_path):
         return _demander(*a, **k)
 
     monkeypatch.setattr(fil, "demander", compte)
+    etat["enrichis"] = []
+    monkeypatch.setattr(fil, "enrichir", lambda b: etat["enrichis"].append(b["titre"]))
     monkeypatch.setattr(fil, "juger", juger)
     return etat
 
@@ -311,10 +313,10 @@ def test_la_clarte_de_la_version_anglaise_ne_refuse_pas_la_fiche(banc):
     assert b["fiche"]["tenu"] is True
 
 
-def test_la_consigne_demande_le_contenu_pas_la_parution():
+def test_les_regles_communes_demandent_le_contenu_pas_la_parution():
     # Mainteneur, 08.11.2026 : « ce qui est intéressant quand un rapport sort, c'est son contenu, pas le fait qu'il est sorti ».
-    assert "ce qu'ils établissent" in ff.REDACTION_ELEMENTS
-    assert "informations mineures, de contextualisation uniquement" in ff.REDACTION_ELEMENTS
+    assert "le titre et le texte portent ce qu'ils établissent" in lt.REGLES
+    assert "informations mineures, de contextualisation uniquement" in lt.REGLES
 
 
 def test_la_fiche_tenue_porte_le_titre_dans_les_deux_langues(banc):
@@ -323,8 +325,7 @@ def test_la_fiche_tenue_porte_le_titre_dans_les_deux_langues(banc):
     assert b["fiche"]["titre"] == "Titre du résultat" and b["fiche"]["en"]["titre"] == "Result title"
 
 
-def test_la_consigne_applique_la_regle_au_titre():
-    assert "le titre, le résumé et les éléments portent" in ff.REDACTION_ELEMENTS
+def test_la_consigne_de_la_fiche_demande_le_titre():
     assert "titre, titre_en" in ff.REDACTION_ELEMENTS
 
 
@@ -342,26 +343,86 @@ def test_le_relecteur_lit_le_titre_de_la_fiche():
     assert "Le titre" in ff._lu({"titre": "Le titre", "resume": "R", "elements": []})
 
 
-def test_la_copie_publique_prend_titre_et_chapeau_de_la_fiche_tenue():
-    fiche = {
-        "tenu": True,
-        "titre": "TF",
-        "resume": "RF",
-        "texte": "x",
-        "elements": [],
-        "en": {"titre": "TE", "resume": "RE", "elements": []},
+def test_une_fiche_tenue_donne_son_titre_et_son_chapeau_au_billet(banc):
+    # La lettre lit ces champs du billet : elle prend donc le même titre et le même chapeau que le fil.
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert (b["titre"], b["descriptif"]) == ("Titre du résultat", "Résumé.")
+    assert b["en"] == {"titre": "Result title", "texte": "Summary.", "tenu": True}
+    assert b["avant_fiche"] == {"titre": "T", "descriptif": "D"}
+    assert banc["enrichis"] == ["Titre du résultat"]
+
+
+def test_la_copie_publique_montre_le_titre_de_la_fiche(banc):
+    F = {"billets": [billet()]}
+    ff.etoffer(F, "g", 20)
+    p = publier_fil.public(F)["billets"][0]
+    assert (p["titre"], p["descriptif"], p["titre_en"], p["descriptif_en"]) == (
+        "Titre du résultat",
+        "Résumé.",
+        "Result title",
+        "Summary.",
+    )
+
+
+def test_une_fiche_refusee_laisse_titre_et_chapeau_du_billet(banc):
+    banc["verdicts"] = {
+        0: {"absents": ["x"], "clair": True, "motif": ""},
+        1: {"absents": [], "clair": True, "motif": ""},
     }
-    p = publier_fil.public({"billets": [{**billet(), "fiche": fiche}]})["billets"][0]
-    assert (p["titre"], p["descriptif"], p["titre_en"], p["descriptif_en"]) == ("TF", "RF", "TE", "RE")
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert (b["titre"], b["descriptif"]) == ("T", "D") and banc["enrichis"] == []
 
 
-def test_une_fiche_refusee_laisse_titre_et_chapeau_du_billet():
-    p = publier_fil.public({"billets": [{**billet(), "fiche": {"tenu": False, "titre": "TF", "resume": "RF"}}]})[
-        "billets"
-    ][0]
-    assert p["titre"] == "T" and p["descriptif"] != "RF"
+def test_la_definition_part_quand_le_chapeau_ne_porte_plus_le_terme(banc):
+    b = {**billet(), "terme": "absent", "definition": {"texte": "déf"}}
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert "terme" not in b and "definition" not in b
 
 
-def test_une_fiche_sans_titre_laisse_titre_et_chapeau_du_billet():
-    p = publier_fil.public({"billets": [{**billet(), "fiche": {"tenu": True, "texte": "x"}}]})["billets"][0]
-    assert p["titre"] == "T"
+def test_la_definition_reste_quand_le_chapeau_porte_le_terme(banc):
+    b = {**billet(), "terme": "Résumé", "definition": {"texte": "déf"}}
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert b["definition"] == {"texte": "déf"}
+
+
+def test_le_billet_sans_fiche_tenue_attend_dans_la_pile(banc):
+    F = {"pile": [billet()]}
+    assert ff.en_attente(F, "g") == F["pile"]
+
+
+def test_le_billet_a_la_fiche_tenue_n_attend_pas(banc):
+    F = {"pile": [{**billet(), "fiche": {"tenu": True}}]}
+    assert ff.en_attente(F, "g") == []
+
+
+def test_le_billet_aux_essais_epuises_n_attend_plus(banc):
+    F = {"pile": [{**billet(), "fiche": {"tenu": False, "essais": ff.ESSAIS}}]}
+    assert ff.en_attente(F, "g") == []
+
+
+def test_le_billet_refuse_une_fois_attend_encore(banc):
+    F = {"pile": [{**billet(), "fiche": {"tenu": False, "essais": 1}}]}
+    assert len(ff.en_attente(F, "g")) == 1
+
+
+def test_sans_arbre_rien_n_attend(monkeypatch):
+    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {})
+    assert ff.en_attente({"pile": [billet()]}, "g") == []
+
+
+def test_paraitre_ne_sort_pas_le_billet_en_attente(banc, monkeypatch):
+    pret, attend = {**billet(), "chemin": "d.md", "fiche": {"tenu": True}}, billet()
+    F = {"pile": [attend, pret], "billets": []}
+    vus = {}
+
+    def liberer(F2, quand, delai):
+        vus["pile"] = list(F2["pile"])
+        F2["pile"] = []
+        return 1
+
+    monkeypatch.setattr(fil, "liberer", liberer)
+    monkeypatch.setattr(fil, "cadence_du_moment", lambda g, n, q: 1)
+    assert fil.paraitre("g", F) == 1
+    assert vus["pile"] == [pret] and F["pile"] == [attend]

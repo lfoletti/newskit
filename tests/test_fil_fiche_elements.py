@@ -50,7 +50,16 @@ def reponse(n=0, **autre):
 def banc(monkeypatch, tmp_path):
     (tmp_path / "arbre.yaml").write_text(yaml.safe_dump(ARBRE), encoding="utf-8")
     monkeypatch.setattr(ff, "RACINE", tmp_path)
-    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {"libelle": "IA", "arbre_fiches": "arbre.yaml"})
+    monkeypatch.setattr(
+        cfg,
+        "graphe_declare",
+        lambda g: {
+            "libelle": "IA",
+            "arbre_fiches": "arbre.yaml",
+            "fiche_modele": "modele-du-media",
+            "fiche_usd_jour": 10.0,
+        },
+    )
     monkeypatch.setattr(ff, "existe", lambda c: True)
     monkeypatch.setattr(lt, "charger_fiches", lambda cs: {c: {"chemin": c} for c in cs})
     monkeypatch.setattr(fil, "extrait", lambda b, n: CORPS)
@@ -103,7 +112,7 @@ def test_une_fiche_tenue_porte_resume_categorie_elements_dans_les_deux_langues(b
 
 def test_opus_ecrit_et_les_deux_langues_sont_relues(banc):
     ff.etoffer({"billets": [billet()]}, "g", 20)
-    assert banc["modele"] == ff.MODELE_ELEMENTS == "claude-opus-5-5"
+    assert banc["modele"] == "modele-du-media"
     assert len(banc["paires"]) == 2 and "Summary." in banc["paires"][1][1]
     assert "constats" in banc["invite"] and "conformite:dsa" in banc["invite"]
 
@@ -189,8 +198,16 @@ def test_rien_a_juger_ne_relit_pas(banc):
     assert banc["paires"] == "intact"
 
 
-def test_le_plafond_du_jour_est_de_dix_dollars():
-    assert ff.FICHE_USD_JOUR == 10.0
+def test_le_plafond_du_jour_se_declare(banc):
+    F = {"billets": [billet()], "depense_fiche": {__import__("time").strftime("%Y-%m-%d"): 9.0}}
+    assert ff.etoffer(F, "g", 20) == 2.0
+    F2 = {"billets": [billet()], "depense_fiche": {__import__("time").strftime("%Y-%m-%d"): 10.0}}
+    assert ff.etoffer(F2, "g", 20) == 0.0
+
+
+def test_sans_reglage_le_plafond_et_le_modele_par_defaut(monkeypatch):
+    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {})
+    assert ff.plafond("g") == ff.FICHE_USD_JOUR == 3.0 and ff.modele("g") is None
 
 
 def test_corps_de_lit_la_source_entiere(monkeypatch, tmp_path):

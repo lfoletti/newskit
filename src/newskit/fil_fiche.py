@@ -34,7 +34,7 @@ ESSAIS = 3  # essais d'un texte refusé, ses reproches donnés au suivant (maint
 MOTS_PAR_PHRASE = 30
 # Les textes de fiche ont leur plafond du jour, pris dans celui du fil : les billets neufs passent d'abord (mainteneur,
 # 07.11.2026 ; le matin, les réécritures de textes longs avaient vidé le budget du fil sans un billet). F["depense_fiche"].
-FICHE_USD_JOUR = 10.0  # 3 $ jusqu'au 08.11.2026 : les fiches à éléments s'écrivent avec Opus (mainteneur)
+FICHE_USD_JOUR = 3.0  # défaut ; un graphe déclare le sien (fiche_usd_jour)
 SOURCE_MAX = 3000  # caractères de la source : ceux que lit aussi le relecteur (fil.juger)
 
 REDACTION = """Tu écris le texte de la fiche des billets d'un fil d'actualité sur {nom}, en français. Le lecteur a lu
@@ -131,7 +131,6 @@ def refus(b: dict, reproches: list[str]) -> dict:
 # Le format validé le 08.11.2026 (mainteneur : « la fiche met en valeur l'extraction, ce n'est pas une réécriture ») : un
 # résumé, une catégorie et des éléments, chacun prouvé par une citation mot pour mot que la page ne montre pas. Il vaut pour
 # les graphes qui déclarent `arbre_fiches` (l'arbre des catégories) et pour les seules fiches pas encore écrites.
-MODELE_ELEMENTS = "claude-opus-5-5"
 ELEMENTS_MIN = 2  # éléments prouvés au moins
 REDACTION_ELEMENTS = """Tu rédiges la fiche de recension d'articles pour un fil d'actualité sur {nom}, en français et en anglais.
 Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas. Pour chaque billet, rends :
@@ -179,6 +178,15 @@ SCHEMA_ELEMENTS = {
         }
     },
 }
+
+
+def plafond(graphe: str) -> float:
+    return float(cfg.graphe_declare(graphe).get("fiche_usd_jour") or FICHE_USD_JOUR)
+
+
+def modele(graphe: str) -> str | None:
+    """Le modèle déclaré par le graphe (fiche_modele) ; sans déclaration, celui de la lettre."""
+    return cfg.graphe_declare(graphe).get("fiche_modele")
 
 
 def arbre(graphe: str) -> dict | None:
@@ -270,7 +278,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         SCHEMA_ELEMENTS,
         graphe,
         "fiche",
-        modele=MODELE_ELEMENTS,
+        modele=modele(graphe),
     )
     pretes = {}
     for x in r.get("billets") or []:
@@ -303,7 +311,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
 def etoffer(F: dict, graphe: str, reste: float) -> float:
     """Les textes de fiche d'un passage, sous `reste` et sous FICHE_USD_JOUR ; rend leur coût, inscrit au jour."""
     jour = time.strftime("%Y-%m-%d")
-    reste = min(reste, FICHE_USD_JOUR - float((F.get("depense_fiche") or {}).get(jour) or 0))
+    reste = min(reste, plafond(graphe) - float((F.get("depense_fiche") or {}).get(jour) or 0))
     if reste < 0.10:
         return 0.0
     feuilles = arbre(graphe)

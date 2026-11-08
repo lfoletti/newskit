@@ -307,3 +307,9 @@ def test_la_clarte_de_la_version_anglaise_ne_refuse_pas_la_fiche(banc):
     b = billet()
     ff.etoffer({"billets": [b]}, "g", 20)
     assert b["fiche"]["tenu"] is True
+
+
+def test_la_consigne_demande_le_contenu_pas_la_parution():
+    # Mainteneur, 08.11.2026 : « ce qui est intéressant quand un rapport sort, c'est son contenu, pas le fait qu'il est sorti ».
+    assert "ce qu'ils établissent" in ff.REDACTION_ELEMENTS
+    assert "le fait de la parution" in ff.REDACTION_ELEMENTS

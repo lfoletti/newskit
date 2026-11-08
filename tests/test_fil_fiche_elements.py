@@ -296,3 +296,14 @@ def test_demander_passe_le_modele_choisi(monkeypatch, modele, attendu):
     monkeypatch.setattr(fil.couts, "enregistrer", enregistrer)
     assert fil.demander("i", {}, "g", "n", modele=modele) == ({"ok": 1}, 1.0)
     assert vu["args"][vu["args"].index("--model") + 1] == attendu and vu["registre"] == attendu
+
+
+def test_la_clarte_de_la_version_anglaise_ne_refuse_pas_la_fiche(banc):
+    # Essai du 08.11.2026, 0 fiche tenue sur 5 : le relecteur, écrit pour des billets français, rejetait l'anglais comme tel.
+    banc["verdicts"] = {
+        0: {"absents": [], "clair": True, "motif": ""},
+        1: {"absents": [], "clair": False, "motif": "en anglais"},
+    }
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert b["fiche"]["tenu"] is True

@@ -303,7 +303,9 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         fr, en = verdicts.get(2 * k), verdicts.get(2 * k + 1)
         if fr is None or en is None:
             continue  # sans verdict : reste à écrire
-        reproches = _reproches(fr) + _reproches(en)
+        reproches = _reproches(fr) + [
+            f"absent de la source : {a}" for a in en["absents"]
+        ]  # le relecteur juge la clarté en français
         lot[n][0]["fiche"] = refus(lot[n][0], reproches) if reproches else pretes[n]
     return cout + c
 

@@ -94,7 +94,9 @@ Rends {{"n": numéro, "absents": [...], "clair": vrai ou faux, "motif": ..., "te
   lecture : il garde un mot anglais ou un mot de métier qu'un mot français courant remplace ; il commence par un nom
   que le lecteur ne connaît pas, sans dire qui c'est ; il est écrit en style télégraphique, sans verbe ; on ne sait pas
   qui fait quoi ; il se lit de deux façons. Faux aussi quand le titre et le texte ne disent pas le même fait, ou quand
-  le texte garde un mot de métier que le lecteur ne comprend pas.
+  le texte garde un mot de métier que le lecteur ne comprend pas. Faux aussi quand
+  la première phrase du texte dit seulement qu'une personne a parlé ou qu'un document a paru,
+  ou donne le lieu, le format ou les intervenants, alors que la source donne un contenu : ce contenu doit venir en premier.
 - motif : ce qui arrête le lecteur, en quinze mots au plus ; vide si le billet est clair.
 - terme : la notion dont dépend le sens du titre, quand ce lecteur ne peut pas la connaître et que ni le billet ni la
   source ne l'explique : le nom d'une doctrine, d'une école de pensée, d'une notion religieuse ou savante, une

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 import pytest
 import yaml
 
@@ -63,7 +65,9 @@ def banc(monkeypatch, tmp_path):
         },
     )
     monkeypatch.setattr(ff, "existe", lambda c: True)
-    monkeypatch.setattr(lt, "charger_fiches", lambda cs: {c: {"chemin": c} for c in cs})
+    monkeypatch.setattr(
+        lt, "charger_fiches", lambda cs: {c: {"chemin": c, "auteur": etat.get("auteur", "")} for c in cs}
+    )
     monkeypatch.setattr(fil, "extrait", lambda b, n: CORPS)
     monkeypatch.setattr(ff, "corps_de", lambda b: CORPS)
     etat = {"verdicts": None, "modele": None, "invite": "", "reponses": [reponse()], "paires": []}
@@ -426,3 +430,87 @@ def test_paraitre_ne_sort_pas_le_billet_en_attente(banc, monkeypatch):
     monkeypatch.setattr(fil, "cadence_du_moment", lambda g, n, q: 1)
     assert fil.paraitre("g", F) == 1
     assert vus["pile"] == [pret] and F["pile"] == [attend]
+
+
+FEUILLES = {"conformite:dsa": ("C", "CE", ["a"])}
+META = {"champ": "Juridiction", "champ_en": "Court", "valeur": "Californie", "valeur_en": "California"}
+
+
+def test_la_fiche_tenue_porte_l_en_tete_dans_les_deux_langues(banc):
+    banc["reponses"] = [reponse(meta=[META])]
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert b["fiche"]["meta"] == [{"champ": "Juridiction", "valeur": "Californie"}]
+    assert b["fiche"]["en"]["meta"] == [{"champ": "Court", "valeur": "California"}]
+
+
+def test_une_valeur_vide_ne_compte_pas():
+    x = reponse(meta=[{**META, "valeur": " "}, {**META, "valeur_en": ""}, META])
+    assert len(ff._valider(x, CITE, FEUILLES)[0]["meta"]) == 1
+
+
+def test_sans_en_tete_la_fiche_reste_valide():
+    f = ff._valider(reponse(), CITE, FEUILLES)[0]
+    assert f["meta"] == [] and f["en"]["meta"] == []
+
+
+def test_le_relecteur_lit_l_en_tete():
+    assert "Juridiction : Californie" in ff._lu(
+        {"titre": "T", "resume": "R", "elements": [], "meta": [{"champ": "Juridiction", "valeur": "Californie"}]}
+    )
+
+
+def test_la_fiche_garde_l_auteur_de_la_source(banc):
+    banc["auteur"] = "Georgia Jenkins"
+    b = billet()
+    ff.etoffer({"billets": [b]}, "g", 20)
+    assert b["fiche"]["auteur"] == "Georgia Jenkins"
+
+
+def test_les_champs_d_en_tete_sortent_des_elements(tmp_path, monkeypatch):
+    A = copy.deepcopy(ARBRE)
+    A["champs_entete"] = ["autorite"]
+    A["racines"][0]["champs"] = ["autorite", "constats"]
+    (tmp_path / "arbre.yaml").write_text(yaml.safe_dump(A), encoding="utf-8")
+    monkeypatch.setattr(ff, "RACINE", tmp_path)
+    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {"arbre_fiches": "arbre.yaml"})
+    assert ff.arbre("g")["conformite:dsa"][2] == ["constats"]
+    assert ff.entete("g") == ["autorite"]
+
+
+def test_la_consigne_recoit_les_champs_d_en_tete(banc, monkeypatch):
+    monkeypatch.setattr(ff, "entete", lambda g: ["juridiction", "matieres"])
+    ff.etoffer({"billets": [billet()]}, "g", 20)
+    assert "juridiction, matieres" in banc["invite"]
+
+
+def test_le_schema_demande_l_en_tete():
+    p = ff.SCHEMA_ELEMENTS["properties"]["billets"]["items"]
+    assert "meta" in p["required"] and p["properties"]["meta"]["items"]["required"] == [
+        "champ",
+        "champ_en",
+        "valeur",
+        "valeur_en",
+    ]
+
+
+def test_la_copie_publique_montre_l_en_tete_et_l_auteur():
+    f = {
+        "tenu": True,
+        "resume": "R",
+        "auteur": "A",
+        "meta": [{"champ": "C", "valeur": "V"}],
+        "elements": [],
+        "en": {"resume": "R", "meta": [{"champ": "CE", "valeur": "VE"}], "elements": []},
+    }
+    p = publier_fil.public({"billets": [{**billet(), "fiche": f}]})["billets"][0]
+    assert (
+        p["auteur"] == "A"
+        and p["meta"] == [{"champ": "C", "valeur": "V"}]
+        and p["meta_en"] == [{"champ": "CE", "valeur": "VE"}]
+    )
+
+
+def test_une_fiche_ancienne_publie_un_en_tete_vide():
+    p = publier_fil.public({"billets": [{**billet(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
+    assert p["auteur"] == "" and p["meta"] == [] and p["meta_en"] == []

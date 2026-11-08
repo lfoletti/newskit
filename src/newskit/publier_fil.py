@@ -47,7 +47,11 @@ def _typo(p: dict) -> dict:
         k: [{c: lt.typographie(e[c], lg) for c in ("champ", "texte")} for e in p[k]]
         for k, lg in (("elements", "fr"), ("elements_en", "en"))
     }
-    return {**p, **fr, **en, **els}
+    tetes = {
+        k: [{c: lt.typographie(m[c], lg) for c in ("champ", "valeur")} for m in p[k]]
+        for k, lg in (("meta", "fr"), ("meta_en", "en"))
+    }
+    return {**p, **fr, **en, **els, **tetes}
 
 
 def liens(b: dict) -> dict:
@@ -84,6 +88,7 @@ def elements(b: dict) -> dict:
     tenue = f if f.get("tenu") is True else {}
     en = tenue.get("en") or {}
     garde = lambda d: [{"champ": e["champ"], "texte": e["texte"]} for e in d.get("elements") or []]  # noqa: E731
+    tete = lambda d: [{"champ": m["champ"], "valeur": m["valeur"]} for m in d.get("meta") or []]  # noqa: E731
     return {
         "resume": tenue.get("resume", ""),
         "categorie": tenue.get("categorie", ""),
@@ -91,6 +96,9 @@ def elements(b: dict) -> dict:
         "resume_en": en.get("resume", ""),
         "categorie_en": en.get("categorie", ""),
         "elements_en": garde(en),
+        "auteur": tenue.get("auteur", ""),
+        "meta": tete(tenue),
+        "meta_en": tete(en),
     }
 
 

@@ -154,7 +154,10 @@ Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas
 - elements : un élément par champ de la catégorie ; un champ sans contenu est omis. Pour chacun : champ et champ_en, le nom
   du champ pour un lecteur, d'un ou deux mots ; texte et texte_en, qui nomment qui fait ou affirme quoi, à propos de quoi,
   avec les noms propres, les intitulés de textes, les chiffres et les dates de l'article ; citation, recopiée mot pour mot
-  de la source, 300 caractères au plus, qui porte l'élément.
+  de la source, 300 caractères au plus, qui porte l'élément ;
+- meta : les champs d'en-tête que la source renseigne, parmi {entete} ; un champ sans contenu est omis. Pour chacun : champ
+  et champ_en, le nom du champ pour un lecteur, d'un ou deux mots ; valeur et valeur_en, courtes, tirées de la source ;
+  plusieurs valeurs d'un champ sont séparées par un point-virgule.
 Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
 Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
 Les règles de la lettre d'information :
@@ -173,7 +176,7 @@ SCHEMA_ELEMENTS = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["n", "categorie", "titre", "titre_en", "resume", "resume_en", "elements"],
+                "required": ["n", "categorie", "titre", "titre_en", "resume", "resume_en", "elements", "meta"],
                 "properties": {
                     "n": {"type": "integer"},
                     "categorie": _TXT,
@@ -181,6 +184,14 @@ SCHEMA_ELEMENTS = {
                     "resume_en": _TXT,
                     "titre": _TXT,
                     "titre_en": _TXT,
+                    "meta": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["champ", "champ_en", "valeur", "valeur_en"],
+                            "properties": {k: _TXT for k in ("champ", "champ_en", "valeur", "valeur_en")},
+                        },
+                    },
                     "elements": {
                         "type": "array",
                         "items": {
@@ -211,11 +222,22 @@ def arbre(graphe: str) -> dict | None:
     if not chemin:
         return None
     A = yaml.safe_load((RACINE / chemin).read_text(encoding="utf-8"))
+    tete = set(A.get("champs_entete") or [])
     return {
-        f"{r['cle']}:{x['cle']}": (f"{r['fr']} : {x['fr']}", f"{r['en']}: {x['en']}", x.get("champs") or r["champs"])
+        f"{r['cle']}:{x['cle']}": (
+            f"{r['fr']} : {x['fr']}",
+            f"{r['en']}: {x['en']}",
+            [c for c in x.get("champs") or r["champs"] if c not in tete],
+        )
         for r in A["racines"]
         for x in r["feuilles"]
     }
+
+
+def entete(graphe: str) -> list[str]:
+    """Les champs d'en-tête de la fiche (champs_entete de l'arbre) : ils vont dans meta, pas dans les éléments."""
+    A = yaml.safe_load((RACINE / cfg.graphe_declare(graphe)["arbre_fiches"]).read_text(encoding="utf-8"))
+    return list(A.get("champs_entete") or [])
 
 
 def corps_de(b: dict) -> str:
@@ -235,14 +257,19 @@ def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str
     bons = [e for e in x.get("elements") or [] if ex.atteste(e["citation"][:300], corps)]
     if len(bons) < ELEMENTS_MIN:
         return None, [f"{len(bons)} éléments prouvés par une citation exacte, {ELEMENTS_MIN} au moins"]
+    metas = [
+        m for m in x.get("meta") or [] if str(m.get("valeur") or "").strip() and str(m.get("valeur_en") or "").strip()
+    ]
     return {
         "texte": "\n\n".join(e["texte"] for e in bons),
+        "meta": [{"champ": m["champ"], "valeur": m["valeur"]} for m in metas],
         "titre": x["titre"],
         "resume": x["resume"],
         "categorie": cat[0],
         "elements": [{"champ": e["champ"], "texte": e["texte"], "citation": e["citation"][:300]} for e in bons],
         "en": {
             "titre": x["titre_en"],
+            "meta": [{"champ": m["champ_en"], "valeur": m["valeur_en"]} for m in metas],
             "resume": x["resume_en"],
             "categorie": cat[1],
             "elements": [{"champ": e["champ_en"], "texte": e["texte_en"]} for e in bons],
@@ -253,7 +280,14 @@ def _valider(x: dict, corps: str, feuilles: dict) -> tuple[dict | None, list[str
 
 def _lu(f: dict) -> str:
     """Résumé et éléments d'une langue, pour le relecteur."""
-    return "\n".join([f["titre"], f["resume"], *(f"{e['champ']} : {e['texte']}" for e in f["elements"])])
+    return "\n".join(
+        [
+            f["titre"],
+            f["resume"],
+            *(f"{m['champ']} : {m['valeur']}" for m in f.get("meta") or []),
+            *(f"{e['champ']} : {e['texte']}" for e in f["elements"]),
+        ]
+    )
 
 
 def _reproches(v: dict) -> list[str]:
@@ -292,6 +326,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         REDACTION_ELEMENTS.format(
             nom=cfg.graphe_declare(graphe).get("libelle") or graphe,
             regles=lt.REGLES,
+            entete=", ".join(entete(graphe)),
             arbre="\n".join(f"- {k} ; champs : {', '.join(v[2])}" for k, v in feuilles.items()),
             billets="\n".join(
                 json.dumps(
@@ -320,6 +355,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         if f is None:
             lot[n][0]["fiche"] = refus(lot[n][0], ec)
         else:
+            f["auteur"] = str(lot[n][1].get("auteur") or "")
             pretes[n] = f
     if not pretes:
         return cout

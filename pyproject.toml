@@ -62,7 +62,7 @@ path = "src/newskit/__init__.py"     # une seule source de la version
 packages = ["src/newskit"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/newskit", "tests", "README.md", "README.fr.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
+include = ["src/newskit", "tests", "media_sample", "README.md", "README.fr.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "src/newskit/donnees_temoin/tests"]

@@ -94,7 +94,7 @@ The graph does not stay within the subjects you declared at the start: it expand
 
 ## The media folder
 
-The media is a folder that holds a `config.yaml`. The engine attaches to it: the `NEWSKIT_DONNEES` variable first, otherwise the current folder. The code stays in the installed package; the data (notes, graph, cost ledger) live in the media folder.
+`media_sample/` is a complete example to copy. The media is a folder that holds a `config.yaml`. The engine attaches to it: the `NEWSKIT_DONNEES` variable first, otherwise the current folder. The code stays in the installed package; the data (notes, graph, cost ledger) live in the media folder.
 
 ```yaml
 version: 1

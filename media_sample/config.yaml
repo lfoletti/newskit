@@ -1,0 +1,17 @@
+# A complete media folder to copy. Run: NEWSKIT_DONNEES=$PWD newskit media
+version: 1
+media:
+  nom: potagers
+  langue: fr
+  traductions: [en]
+  passages: {tous_les: 1, heures: ["05:30"]}
+modeles:
+  extraction: claude-opus-5-5
+  redaction: claude-sonnet-5-5
+sources: sources.yaml
+graphes:
+  potagers-urbains:
+    libelle: Potagers urbains
+    domaine: "urban gardening: allotments, soil, seed exchange"
+    arbre_fiches: categories.yaml      # the category tree of the feed cards
+    regles_redaction: regles_redaction.md   # the writing rules, editable, one section per language

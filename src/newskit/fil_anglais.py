@@ -63,9 +63,7 @@ source only: write from the source, every name, number and fact comes from it. R
   sentence carries one fact; a short source gives a short text, without padding. The speaker carries the attribution
   ("According to Name (Institution), ..."). Never "According to <publisher>" when the publisher is the source. A
   research paper: "Researchers X and Y ...".
-"""
-    + REGLES
-    + """Return the object {{"billets": [...]}}.
+{regles}Return the object {{"billets": [...]}}.
 
 Items:
 {billets}"""
@@ -112,9 +110,7 @@ item you receive the refused title and text, the reviewer's objections and the s
   question; {mots} words and {max} characters at most;
 - texte: 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence says the fact, who,
   where, what; the speaker carries the attribution ("According to Name (Institution), ...").
-"""
-    + REGLES
-    + """Return the object {{"billets": [...]}}.
+{regles}Return the object {{"billets": [...]}}.
 
 Items:
 {billets}"""
@@ -261,6 +257,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
     r, cout = fil.demander(
         REDACTION.format(
+            regles=lt.regles(graphe, "en"),
             nom=nom,
             mots=MOTS_TITRE,
             max=TITRE_MAX,
@@ -299,6 +296,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
             break
         r, c = fil.demander(
             REECRITURE.format(
+                regles=lt.regles(graphe, "en"),
                 nom=nom,
                 mots=MOTS_TITRE,
                 max=TITRE_MAX,

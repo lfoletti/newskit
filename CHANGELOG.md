@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.14] - 2026-11-08
+
+### Ajouté
+
+- Les règles de rédaction peuvent se lire dans un fichier du média, déclaré par `regles_redaction`.
+
 ## [0.1.13] - 2026-11-08
 
 ### Modifié

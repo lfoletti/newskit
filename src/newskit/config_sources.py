@@ -726,6 +726,7 @@ def _valider(d: dict, p: Path) -> dict:
             "lettre_slogan",
             "fil",
             "arbre_fiches",
+            "regles_redaction",
             "fiche_modele",
             "fiche_usd_jour",
             "fil_usd_jour",

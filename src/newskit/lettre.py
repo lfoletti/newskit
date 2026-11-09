@@ -250,7 +250,9 @@ def guillemets(t: str) -> str:
 
 
 def ponctuation(t: str) -> str:
-    """Une espace ordinaire ou fine devant « : », « ; », « ! », « ? » devient insécable (mainteneur, 03.11.2026)."""
+    """Une espace ordinaire ou fine devant « : », « ; », « ! », « ? » devient insécable (mainteneur, 03.11.2026), et
+    celle entre un nombre et « % » aussi (mainteneur, 09.11.2026 : « pas d'espace devant %, ou alors espace insécable »)."""
+    t = re.sub(r"(?<=\d)[ \u202f]+%", "\u00a0%", t)
     return re.sub(r"[ \u202f]+(?=[:;!?](?:\s|$|[\u00a0»<]))", "\u00a0", t)
 
 

@@ -1,7 +1,7 @@
 {
   "name": "newskit",
   "description": "A topic monitoring engine: a knowledge graph on any subject, started from a form and kept up to date at regular intervals within a spending cap. The skill drives the newskit command; a hook refuses model calls while the usage window is closed.",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "author": {
     "name": "Lauro Foletti",
     "email": "25608942+lfoletti@users.noreply.github.com"

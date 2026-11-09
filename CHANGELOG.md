@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.17] - 2026-11-09
+
+### Modifié
+
+- La typographie de tout texte publié rend insécable l’espace entre un nombre et « % », en toute langue ; sans espace, rien ne change.
+
 ## [0.1.16] - 2026-11-09
 
 ### Ajouté

@@ -39,7 +39,7 @@ REGLES = f"""Plain English: {MOTS_PAR_PHRASE} words at most per sentence; one su
 past tense; the conditional only when the source itself presents the fact as a hypothesis, or, in a title, for a fact put forward by one source and not established; one word, one meaning: keep
 the word of the source, no synonym for variety; numbers in figures with their unit ("3,000 start-ups", "$6.43
 billion"); an acronym is spelled out at its first mention, the acronym in brackets, except AI, EU, AI Act, GDPR, OECD.
-Attribution in a title: « Anthropic may have crossed … » when the fact matters more than who puts it forward and is not established; « For Tencent's chief AI scientist, AI could soon … » for an opinion; « According to X, … » for a fact X claims; never « X says … ».
+Attribution in a title: mostly none. The title states the fact as the source presents it, even when it comes from X (a figure a company gives about itself: "The Harness agent has 1.54 million daily users"); the source goes in the first sentence. "may have" for a fact that is not established ("Anthropic may have crossed ..."). "According to X, ..." or "For X, ..." at the start only when X is the news: an authority or a person readers know, whose view or figure is the information, or a disputed fact whose source changes its scope; never for an unknown, never by habit. Never « X says … ».
 Vocabulary of evidence: attribution verbs say, write, announce, claim, according to; never admit, reveal, denounce,
 confess, pretend. A preprint or a vendor's page about its own product gives claimed results: every result figure is
 attributed ("according to the authors", "the company claims"). No evaluative adjective outside a quotation (historic,
@@ -57,8 +57,8 @@ REDACTION = (
 source only: write from the source, every name, number and fact comes from it. Return {{"n": number, "titre": ...,
 "texte": ...}} for each item.
 - titre: the result that matters to the reader, in plain words, in one simple sentence with a verb; it keeps the scope
-  of the source; it is understood alone, by a reader who does not know the topic; it names the person the source names;
-  a little-known person or organisation is followed by its role; no question; {mots} words and {max} characters at most.
+  of the source; it is understood alone, by a reader who does not know the topic; it names a person or an organisation only
+  when readers know it, otherwise its role or nothing; no question; {mots} words and {max} characters at most.
 - texte: the lead of the fact, 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence
   says what the source establishes or argues; the country where the fact happens is named in the title or in that
   sentence when the fact belongs to a country (an election, a law, an authority, a study run in a country); each

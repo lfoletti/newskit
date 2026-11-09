@@ -1122,6 +1122,8 @@ VERBES_INTERDITS = (
 RE_VERBE_PASSE = re.compile(
     r"(?<![a-z])((?:a|ont|avait|avaient) (?:pretendu|admis|reconnu|revele|denonce|avoue))(?![a-z])"
 )
+# « dit que » est interdit ; « dit » reste permis devant une citation directe (signalement du 9.11.2026).
+RE_DIT_QUE = re.compile(r"(?<![a-z])((?:dit|disent|disait|disaient) qu(?:e(?![a-z])|'))")
 RE_EVALUATION = re.compile(
     r"(?<![a-z])(historiques?|inedite?s?|majeure?s?|sans precedent|controversee?s?|cruciale?s?|"
     r"cruciaux|revolutionnaires?)(?![a-z])"
@@ -1145,6 +1147,9 @@ def preuve(texte_: str) -> str | None:
         if re.search(r"(?<![a-z])" + v + r"(?![a-z])", t):
             return f"verbe d'attribution : {v}"
     hors = re.sub(r"«[^»]*»|\"[^\"]*\"|“[^”]*”", " ", t)
+    m = RE_DIT_QUE.search(hors)
+    if m:
+        return f"verbe d'attribution : {m.group(1)} (« dit que » interdit ; selon X, d'après X, pour X)"
     m = RE_EVALUATION.search(hors)
     if m:
         return f"adjectif d'évaluation : {m.group(1)}"

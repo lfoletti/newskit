@@ -28,6 +28,8 @@ TITRE_MAX = fil.TITRE_MAX
 MOTS_TITRE = lt.MOTS_TITRE
 MOTS_PAR_PHRASE = lt.MOTS_PAR_PHRASE
 SOURCE_MAX = 3000  # caractères de la source donnés au rédacteur et au relecteur
+# « says that » est interdit ; « said » reste permis devant une citation directe (signalement du 9.11.2026).
+RE_SAYS_THAT = re.compile(r"\b(?:says|said|say) that\b", re.IGNORECASE)
 
 LECTEUR = (
     "The reader is a manager in a company, who reads English, is neither a lawyer nor an engineer and does not "
@@ -177,6 +179,10 @@ def forme(titre: str, texte: str) -> list[str]:
         ec.append(f"title of {len(titre.split())} words, {MOTS_TITRE} at most")
     if "?" in titre:
         ec.append("title is a question")
+    hors = re.sub(r"\"[^\"]*\"|“[^”]*”", " ", f"{titre}\n{texte}")
+    m = RE_SAYS_THAT.search(hors)
+    if m:
+        ec.append(f'attribution "{m.group(0)}": no says that, use according to X or for X')
     return ec
 
 

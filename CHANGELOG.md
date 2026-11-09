@@ -10,7 +10,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Modifié
 
-- Un billet a la même forme en français et en anglais dans la copie publique du fil : la fiche développée paraît seulement si elle existe dans les deux langues, sinon le billet paraît en brève dans les deux ; un billet sans version anglaise tenue ne paraît pas.
+- Un billet a la même forme en français et en anglais dans la copie publique du fil : la fiche développée paraît seulement si elle existe dans les deux langues, sinon le billet paraît en brève dans les deux ; un billet sans version anglaise tenue ne paraît pas.
 
 ## [0.1.15] - 2026-11-08
 

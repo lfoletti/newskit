@@ -102,6 +102,11 @@ def billet():
     return {"titre": "T", "descriptif": "D", "chemin": "c.md", "rubrique": "Conformité", "url": "u"}
 
 
+def bilingue():
+    """Un billet qui a sa version anglaise tenue : sans elle, la copie publique ne le montre pas."""
+    return {**billet(), "en": {"titre": "TE", "texte": "DE", "tenu": True}}
+
+
 def test_sans_arbre_le_texte_d_avant_reste(monkeypatch):
     monkeypatch.setattr(cfg, "graphe_declare", lambda g: {})
     assert ff.arbre("g") is None
@@ -270,7 +275,7 @@ def test_la_copie_publique_montre_les_elements_sans_les_citations(monkeypatch):
         "elements": [{"champ": "A", "texte": "B", "citation": "secret"}],
         "en": {"resume": "RE", "categorie": "CE", "elements": [{"champ": "AE", "texte": "BE"}]},
     }
-    p = publier_fil.public({"billets": [{**billet(), "fiche": fiche}]})["billets"][0]
+    p = publier_fil.public({"billets": [{**bilingue(), "fiche": fiche}]})["billets"][0]
     assert p["resume"] == "R" and p["categorie"] == "C" and p["elements"] == [{"champ": "A", "texte": "B"}]
     assert p["resume_en"] == "RE" and p["categorie_en"] == "CE" and p["elements_en"] == [{"champ": "AE", "texte": "BE"}]
     assert "secret" not in str(p)
@@ -278,14 +283,14 @@ def test_la_copie_publique_montre_les_elements_sans_les_citations(monkeypatch):
 
 def test_une_fiche_refusee_ou_ancienne_ne_publie_pas_d_elements(monkeypatch):
     monkeypatch.setattr(publier_fil, "liens", lambda b: {})
-    p = publier_fil.public({"billets": [{**billet(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
+    p = publier_fil.public({"billets": [{**bilingue(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
     assert p["elements"] == [] and p["elements_en"] == [] and p["resume"] == ""
 
 
 def test_une_fiche_refusee_ne_publie_rien_de_ses_elements(monkeypatch):
     monkeypatch.setattr(publier_fil, "liens", lambda b: {})
     fiche = {"tenu": False, "resume": "R", "elements": [{"champ": "A", "texte": "B", "citation": "c"}]}
-    p = publier_fil.public({"billets": [{**billet(), "fiche": fiche}]})["billets"][0]
+    p = publier_fil.public({"billets": [{**bilingue(), "fiche": fiche}]})["billets"][0]
     assert p["elements"] == [] and p["resume"] == ""
 
 
@@ -503,7 +508,7 @@ def test_la_copie_publique_montre_l_en_tete_et_l_auteur():
         "elements": [],
         "en": {"resume": "R", "meta": [{"champ": "CE", "valeur": "VE"}], "elements": []},
     }
-    p = publier_fil.public({"billets": [{**billet(), "fiche": f}]})["billets"][0]
+    p = publier_fil.public({"billets": [{**bilingue(), "fiche": f}]})["billets"][0]
     assert (
         p["auteur"] == "A"
         and p["meta"] == [{"champ": "C", "valeur": "V"}]
@@ -512,5 +517,5 @@ def test_la_copie_publique_montre_l_en_tete_et_l_auteur():
 
 
 def test_une_fiche_ancienne_publie_un_en_tete_vide():
-    p = publier_fil.public({"billets": [{**billet(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
+    p = publier_fil.public({"billets": [{**bilingue(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
     assert p["auteur"] == "" and p["meta"] == [] and p["meta_en"] == []

@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.18] - 2026-11-09
+
+### Modifié
+
+- « dit que » est refusé dans le titre et le texte d'un billet français, « says that » et « said that » dans un billet anglais ; « dit » reste permis devant une citation directe entre guillemets.
+
 ## [0.1.17] - 2026-11-09
 
 ### Modifié

@@ -64,6 +64,21 @@ def liens(b: dict) -> dict:
 
 
 def _public(F: dict) -> list[dict]:
+    """Un billet a la même forme dans les deux langues (mainteneur, 09.11.2026) : sans version anglaise tenue, il ne
+    paraît pas ; la fiche développée paraît seulement si elle existe en français et en anglais, sinon brève partout."""
+    billets = (aligne(p) for p in _champs(F))
+    return [p for p in billets if p is not None][:MAX]
+
+
+def aligne(p: dict) -> dict | None:
+    if not (p["titre_en"] and p["descriptif_en"]):
+        return None
+    if (p["resume"] or p["elements"]) and (p["resume_en"] or p["elements_en"]):
+        return {**p, "fiche": ""}
+    return {**p, "fiche": "", "resume": "", "resume_en": "", "elements": [], "elements_en": []}
+
+
+def _champs(F: dict) -> list[dict]:
     return [
         {
             **{k: b.get(k, "") for k in CHAMPS},
@@ -77,7 +92,7 @@ def _public(F: dict) -> list[dict]:
             **anglais(b),
             **elements(b),
         }
-        for b in (F.get("billets") or [])[:MAX]
+        for b in F.get("billets") or []
     ]
 
 

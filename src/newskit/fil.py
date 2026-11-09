@@ -801,6 +801,134 @@ def relire(billets: list[dict], graphe: str) -> float:
     return cout
 
 
+# La révision des titres (mainteneur, 9.11.2026 : « l'expression des titres est toujours médiocre... on manque du sens
+# commun qui fait qu'un titre fonctionne ou pas ») : trois candidats, puis un juge qui ne voit pas le rédacteur raisonner.
+SENS_COMMUN = (
+    "Un titre fonctionne quand un lecteur cultivé, qui ne connaît pas le sujet, comprend d'un coup ce qui s'est passé et "
+    "pourquoi cela compte, comme devant le titre d'un quotidien français. Il dit le fait, pas qui le rapporte : "
+    "l'attribution va dans le texte, sauf quand la source fait elle-même la nouvelle (une autorité ou une personne que le "
+    "lecteur connaît). Il nomme seulement les acteurs que le lecteur connaît ; un inconnu se désigne par sa qualité ou "
+    "disparaît du titre. Il écrit « agent », jamais « agent d'IA ». Des mots courants, sujet, verbe, complément, sans "
+    "calque de l'anglais. Le conditionnel pour un fait que la source ne présente pas comme établi. Rien qui ne soit dans "
+    "la source ; pas de question ; {max} caractères au plus."
+)
+CANDIDATS = (
+    "Tu révises les titres d'un fil d'actualité sur {nom}. {sens}\nPour chaque billet, propose trois titres "
+    "différents, d'après le texte et la source, qui fonctionnent mieux que le titre en place. Rends "
+    '{{"titres": [{{"n": rang, "candidats": [trois titres]}}]}}.\n\nBillets :\n{billets}'
+)
+JUGE = (
+    "Tu choisis les titres d'un fil d'actualité sur {nom}. {sens}\nPour chaque billet, voici le titre en place [0] et "
+    "trois propositions [1] à [3]. Choisis celui qui fonctionne le mieux pour le lecteur ; à égalité, garde [0]. Rends "
+    '{{"titres": [{{"n": rang, "choix": 0 à 3, "raison": une phrase}}]}}.\n\nBillets :\n{billets}'
+)
+
+
+def _schema_titres(champs: dict) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "titres": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"n": {"type": "integer"}, **champs},
+                    "required": ["n", *champs],
+                },
+            }
+        },
+        "required": ["titres"],
+    }
+
+
+SCHEMA_CANDIDATS = _schema_titres({"candidats": {"type": "array", "items": {"type": "string"}}})
+SCHEMA_JUGE = _schema_titres({"choix": {"type": "integer"}, "raison": {"type": "string"}})
+
+
+def titre_refuse(titre: str, source: str) -> str:
+    """Sans modèle : pourquoi un titre proposé ne peut pas remplacer le titre en place, ou une chaîne vide."""
+    if len(titre) > TITRE_MAX:
+        return f"titre de {len(titre)} caractères, {TITRE_MAX} au plus"
+    if "?" in titre:
+        return "titre en question"
+    return lt.faute_de_preuve(titre, source)
+
+
+def reviser_titres(billets: list[dict], graphe: str) -> float:
+    """Trois titres proposés par billet, puis un juge choisit entre le titre en place et les propositions ; rend le coût.
+    Le titre choisi remplace le titre en place s'il passe les contrôles sans modèle ; le billet garde la révision
+    (`revision_titre` : l'ancien titre, les candidats, le choix, la raison, le refus éventuel)."""
+    fiches = lt.charger_fiches([b["chemin"] for b in billets])
+    lot = [(b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches]
+    if not lot:
+        return 0.0
+    nom = cfg.graphe_declare(graphe).get("libelle") or graphe
+    sens = SENS_COMMUN.format(max=TITRE_MAX)
+    srcs = [_source_de(f)[:3000] for _, f in lot]
+    r1, cout = demander(
+        CANDIDATS.format(
+            nom=nom,
+            sens=sens,
+            billets="\n".join(
+                json.dumps(
+                    {"n": n, "titre": b["titre"], "texte": b["descriptif"], "source": srcs[n]}, ensure_ascii=False
+                )
+                for n, (b, _) in enumerate(lot)
+            ),
+        ),
+        SCHEMA_CANDIDATS,
+        graphe,
+        "titres : candidats",
+    )
+    cands = {}
+    for x in r1.get("titres") or []:
+        c = [" ".join(str(t).split()) for t in x.get("candidats") or []]
+        if isinstance(x.get("n"), int) and 0 <= x["n"] < len(lot) and len(c) == 3 and all(c):
+            cands[x["n"]] = c
+    if not cands:
+        return cout
+    r2, c2 = demander(
+        JUGE.format(
+            nom=nom,
+            sens=sens,
+            billets="\n".join(
+                json.dumps(
+                    {
+                        "n": n,
+                        "titres": "\n".join(f"[{i}] {t}" for i, t in enumerate([lot[n][0]["titre"], *c])),
+                        "texte": lot[n][0]["descriptif"],
+                        "source": srcs[n],
+                    },
+                    ensure_ascii=False,
+                )
+                for n, c in cands.items()
+            ),
+        ),
+        SCHEMA_JUGE,
+        graphe,
+        "titres : juge",
+    )
+    for x in r2.get("titres") or []:
+        n, k = x.get("n"), x.get("choix")
+        if n not in cands or not isinstance(k, int) or not 0 <= k <= 3:
+            continue
+        b = lot[n][0]
+        titre = [b["titre"], *cands[n]][k]
+        rev = {
+            "avant": b["titre"],
+            "candidats": cands[n],
+            "choix": k,
+            "raison": " ".join(str(x.get("raison") or "").split()),
+        }
+        refus = titre_refuse(titre, srcs[n]) if k else ""
+        if refus:
+            rev["refus"] = refus
+        else:
+            b["titre"] = titre
+        b["revision_titre"] = rev
+    return cout + c2
+
+
 def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dict], float]:
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
     inv = CONSIGNE.format(
@@ -1582,6 +1710,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(neufs))]
     cout += relire(neufs + anciens, graphe)  # avant le complément : il part du billet relu
     neufs = [b for b in neufs if b.get("tenu") is not False]  # sans titre ni texte qui tienne : pas de billet
+    cout += reviser_titres(neufs, graphe)  # trois titres, puis un juge (mainteneur, 9.11.2026)
     cout += completer(neufs, graphe, max(0.0, reste - cout))
     for b in neufs + [x for x in anciens if x.get("relecture")]:  # le billet relu entre à la fiche, donc au graphe
         enrichir(b)

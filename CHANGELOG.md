@@ -2,6 +2,16 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.19] - 2026-11-09
+
+### Ajouté
+
+- Révision des titres du fil : après la relecture, un appel propose trois titres par billet, puis un juge, qui ne voit pas le rédacteur raisonner, choisit entre le titre en place et les propositions. Le titre choisi remplace l'ancien s'il passe les contrôles sans modèle (longueur, question, nom ou nombre absent de la source) ; le billet garde la révision (`revision_titre`).
+
+### Modifié
+
+- Règle de l'attribution dans le titre : le plus souvent, aucune ; le titre dit le fait, la source va dans la première phrase. Le conditionnel pour un fait non établi ; « Selon X » ou « Pour X » en tête seulement quand X fait la nouvelle. Le titre nomme une personne ou une organisation seulement si le lecteur la connaît. Même règle en anglais.
+
 ## [0.1.18] - 2026-11-09
 
 ### Modifié

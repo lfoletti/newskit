@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.21] - 2026-11-10
+
+### Corrigé
+
+- Fiche à éléments : le relecteur juge chaque langue sous le titre de la fiche, qui devient celui du billet. Avant, il jugeait sous l'ancien titre du billet. Il refusait les fiches dont le titre réécrit suivait un autre angle de l'article ; le billet restait alors en forme brève.
+
 ## [0.1.19] - 2026-11-09
 
 ### Ajouté

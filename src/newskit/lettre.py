@@ -3291,11 +3291,22 @@ AMBRE, AMBRE_FOND = "#7a4f00", "#fff7e6"  # « Santé du passage », dans les co
 STYLE = """<style>
   @media (max-width: 480px) {
     .carte { padding-left: 16px !important; padding-right: 16px !important; }
-    .titre { font-size: 28px !important; }
+    .titre { font-size: 22px !important; line-height: 26px !important; }
+    .tete-titre { display: block !important; width: 100% !important; padding-bottom: 4px !important; }
+    .tete-date { display: block !important; width: 100% !important; text-align: left !important; padding-left: 0 !important; }
     .une { font-size: 18px !important; }
     .tuile { width: 47% !important; margin-right: 2% !important; }
   }
 </style>"""
+
+# Outlook Windows : l'échelle de 96 ppp, sans quoi l'échelle de Windows (125 %, 150 %) agrandit images et marges ; des
+# polices présentes sous Windows, contre le repli sur Times New Roman.
+MSO = (
+    "<!--[if mso]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch>"
+    "</o:OfficeDocumentSettings></xml><![endif]-->\n"
+    "<!--[if mso]><style>body, table, td, div, p, a, span, h1 { font-family: 'Segoe UI', Arial, sans-serif !important; } "
+    ".titre, .titre i { font-family: Georgia, 'Times New Roman', serif !important; }</style><![endif]-->"
+)
 
 
 def _e(t) -> str:
@@ -3337,7 +3348,28 @@ def _carte(contenu: str) -> str:
     )
 
 
-ESPACE = '<tr><td style="height:20px; font-size:0; line-height:0;">&nbsp;</td></tr>'  # entre deux cartes
+# Outlook Windows (moteur de Word) ignore la marge d'une table et le padding d'un div : les espaces et les filets sont
+# des cellules (mainteneur, 10.11.2026 : « dans outlook windows [...] liserés mal placés, marges déséquilibrées »).
+ESPACE = (  # entre deux cartes
+    '<tr><td height="20" style="height:20px; font-size:1px; line-height:20px; mso-line-height-rule:exactly;">&nbsp;</td></tr>'
+)
+TABLE = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+
+
+def _espace(h: int) -> str:
+    """Un espace vertical de `h` px, en table."""
+    return (
+        f'{TABLE}<tr><td height="{h}" style="height:{h}px; font-size:1px; line-height:{h}px; '
+        f'mso-line-height-rule:exactly;">&nbsp;</td></tr></table>'
+    )
+
+
+def _filet(contenu: str, avant: int, apres: int) -> str:
+    """Un filet au-dessus de `contenu` : le bord haut d'une cellule, `avant` px au-dessus du trait, `apres` dessous."""
+    return (
+        _espace(avant)
+        + f'{TABLE}<tr><td style="border-top:1px solid {FILET}; padding-top:{apres}px;">{contenu}</td></tr></table>'
+    )
 
 
 # Le compas en marine (daily) et en automne (weekly), le nord et le compas verts des pages d'éclairage, servis sous
@@ -3350,6 +3382,7 @@ LOGOS = [
     "bandeau_lettre_daily.png",
     "bandeau_lettre_weekly.png",
     "bandeau_lettre_tel.png",
+    "logo_lettre.png",
 ]
 
 
@@ -3455,35 +3488,25 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
     )
     rangs = []
     nom, sorte, quand = entete(L)
-    # L'en-tête sur le fond nu, au graphisme de la page d'accueil : le compas, la marque du site, le titre en Garamond
-    # (« weekly », « daily » en italique), la date entre deux feuilles. Des PNG servis par le site : le courriel ignore
-    # le SVG. Garamond reste dans ce seul titre (mainteneur, 05.11.2026 : « garamond devrait se limiter au logo »).
+    # L'en-tête sur le fond nu : le logo du site, le titre en Garamond (« weekly », « daily » en italique), la date entre
+    # deux puces. Garamond reste dans ce seul titre (mainteneur, 05.11.2026 : « garamond devrait se limiter au logo »).
+    # Le logo est le groupe marque et nom de la page « Newsletter » du site, ondes comprises, en une image opaque
+    # (mainteneur, 10.11.2026 : « le logo n'est pas à jour, prendre identique à site ») : Outlook n'affiche ni le SVG,
+    # ni l'image de fond CSS. Le compas et les bandeaux d'ondes restent servis pour les lettres parties.
     lu = logo_url(L)
-    # Mainteneur, 05.11.2026 : « ok projet daily, mais weekly pas convaincant. pour l'instant même graphisme que daily » : le
-    # compas de la weekly est en marine ; les images d'automne restent servies.
-    teinte = "marine"
-    compas = (
+    domaine, _, extension = _court(L.get("site") or "").rstrip("/").rpartition(".")
+    marque = (
         (
-            f'<img src="{_e(f"{lu}compas_{teinte}.png")}" width="38" height="56" alt="" '
-            f'style="border:0; outline:none; width:38px; height:56px;">'
+            f'<img src="{_e(f"{lu}logo_lettre.png")}" width="384" height="74" alt="{_e(domaine)}.{_e(extension)}" '
+            f'style="display:block; margin:0 auto; border:0; outline:none; width:100%; max-width:384px; height:auto;">'
         )
         if lu
         else ""
     )
-    domaine, _, extension = _court(L.get("site") or "").rstrip("/").rpartition(".")
-    marque = (
-        (
-            f'<div style="{POLICE} margin-top:8px; font-size:12px; font-weight:600; letter-spacing:.18em; '
-            f'text-transform:uppercase; color:{SECOND};">{_e(domaine)}<span style="color:{POINT};">.{_e(extension)}</span></div>'
-        )
-        if domaine
-        else ""
-    )
     titre = _e(nom) + (f' <i style="font-style:italic; font-weight:500;">{_e(sorte)}</i>' if sorte else "")
-    # La date entre deux puces (mainteneur, 05.11.2026 : « remplace les petites feuilles par des bullets ») : un même
-    # caractère des deux côtés. Avant : deux feuilles d'aldine en image ; elles restent servies pour les lettres parties.
-    # « bullets un peu plus grandes » : 18 px dans une ligne de 12, sans changer la hauteur de la ligne.
-    puce = '<span style="font-size:18px; line-height:0; letter-spacing:0; vertical-align:-2px;">•</span>'
+    # Variante B (mainteneur, 10.11.2026 : « choix B ») : le logo seul au-dessus des cartes ; le titre à gauche et la date
+    # à droite ouvrent la première carte, un trait dessous. Au téléphone, la date passe sous le titre (STYLE).
+    tete = ""
     if not banniere(L):
         rangs.append(
             f'<tr><td style="padding:0 8px 20px 8px;"><h1 style="{POLICE} margin:0; '
@@ -3491,21 +3514,28 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
         )
     else:
         rangs.append(
-            f'<tr><td class="ban" align="center" style="padding:0 8px 24px 8px; text-align:center;">{compas}{marque}'
-            f'<h1 class="titre" style="{GARAMOND} margin:6px 0 0 0; font-size:36px; line-height:1.12; font-weight:600; color:{TEXTE};">{titre}</h1>'
-            f'<div style="{POLICE} margin-top:8px; font-size:12px; line-height:16px; font-weight:600; letter-spacing:.12em; '
-            f'text-transform:uppercase; color:{TEXTE};">{puce}&nbsp;&nbsp;{_e(quand)}&nbsp;&nbsp;{puce}</div></td></tr>'
+            f'<tr><td class="ban" align="center" style="padding:0 8px 16px 8px; text-align:center;">{marque}</td></tr>'
+        )
+        tete = (
+            f"{TABLE}<tr>"
+            f'<td class="titre tete-titre" valign="bottom" style="{GARAMOND} padding:0 0 12px 0; font-size:26px; line-height:30px; '
+            f'mso-line-height-rule:exactly; font-weight:600; color:{TEXTE};">{titre}</td>'
+            f'<td class="tete-date" valign="bottom" align="right" style="{POLICE} padding:0 0 15px 12px; font-size:12px; '
+            f"line-height:16px; mso-line-height-rule:exactly; font-weight:600; letter-spacing:.08em; text-transform:uppercase; "
+            f'color:{DOUX}; text-align:right;">{_e(quand)}</td></tr>'
+            f'<tr><td colspan="2" style="border-top:1px solid {TRAIT}; padding-top:16px; font-size:1px; line-height:1px;">&nbsp;</td></tr>'
+            "</table>"
         )
     # La première carte : « À la une ». Chaque fait porte son numéro sur la ligne de son titre, même ligne de base ; la
     # rubrique est au-dessus, dans la colonne du titre (mainteneur, 05.11.2026 : « aligner les numéros avec les titres, pas
     # les rubriques », « les numéros devraient en tout cas être sans serif », « les titres sans serif »).
     if L["faits"]:
-        une = _etiquette(_l("À la une"))
+        une = tete + _etiquette(_l("À la une"))
         for i, f in enumerate(L["faits"], 1):
             rub = _etiquette(f["rubrique"], "0", 11) if f.get("rubrique") else ""
             lieu = f"{_e(f['lieu'])} : " if f.get("lieu") else ""  # « USA : La FDA … » (mainteneur, 03.11.2026)
             corps = (
-                f'<div class="une" style="{POLICE} margin-top:3px; font-size:20px; line-height:1.25; font-weight:600; color:{TEXTE};">'
+                f'<div class="une" style="{POLICE} font-size:20px; line-height:25px; mso-line-height-rule:exactly; font-weight:600; color:{TEXTE};">'
                 f"{lieu}{titre_relie(sans_veuve(_e(titre_sans_lieu(f))), liens.get(i, ''))}</div>"
             )
             s = f["source"]
@@ -3529,24 +3559,22 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
             corps += liees_html(f)
             haut = 16 if i > 1 else 0
             filet = f" border-top:1px solid {FILET};" if i > 1 else ""
-            une += (
-                f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:{16 if i > 1 else 12}px;{filet}">'
-                f'<tr><td width="34" style="padding:{haut}px 0 0 0; font-size:0; line-height:0;">&nbsp;</td>'
-                f'<td valign="top" style="padding:{haut}px 0 0 0;">{rub}</td></tr>'
-                f'<tr><td class="num" valign="baseline" width="34" style="{POLICE} padding:3px 0 0 0; font-size:26px; line-height:25px; '
-                f'font-weight:600; font-variant-numeric:tabular-nums; color:{TEXTE};">{i}</td>'
-                f'<td valign="baseline">{corps}</td></tr></table>'
+            # Le numéro et le titre ont la même ligne de 25 px ; 1 px sous le haut du numéro de 26 px, 3 px sous celui du
+            # titre de 20 px : les lignes de base se rejoignent sans valign="baseline", qu'Outlook ignore.
+            une += _espace(16 if i > 1 else 12) + (
+                f"{TABLE}"
+                f'<tr><td width="34" style="padding:{haut}px 0 0 0; font-size:1px; line-height:1px;{filet}">&nbsp;</td>'
+                f'<td valign="top" style="padding:{haut}px 0 0 0;{filet}">{rub}</td></tr>'
+                f'<tr><td class="num" valign="top" width="34" style="{POLICE} padding:1px 0 0 0; font-size:26px; line-height:25px; '
+                f'mso-line-height-rule:exactly; font-weight:600; font-variant-numeric:tabular-nums; color:{TEXTE};">{i}</td>'
+                f'<td valign="top" style="padding:3px 0 0 0;">{corps}</td></tr></table>'
             )
         rangs.append(_carte(une))
     # La seconde carte : les rubriques, une étiquette en tête de chacune, un filet au-dessus à partir de la deuxième.
     if L["aussi"] or L["bref"]:
-        blocs = ""
-        for g, xs, breves in rubriques_de(L):
-            blocs += (
-                _etiquette(g)
-                if not blocs
-                else f'<div style="margin-top:22px; padding-top:18px; border-top:1px solid {FILET};">{_etiquette(g)}</div>'
-            )
+        blocs = "" if L["faits"] else tete  # sans une, le titre ouvre la carte des rubriques
+        for k, (g, xs, breves) in enumerate(rubriques_de(L)):
+            blocs += _etiquette(g) if k == 0 else _filet(_etiquette(g), 22, 18)
             for x in [
                 *xs,
                 *breves,
@@ -3581,12 +3609,17 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
             (nombre(L["noeuds"]) + (f" {ecart(L['ecart_noeuds'])}" if L["ecart_noeuds"] else ""), "nœuds"),
             (nombre(L["aretes"]) + (f" {ecart(L['ecart_aretes'])}" if L["ecart_aretes"] else ""), "arêtes"),
         ]
-        tuiles_h = "".join(
-            f'<div class="tuile" style="display:inline-block; width:150px; margin:0 8px 8px 0; padding:10px 12px; '
-            f'background:#ffffff; border:1px solid {FILET}; border-radius:8px; vertical-align:top;">'
-            f'<div style="{POLICE} font-variant-numeric:tabular-nums; font-size:20px; font-weight:800; color:{TEXTE};">{_e(v)}</div>'
-            f'<div style="{POLICE} font-size:12px; color:{DOUX};">{_e(t)}</div></div>'
-            for v, t in tuiles
+        # Outlook ignore inline-block : une table fantôme met les tuiles côte à côte.
+        tuiles_h = (
+            '<!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="158" valign="top"><![endif]-->'
+            + '<!--[if mso]></td><td width="158" valign="top"><![endif]-->'.join(
+                f'<div class="tuile" style="display:inline-block; width:150px; margin:0 8px 8px 0; vertical-align:top;">{TABLE}'
+                f'<tr><td style="padding:10px 12px; background:#ffffff; border:1px solid {FILET}; border-radius:8px;">'
+                f'<div style="{POLICE} font-variant-numeric:tabular-nums; font-size:20px; font-weight:800; color:{TEXTE};">{_e(v)}</div>'
+                f'<div style="{POLICE} font-size:12px; color:{DOUX};">{_e(t)}</div></td></tr></table></div>'
+                for v, t in tuiles
+            )
+            + "<!--[if mso]></td></tr></table><![endif]-->"
         )
         lignes = [("Passage", heure_fr(L["heure"])), ("Sources", f"{nombre(L['fiches'])} en tout")]
         if L.get("identifiants"):
@@ -3612,10 +3645,11 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
         if L["sante"]:
             sante = "".join(_p(_e(s), 13, TEXTE, "t-texte", "0 0 6px 0") for s in L["sante"])
             coul += (
-                f'<div style="margin-top:12px; background:{AMBRE_FOND}; border:1px solid #f0d9a8; border-radius:8px; padding:10px 14px;">'
+                _espace(12)
+                + f'{TABLE}<tr><td style="background:{AMBRE_FOND}; border:1px solid #f0d9a8; border-radius:8px; padding:10px 14px;">'
                 + _p("Santé du passage", 13, AMBRE, "t-ambre", "0 0 6px 0", True)
                 + sante
-                + "</div>"
+                + "</td></tr></table>"
             )
         if L.get("selection"):  # le Sélectionneur, en mode proposition (mainteneur, 04.11.2026)
             props = "".join(
@@ -3635,20 +3669,23 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
                 + props
                 + "</div>"
             )
-        coul += _p(
-            f"Rapport complet : graphe/{_e(L['graphe'])}/ROUTINE.md du dépôt {_e(L['depot'])}."
-            + (
-                f'<br>Mesures et graphes : <a href="{_e(L["site"])}/#qualite" style="color:{LIEN};">'
-                f'{_e(_court(L["site"]))}/#qualite</a> · <a href="{_e(L["site"])}/#graphes" '
-                f'style="color:{LIEN};">{_e(_court(L["site"]))}/#graphes</a>'
-                if L["site"]
-                else ""
+        coul += _filet(
+            _p(
+                f"Rapport complet : graphe/{_e(L['graphe'])}/ROUTINE.md du dépôt {_e(L['depot'])}."
+                + (
+                    f'<br>Mesures et graphes : <a href="{_e(L["site"])}/#qualite" style="color:{LIEN};">'
+                    f'{_e(_court(L["site"]))}/#qualite</a> · <a href="{_e(L["site"])}/#graphes" '
+                    f'style="color:{LIEN};">{_e(_court(L["site"]))}/#graphes</a>'
+                    if L["site"]
+                    else ""
+                ),
+                12,
+                DOUX,
+                "t-doux",
+                "0",
             ),
+            14,
             12,
-            DOUX,
-            "t-doux",
-            "14px 0 0 0",
-            extra=f" padding-top:12px; border-top:1px solid {FILET};",
         )
         rangs.append(ESPACE)
         rangs.append(_carte(coul))
@@ -3657,34 +3694,23 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
         f'<tr><td class="pied" align="center" style="{POLICE} padding:16px 8px 0 8px; text-align:center; font-size:12px; '
         f'line-height:1.5; color:{DOUX};">{pied_html(L)}</td></tr>'
     )
-    # Le fond en ondes de la page d'accueil, une image transparente servie par le site, posée une fois en haut et au
-    # centre (mainteneur, 05.11.2026 : « reviens au fonds précédent »). Sans elle, le fond uni.
-    # Une image par titre, la boîte à sa largeur (« diminue encore un peu les marges latérales autour du titre »).
-    ondes = (
-        f" background-image:url({_e(lu)}bandeau_lettre_{'weekly' if L.get('periode') == 'semaine' else 'daily'}.png); background-repeat:no-repeat; background-position:center top;"
-        if lu
-        else ""
-    )
-    # Au téléphone, l'image du téléphone (mainteneur, 05.11.2026 : « le pas est correct pour la version phone ») ; un client
-    # qui retire la feuille de style garde celle de l'ordinateur.
-    tel = (
-        f"\n<style>@media (max-width: 480px) {{ .fond {{ background-image:url({_e(lu)}bandeau_lettre_tel.png) !important; }} }}</style>"
-        if lu
-        else ""
-    )
+    # Les ondes sont dans l'image du logo (mainteneur, 10.11.2026) : plus d'image de fond, qu'Outlook n'affiche pas.
     page = f"""<!DOCTYPE html>
-<html lang="{"en" if anglaise else "fr"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="{"en" if anglaise else "fr"}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
 <title>{_e(objet(L))}</title>
-{STYLE}{tel}
+{STYLE}
+{MSO}
 </head>
 <body style="margin:0; padding:0; background:{FOND}; color:{TEXTE};">
 <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">{_e(apercu)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{FOND}" style="background-color:{FOND};">
-<tr><td align="center" class="fond" style="padding:30px 12px 34px 12px;{ondes}">
+<tr><td align="center" class="fond" style="padding:20px 12px 34px 12px;">
+<!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
 {chr(10).join(rangs)}
 </table>
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table>
 </body></html>
 """

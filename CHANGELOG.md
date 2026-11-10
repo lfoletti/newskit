@@ -2,6 +2,13 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.22] - 2026-11-10
+
+### Modifié
+
+- En-tête de la lettre : le logo du site (le graphique, le nom et le sous-titre, ondes comprises) en une image `logo_lettre.png` servie sous `<site>/lettres/`, seule au-dessus des cartes. Le titre et la date ouvrent la première carte, un trait dessous ; au téléphone, la date passe sous le titre. Le compas et l'image de fond en ondes quittent la lettre ; leurs fichiers restent servis pour les lettres déjà parties.
+- Rendu dans Outlook Windows : la colonne est bornée à 600 px par une table conditionnelle, l'échelle reste à 96 ppp, les filets et les espaces sont des cellules, les numéros de la une s'alignent sans `valign="baseline"`, les tuiles des coulisses restent côte à côte. Segoe UI et Georgia servent de polices de repli.
+
 ## [0.1.21] - 2026-11-10
 
 ### Corrigé

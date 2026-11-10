@@ -360,10 +360,15 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
     if not pretes:
         return cout
     rangs = list(pretes)
+    # Chaque langue sous le titre de la fiche, qui deviendra celui du billet (_reporter) ; sous l'ancien titre, le relecteur
+    # refusait une fiche dont le titre réécrit suivait un autre angle de l'article (mainteneur, 10.11.2026).
     paires = [
         p
         for n in rangs
-        for p in ((lot[n][0]["titre"], _lu(pretes[n]), *lot[n]), (lot[n][0]["titre"], _lu(pretes[n]["en"]), *lot[n]))
+        for p in (
+            (pretes[n]["titre"], _lu(pretes[n]), *lot[n]),
+            (pretes[n]["en"]["titre"], _lu(pretes[n]["en"]), *lot[n]),
+        )
     ]
     verdicts, c = fil.juger(paires, graphe, source=None)
     for k, n in enumerate(rangs):

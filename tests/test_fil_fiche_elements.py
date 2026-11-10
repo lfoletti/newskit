@@ -519,3 +519,13 @@ def test_la_copie_publique_montre_l_en_tete_et_l_auteur():
 def test_une_fiche_ancienne_publie_un_en_tete_vide():
     p = publier_fil.public({"billets": [{**bilingue(), "fiche": {"texte": "x", "tenu": True}}]})["billets"][0]
     assert p["auteur"] == "" and p["meta"] == [] and p["meta_en"] == []
+
+
+def test_le_relecteur_juge_la_fiche_sous_son_propre_titre(banc):
+    # La fiche tenue donne son titre au billet (_reporter) : le relecteur la juge sous ce titre, pas sous l'ancien. Sous
+    # l'ancien, il refusait les fiches dont le titre réécrit suivait un autre angle (10.11.2026, 21 fiches refusées sur 273
+    # dans ai-governance, dont « Le titre annonce une mise à l'épreuve ; le texte ouvre sur une gouvernance fragmentée »).
+    ff.etoffer({"billets": [billet()]}, "g", 20)
+    (t_fr, x_fr, *_), (t_en, x_en, *_) = banc["paires"]
+    assert (t_fr, t_en) == ("Titre du résultat", "Result title")
+    assert "Résumé." in x_fr and "Summary." in x_en

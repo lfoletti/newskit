@@ -3756,7 +3756,7 @@ def _rapport_lignes(L: dict) -> list[tuple[str, list[tuple[str, str]]]]:
 
 
 def rapport_objet(L: dict) -> str:
-    """« Rapport de routine — ai-governance — 11 novembre 2026 — 2 points à suivre »."""
+    """« Rapport de routine — <graphe> — 11 novembre 2026 — 2 points à suivre »."""
     with _langue({**L, "langue": "fr"}):
         quand = date_fr(L.get("envoi") or L.get("heure") or "")
     n = len(L["sante"])

@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.30] - 2026-11-11
+
+### Ajouté
+
+- `python -m newskit.lecture_audio` : la lecture audio des billets, un processus à part du fil. Il lit la copie publique du fil sur le site, donne un son à chaque billet qui n’en a pas d’à jour, du plus récent au plus ancien. Il dépose ensuite sur le VPS les sons (Opus, puis AAC), puis leur index `audio.json`. Après chaque billet, il relit la copie : un billet entrant passe avant le retard.
+- `kyutai_lecteur.py` : le lecteur Kyutai TTS (MLX), lancé par l’interpréteur que nomme `NEWSKIT_AUDIO_PYTHON`. Il garde le modèle chargé le temps du passage. Un billet qui dépasse 15 minutes arrête le lecteur.
+- La clé `lecture_audio` du `config.yaml` du média : `modele`, `voix`, `vitesse` (de 0,8 à 1,2) et `sigles` (sigle → forme longue, développée à sa première apparition).
+
 ## [0.1.29] - 2026-11-11
 
 ### Modifié

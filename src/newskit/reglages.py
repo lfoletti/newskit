@@ -46,7 +46,6 @@ REGLABLES: dict[str, set[str]] = {
     },
     "fil_fiche": {"ELEMENTS_MIN", "TITRE_MAX", "FICHE_ATTENTE_MAX"},
     "alertes_fil": {
-        "PALIER2_BUDGET",
         "PALIER2_SILENCE",
         "PALIER3_SILENCE",
         "REPETITION",
@@ -80,7 +79,7 @@ REGLABLES: dict[str, set[str]] = {
 
 # Le type de chaque défaut, sans importer les modules (media.charger valide avant tout import du moteur).
 _TEXTES = {("lettre", "POINT")}
-_NOMBRES = {("fil", "DEFINITION_USD"), ("fil", "PART_SECONDAIRE"), ("alertes_fil", "PALIER2_BUDGET")}
+_NOMBRES = {("fil", "DEFINITION_USD"), ("fil", "PART_SECONDAIRE")}
 _PAIRES = {("fil", "JOUR_GARANTI")}
 
 

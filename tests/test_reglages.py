@@ -86,11 +86,14 @@ def test_aucun_reglable_n_est_fige_avant_l_application():
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
                 for d in n.args.defaults + n.args.kw_defaults:
                     figes |= {x.id for x in ast.walk(d) if isinstance(x, ast.Name)} if d else set()
+        copies = set()  # un réglable d'un autre module, copié à l'import (fil.PART_SECONDAIRE)
         for n in arbre.body:
             if isinstance(n, (ast.Assign, ast.AnnAssign)):
                 valeur = n.value
                 figes |= {x.id for x in ast.walk(valeur) if isinstance(x, ast.Name)} if valeur else set()
+                copies |= {x.attr for x in ast.walk(valeur) if isinstance(x, ast.Attribute)} if valeur else set()
         assert not figes & noms, (court, sorted(figes & noms))
+        assert not copies & set().union(*rg.REGLABLES.values()), (court, sorted(copies))
 
 
 def test_le_reglage_du_media_atteint_le_module(monkeypatch):

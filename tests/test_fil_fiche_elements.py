@@ -397,7 +397,7 @@ def test_la_definition_reste_quand_le_chapeau_porte_le_terme(banc):
 
 
 def test_le_billet_sans_fiche_tenue_attend_dans_la_pile(banc):
-    F = {"pile": [billet()]}
+    F = {"pile": [{**billet(), "ajoute": fil.maintenant()}]}  # rédigé à l'instant : il attend sa fiche
     assert ff.en_attente(F, "g") == F["pile"]
 
 
@@ -412,7 +412,7 @@ def test_le_billet_aux_essais_epuises_n_attend_plus(banc):
 
 
 def test_le_billet_refuse_une_fois_attend_encore(banc):
-    F = {"pile": [{**billet(), "fiche": {"tenu": False, "essais": 1}}]}
+    F = {"pile": [{**billet(), "ajoute": fil.maintenant(), "fiche": {"tenu": False, "essais": 1}}]}
     assert len(ff.en_attente(F, "g")) == 1
 
 
@@ -422,7 +422,7 @@ def test_sans_arbre_rien_n_attend(monkeypatch):
 
 
 def test_paraitre_ne_sort_pas_le_billet_en_attente(banc, monkeypatch):
-    pret, attend = {**billet(), "chemin": "d.md", "fiche": {"tenu": True}}, billet()
+    pret, attend = {**billet(), "chemin": "d.md", "fiche": {"tenu": True}}, {**billet(), "ajoute": fil.maintenant()}
     F = {"pile": [attend, pret], "billets": []}
     vus = {}
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import math
 import re
 import subprocess
 import sys
@@ -1465,6 +1466,13 @@ PANNEAU = 15  # billets que montre le panneau de l'accueil (const PANNEAU de la 
 PILE_RESERVE = 120  # minutes avant l'heure de la routine où la réserve se fait
 PILE_DELAI_RESERVE = 30  # minutes entre deux parutions pendant ce temps
 PILE_RESTE_MIN = 30  # minutes qu'une routine en cours a toujours devant elle, pour l'étalement
+# Le fil continu (mainteneur, 11.11.2026 : « je ne veux plus lire "tel plafond a été atteint, c'est pourquoi plus rien ne
+# paraît depuis 2 heures" » ; un billet au moins toutes les 30 minutes de 06 h à 23 h). La pile garde une réserve de
+# PILE_GARDE billets contre les heures sans nouvelle : en dessous, un billet par PILE_GARANTIE minutes le jour, aucun la
+# nuit, où la réserve se refait. Le plus récent paraît d'abord : la réserve garde les plus anciens.
+PILE_GARDE = 6
+PILE_GARANTIE = 30
+JOUR_GARANTI = (6, 23)  # heures de début et de fin de la garantie
 
 
 def maintenant() -> str:
@@ -1499,20 +1507,35 @@ def cadence(n: int, quand: str, heure_routine: str, minutes_routine: int, en_rou
     return d
 
 
+def de_jour(quand: str) -> bool:
+    """Vrai pendant les heures de la garantie du fil (JOUR_GARANTI)."""
+    return JOUR_GARANTI[0] <= _instant(quand).hour < JOUR_GARANTI[1]
+
+
+def garder(n: int, quand: str, d: float) -> float:
+    """La cadence `d`, réserve de la pile comprise : au-dessus de PILE_GARDE billets, `d` ; en dessous, PILE_GARANTIE
+    minutes le jour, aucune parution la nuit (math.inf)."""
+    if n > PILE_GARDE:
+        return d
+    return max(d, PILE_GARANTIE) if de_jour(quand) else math.inf
+
+
 def cadence_du_moment(graphe: str, n: int, quand: str) -> float:
     """La cadence à cet instant, d'après le registre (`reporter.fil_routine_heure`, `fil_routine_minutes`), le verrou des
-    routines et le dernier passage du graphe."""
+    routines et le dernier passage du graphe. Pendant la routine du graphe, l'étalement prime sur la réserve."""
     from newskit import routine_hebdo as rh  # noqa: PLC0415
 
     r = cfg.reporter(graphe)
-    return cadence(
+    en_routine = rh.graphe_en_routine() == graphe
+    d = cadence(
         n,
         quand,
         str(r["fil_routine_heure"]),
         int(r["fil_routine_minutes"]),
-        rh.graphe_en_routine() == graphe,
+        en_routine,
         str(rh.debut_du_passage(graphe) or "")[:10] == quand[:10],
     )
+    return d if en_routine else garder(n, quand, d)
 
 
 def liberer(F: dict, quand: str, delai: float | None = None) -> int:
@@ -1525,6 +1548,8 @@ def liberer(F: dict, quand: str, delai: float | None = None) -> int:
     if not pile:
         return fond
     d, n = delai or delai_de_parution(len(pile)), 1
+    if d == math.inf:  # la nuit, la réserve se refait
+        return fond
     if F.get("paru_le"):
         n = int((_instant(quand) - _instant(F["paru_le"])).total_seconds() / 60 // d)
         n = min(n, 1 if d >= PILE_DELAI else PILE_PAR_PASSAGE)
@@ -1569,7 +1594,8 @@ def paraitre(graphe: str, F: dict) -> int:
         return 0
     from newskit import fil_fiche  # noqa: PLC0415 — fil_fiche importe ce module
 
-    quand, attente = maintenant(), fil_fiche.en_attente(F, graphe)
+    quand = maintenant()
+    attente = fil_fiche.en_attente(F, graphe, quand)
     F["pile"] = [b for b in F["pile"] if not any(b is x for x in attente)]
     n = liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand))
     F["pile"] = F["pile"] + attente
@@ -1599,6 +1625,16 @@ def enrichir(b: dict) -> None:
 def a_relire(F: dict) -> list[dict]:
     """Les billets, en attente ou parus, que la relecture n'a pas encore jugés (champ `tenu`)."""
     return [b for b in F["pile"] + F["billets"] if "tenu" not in b]
+
+
+PART_SECONDAIRE = 0.8  # part du plafond du jour au-delà de laquelle seule la rédaction des billets neufs tourne
+
+
+def budget_secondaire(F: dict, graphe: str, jour: str) -> float:
+    """Le budget du jour qui reste aux tâches secondaires (rapprochement, relecture des billets d'avant, définitions,
+    liens, anglais, fiches) : elles s'arrêtent à PART_SECONDAIRE du plafond, la rédaction des billets neufs continue
+    jusqu'au plafond (mainteneur, 11.11.2026)."""
+    return max(0.0, PART_SECONDAIRE * plafond(jour, graphe) - depense_du_jour(F, jour))
 
 
 def plafond(jour: str, graphe: str) -> float:
@@ -1666,8 +1702,9 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         return len(cands)
     lot = cands[:PAR_PASSAGE]
     rubs = cfg.rubriques(graphe)
-    cout = rapprocher(F, graphe) if a_rapprocher else 0.0  # les nouvelles d'avant : le même événement se fond
-    anciens = a_relire(F)  # une nouvelle fondue n'est plus à relire
+    secondaire = budget_secondaire(F, graphe, jour)
+    cout = rapprocher(F, graphe) if a_rapprocher and secondaire >= 0.10 else 0.0  # le même événement se fond
+    anciens = a_relire(F) if secondaire - cout >= 0.10 else []  # une nouvelle fondue n'est plus à relire
     recents = F["pile"] + F["billets"][:RECENTS]  # la pile aussi : un doublon s'ajoute au billet qui attend
     textes = textes_du_registre(F) if lot else {}
     proposer(lot, F, recents, textes)
@@ -1715,10 +1752,14 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     for b in neufs + [x for x in anciens if x.get("relecture")]:  # le billet relu entre à la fiche, donc au graphe
         enrichir(b)
     F["pile"] = neufs + F["pile"]  # un billet rédigé attend son tour
-    cout += definir(F, graphe, max(0.0, reste - cout))  # le terme que la source n'explique pas, sous le plafond
-    cout += lier(F, graphe)  # les billets neufs avec ceux du registre
-    cout += fil_anglais().anglais(F, graphe, max(0.0, reste - cout))  # la version anglaise, d'après la source
-    cout += fil_fiche.etoffer(F, graphe, max(0.0, reste - cout))  # le texte long de la fiche, d'après la source
+
+    def sec() -> float:  # les tâches secondaires, sous PART_SECONDAIRE du plafond
+        return max(0.0, min(reste, secondaire) - cout)
+
+    cout += definir(F, graphe, sec())  # le terme que la source n'explique pas
+    cout += lier(F, graphe) if sec() >= 0.10 else 0.0  # les billets neufs avec ceux du registre
+    cout += fil_anglais().anglais(F, graphe, sec())  # la version anglaise, d'après la source
+    cout += fil_fiche.etoffer(F, graphe, sec())  # le texte long de la fiche, d'après la source
     parus += paraitre(graphe, F)
     # Lue : le modèle a répondu sur la fiche. Une fiche sans réponse (appel échoué) reste à lire : « lue sans
     # nouvelle » veut dire « écartée » pour la lettre (nouvelles.ecartees).

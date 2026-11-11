@@ -2,6 +2,18 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.24] - 2026-11-11
+
+### Modifié
+
+- Le fil ne s'arrête plus sur une étape payante. Un billet rédigé attend sa fiche 20 minutes au plus. Il n'attend pas quand la fiche ne peut pas s'écrire (plafond des fiches, budget secondaire, limite d'usage). Sa fiche s'écrit ensuite, comme celle d'un billet déjà paru.
+- Le budget du jour sert d'abord la rédaction. À 80 % du plafond (`PART_SECONDAIRE`), le rapprochement, la relecture des billets d'avant, les définitions, les liens, l'anglais et les fiches s'arrêtent. La rédaction des billets neufs continue jusqu'au plafond.
+- La pile garde une réserve de 6 billets (`PILE_GARDE`) contre les heures sans nouvelle. En dessous, un billet paraît toutes les 30 minutes de 06 h à 23 h, aucun la nuit, où la réserve se refait. Pendant la routine du graphe, l'étalement prime.
+
+### Ajouté
+
+- Alertes du fil par paliers (`alertes_fil`), après chaque passage de la collecte continue. Palier 2, un courriel par jour et par cause : budget à 80 %, 60 minutes sans billet de jour avec une pile non vide, publication sur le serveur en échec 3 fois de suite. Palier 3, un courriel toutes les 2 heures tant que la cause dure : plafond atteint, limite d'usage, passage du fil en échec 2 fois de suite, 3 heures sans billet de jour. L'alerte unique de 4 heures disparaît.
+
 ## [0.1.23] - 2026-11-11
 
 ### Modifié

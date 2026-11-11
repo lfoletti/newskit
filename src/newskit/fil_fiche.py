@@ -84,12 +84,35 @@ def _a_faire(b: dict) -> bool:
     return b.get("tenu") is not False and not fini and existe(b["chemin"])
 
 
-def en_attente(F: dict, graphe: str) -> list[dict]:
+# La parution n'attend pas une étape payante (mainteneur, 11.11.2026 : le plafond des fiches, atteint à 09:40, a gardé
+# les billets dans la pile jusqu'à minuit). Un billet attend sa fiche FICHE_ATTENTE_MAX minutes au plus. Il n'attend
+# pas quand la fiche ne peut pas s'écrire ; sa fiche s'écrit ensuite, comme celle d'un billet déjà paru (a_ecrire).
+FICHE_ATTENTE_MAX = 20
+
+
+def fiche_possible(F: dict, graphe: str, jour: str) -> bool:
+    """Vrai si une fiche peut s'écrire aujourd'hui : budget des fiches, budget secondaire du fil, limite d'usage."""
+    reste = plafond(graphe) - float((F.get("depense_fiche") or {}).get(jour) or 0)
+    return reste >= 0.10 and fil.budget_secondaire(F, graphe, jour) >= 0.10 and not fil.couts.en_limite()
+
+
+def en_attente(F: dict, graphe: str, quand: str | None = None) -> list[dict]:
     """Les billets de la pile qui ne paraissent pas encore : leur fiche donnera leur titre et leur chapeau. Vide pour un
-    graphe sans arbre des catégories."""
+    graphe sans arbre des catégories, et quand la fiche ne peut pas s'écrire (fiche_possible). Un billet rédigé
+    (`ajoute`) depuis FICHE_ATTENTE_MAX minutes ou plus n'attend plus."""
     if arbre(graphe) is None:
         return []
-    return [b for b in F.get("pile") or [] if _a_faire(b)]
+    quand = quand or fil.maintenant()
+    if not fiche_possible(F, graphe, quand[:10]):
+        return []
+
+    def recent(b: dict) -> bool:
+        try:
+            return (fil._instant(quand) - fil._instant(b["ajoute"])).total_seconds() / 60 < FICHE_ATTENTE_MAX
+        except (KeyError, TypeError, ValueError):
+            return False
+
+    return [b for b in F.get("pile") or [] if _a_faire(b) and recent(b)]
 
 
 def a_ecrire(F: dict) -> list[dict]:

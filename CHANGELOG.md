@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.28] - 2026-11-11
+
+### Ajouté
+
+- La clé `lettre_aux_abonnes: true` du `config.yaml` du média envoie la daily aux abonnés sans validation, après l’envoi à l’adresse du registre. La diffusion de l’édition (`diffusion.envoyer`) sert la liste, comme pour la weekly.
+- Une diffusion en échec est signalée sur la sortie d’erreur ; le rapport de routine part quand même.
+- La clé n’admet que `true` ou `false`. Sans elle, la daily ne part qu’à l’adresse du registre, comme avant.
+
 ## [0.1.27] - 2026-11-11
 
 ### Ajouté

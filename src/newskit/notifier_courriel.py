@@ -676,9 +676,28 @@ def main() -> int:
         garder_lettre(lettre_)
     code = envoyer(objet, corps, html, compte=COMPTE_LETTRE) if lettre_ is not None else envoyer(objet, corps, html)
     if lettre_ is not None and code == 0:
+        aux_abonnes(lettre_)
         lettre_["selection"] = selection(lettre_, graphe or cfg.GRAPHE_PRINCIPAL)
         code = envoyer(*rapport(lettre_))
     return code
+
+
+def aux_abonnes(L: dict) -> None:
+    """La daily aux abonnés de l'édition, sans validation, quand le média le déclare (`lettre_aux_abonnes: true`,
+    mainteneur, 11.11.2026 : « les newsletters doivent partir à la liste sans attendre de validation de ma part »).
+    Jamais bloquant : un échec est signalé, le rapport de routine part quand même."""
+    from newskit import diffusion, media  # noqa: PLC0415
+
+    if media.courant().get("lettre_aux_abonnes") is not True:
+        return
+    try:
+        code = diffusion.envoyer(L)
+    except Exception as e:  # noqa: BLE001
+        code, cause = 1, f" ({type(e).__name__} {str(e)[:120]})"
+    else:
+        cause = ""
+    if code != 0:
+        print(f"ALERTE : la daily n'est pas partie à tous les abonnés{cause}", file=sys.stderr)
 
 
 def selection(L: dict, graphe: str) -> list[dict]:

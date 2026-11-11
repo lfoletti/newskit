@@ -81,7 +81,7 @@ TRADUCTIONS = {"en"}  # fil_anglais et lettre_anglaise
 FREQUENCE = (5, 30)  # l'heure par défaut d'un graphe neuf, celle de nouveau_graphe avant le dossier
 # Les blocs du registre que config.yaml peut tenir à la place du fichier des sources.
 BLOCS = {"graphes", "poseur", "reporter", "eclaireur", "banc", "anciens_noms", "domaines"}
-CHAMPS = {"version", "media", "modeles", "sources", "diffusion", "registre_des_graphes"} | BLOCS
+CHAMPS = {"version", "media", "modeles", "sources", "diffusion", "registre_des_graphes", "reglages"} | BLOCS
 PROPRES = {
     "langue",
     "traductions",
@@ -140,6 +140,13 @@ def charger(chemin: Path = FICHIER) -> dict:
     r = d.get("registre_des_graphes")
     if r is not None and (not isinstance(r, str) or not r.strip()):
         raise ConfigMediaInvalide(f"{chemin.name} : registre_des_graphes : un chemin de fichier, lu {r!r}")
+    if "reglages" in d:  # les réglages propres au média (reglages.py, mainteneur, 11.11.2026)
+        from newskit import reglages  # noqa: PLC0415 — reglages importe ce module
+
+        try:
+            reglages.valider(d["reglages"])
+        except ConfigMediaInvalide as e:
+            raise ConfigMediaInvalide(f"{chemin.name} : {e}") from e
     s = d.get("sources")
     if s is not None:
         if not isinstance(s, str) or not s or Path(s).is_absolute() or ".." in Path(s).parts:

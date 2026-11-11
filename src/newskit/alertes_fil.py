@@ -24,6 +24,7 @@ from newskit import couts
 from newskit import fil
 from newskit import notifier_courriel as nc
 from newskit.commun import RACINE
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 PALIER2_BUDGET = fil.PART_SECONDAIRE
 PALIER2_SILENCE = 60  # minutes sans billet, de jour, pile non vide : blocage
@@ -144,3 +145,6 @@ def corps(F: dict, graphe: str, quand: str, tous: list[tuple[int, str, str]]) ->
         "Journal : cache/collecte_continue.log.",
     ]
     return "\n".join(lignes) + "\n"
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)

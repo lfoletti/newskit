@@ -27,6 +27,7 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
 from newskit import lettre as lt  # noqa: E402 — la typographie de tout texte publié
 from newskit import nouvelles as nv  # noqa: E402 — le texte d'une nouvelle, sa définition comprise
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 ENV = Path.home() / ".secrets" / "vps_kg.env"
 DOSSIER_VPS = "/var/www/kg-mcp/fil"
@@ -221,6 +222,9 @@ def main() -> int:
 
     print(publier(fil.chemin_fil(a.graphe).parent))
     return 0
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,17 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.27] - 2026-11-11
+
+### Ajouté
+
+- Le bloc `reglages:` du `config.yaml` du média règle les constantes propres au média : le fil, la fiche, les alertes, la copie publique, la lettre, la lettre de la semaine, la routine et la collecte RSS. Le moteur garde la valeur par défaut.
+- Un réglage inconnu ou d’un autre type que la valeur par défaut est refusé au chargement.
+
+### Modifié
+
+- Les arguments de la lettre réglés par le média lisent leur valeur à l’appel, pas à l’import.
+
 ## [0.1.26] - 2026-11-11
 
 ### Ajouté

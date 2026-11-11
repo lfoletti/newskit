@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import inspect
 
-from newskit import collecte_continue, fil, fil_anglais
+from newskit import alertes_fil, fil, fil_anglais
 from newskit import config_sources as cfg
 
 
@@ -34,4 +34,4 @@ def test_un_jour_leve_reste_sans_plafond(monkeypatch):
 def test_les_appelants_passent_le_graphe():
     assert "plafond(jour, graphe)" in inspect.getsource(fil)
     assert "fil.plafond(jour, a.graphe)" in inspect.getsource(fil_anglais)
-    assert "fil.plafond(jour, graphe)" in inspect.getsource(collecte_continue)
+    assert "fil.plafond(jour, graphe)" in inspect.getsource(alertes_fil)

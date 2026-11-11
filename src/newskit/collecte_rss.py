@@ -47,6 +47,7 @@ from newskit import config_sources as cfg  # noqa: E402
 from newskit import fiche  # noqa: E402
 from newskit.commun import ENTETES_NAVIGATEUR, agent_robot, html_to_md  # noqa: E402
 from newskit import sante_sources as ss  # noqa: E402
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 MOTS_MINIMUM = 120  # sous ce seuil, l'entrée est un entrefilet et n'entre pas
 MOTS_TEXTE = 300  # au-dessus, et sans marque de coupure, c'est un texte entier
@@ -1306,6 +1307,9 @@ def main() -> int:
             print(f"    {e}", file=sys.stderr)
         return 1
     return 0
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)
 
 
 if __name__ == "__main__":

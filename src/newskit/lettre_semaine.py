@@ -28,6 +28,7 @@ from pathlib import Path
 
 from newskit import couts
 from newskit import lettre as lt
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 UNE_MAX = 5
 PAR_RUBRIQUE = 4
@@ -231,6 +232,9 @@ def main() -> int:
         nc.garder_lettre(W)
         rh.commiter_lettres(lt.RACINE)  # la page /lettres/ de la weekly vient de la passe horaire du VPS
     return code
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)
 
 
 if __name__ == "__main__":

@@ -45,6 +45,10 @@ from newskit import media  # noqa: E402 — un modèle par rôle, lu au config.y
 
 from newskit import couts  # noqa: E402
 from newskit import nouvelles as nv  # noqa: E402 — le registre des nouvelles (CHANTIER_NOUVELLES.md)
+from newskit import reglages  # noqa: E402 — les réglages du média
+
+# La valeur par défaut d'un argument réglé, quand None a déjà un sens (« sans limite ») : lue à l'appel (reglages.py).
+DEFAUT = object()
 
 JOURS_RECENT = 120  # une fiche plus ancienne ne fait pas un fait de la semaine
 FACTEUR_MEDIANE = 1.2  # un fait retenu dépasse 1,2 fois la médiane des vingt premiers scores
@@ -552,7 +556,7 @@ def selectionner(faits: list[dict]) -> tuple[list[dict], list[dict]]:
 
 
 def completer_une(
-    retenus: list[dict], autres: list[dict], minimum: int = UNE_MIN, groupe=None
+    retenus: list[dict], autres: list[dict], minimum: int | None = None, groupe=None
 ) -> tuple[list[dict], list[dict]]:
     """La une d'au moins `minimum` faits (mainteneur, 03.11.2026 : « choisis au moins 3 faits importants par
     semaine ») : les faits établis par deux éditeurs indépendants (selectionner), puis les meilleurs au score des
@@ -560,6 +564,7 @@ def completer_une(
     pris à une seule source est marqué « rapporté ». Les faits pris sortent des autres.
     Variété (mainteneur, 03.11.2026 : deux FDA à la une du 1er novembre) : un complément ne reprend ni l'éditeur ni la
     rubrique (`groupe`) d'un fait déjà à la une ; la rubrique se relâche seulement si la une resterait incomplète."""
+    minimum = UNE_MIN if minimum is None else minimum
     une = list(retenus)
     for relache in (False, True):
         for f in autres:
@@ -926,7 +931,10 @@ SCHEMA = {
 }
 
 
-def estimer_usd(invite: str, faits: int = FAITS_MAX, autres: int = AUSSI_MAX, brefs: int = BREF_MAX) -> float:
+def estimer_usd(invite: str, faits: int | None = None, autres: int | None = None, brefs: int | None = None) -> float:
+    faits = FAITS_MAX if faits is None else faits
+    autres = AUSSI_MAX if autres is None else autres
+    brefs = BREF_MAX if brefs is None else brefs
     jetons = JETONS_FIXES + len(invite) / 4
     sortie = 2 * (
         faits * (MOTS_MAX + MOTS_TITRE)
@@ -1729,11 +1737,11 @@ REGLES = (
 )
 
 
-def ecarts_de_forme(
-    texte_: str, mini: int, maxi: int, phrases_max: int = CHAPEAU_PHRASES, nombres_max: int | None = CHAPEAU_NOMBRES
-) -> list[str]:
+def ecarts_de_forme(texte_: str, mini: int, maxi: int, phrases_max: int | None = None, nombres_max=DEFAUT) -> list[str]:
     """Les écarts de forme d'un texte (fenêtre de mots, phrases trop longues, nombre de phrases, groupe nominal,
     tournure, vocabulaire de la preuve) : ils ne retirent jamais une description, ils départagent les tentatives."""
+    phrases_max = CHAPEAU_PHRASES if phrases_max is None else phrases_max
+    nombres_max = CHAPEAU_NOMBRES if nombres_max is DEFAUT else nombres_max  # None : sans limite
     ec, n, ps = [], compter_mots(texte_), phrases(texte_)
     if not mini <= n <= maxi:
         ec.append(f"{n} mots, hors de la fenêtre de {mini} à {maxi}")
@@ -1773,14 +1781,16 @@ def choisir_description(
     maxi: int,
     revendique: bool = False,
     rapporte: bool = False,
-    phrases_max: int = CHAPEAU_PHRASES,
-    nombres_max: int = CHAPEAU_NOMBRES,
+    phrases_max: int | None = None,
+    nombres_max=DEFAUT,
 ) -> tuple[str, str]:
     """Après le second refus (mainteneur, 03.11.2026 : « ne pas publier sans description, même si elle n'est pas totalement
     conforme au template ») : dans chaque tentative, les phrases fautives sur la preuve sont retirées ; une tentative
     sans phrase prouvée, ou sans « selon » pour un fait rapporté, est écartée. Parmi les autres, la moins chargée en
     écarts de forme l'emporte (la plus récente à égalité). Rend (texte, note du journal) ; ("", raison) si aucune ne
     reste : le billet sort de la lettre, jamais de titre seul."""
+    phrases_max = CHAPEAU_PHRASES if phrases_max is None else phrases_max
+    nombres_max = CHAPEAU_NOMBRES if nombres_max is DEFAUT else nombres_max  # None : sans limite
     meilleure, note = None, "aucune phrase prouvée : billet retiré de la lettre"
     for t in tentatives:
         if not str(t or "").strip():
@@ -2237,10 +2247,11 @@ def _reunir(dans: list[dict], debut: str) -> dict:
     }
 
 
-def passages_de_la_periode(graphe: str, periode: str = "jour", jours: int = JOURS_SEMAINE) -> dict | None:
+def passages_de_la_periode(graphe: str, periode: str = "jour", jours: int | None = None) -> dict | None:
     """Le passage dont la lettre est faite. La daily réunit tous les passages depuis la lettre précédente (son
     marqueur `heure`), arrêtés compris : une plage d'un jour, quel que soit le nombre de passages (mainteneur, 05.11.2026) ;
     sans lettre précédente, le dernier passage. La weekly réunit les passages des `jours` derniers jours."""
+    jours = JOURS_SEMAINE if jours is None else jours
     if periode != "semaine":
         dernier = dernier_passage(graphe)
         if dernier is None:
@@ -2405,17 +2416,19 @@ def construire(
     jour: str | None = None,
     envoi: str | None = None,
     rubriques: list[dict] | None = None,
-    aussi_max: int = AUSSI_MAX,
+    aussi_max: int | None = None,
     facteur: float | None = None,
     fraicheur: int | None = None,
     minimum_rubrique: int | None = None,
-    une_min: int = UNE_MIN,
+    une_min: int | None = None,
     angle_=None,
     nouvelles: dict | None = None,
 ) -> dict:
     """Le contenu de la lettre, prêt à mettre en page (html, texte, objet). `rubriques` : celles du graphe au registre
     par défaut ; [] pour un graphe qui n'en a pas (les blocs se rangent alors par thème, comme avant B16). `nouvelles` :
     le registre des nouvelles du graphe (nouvelles.lire)."""
+    aussi_max = AUSSI_MAX if aussi_max is None else aussi_max
+    une_min = UNE_MIN if une_min is None else une_min
     from newskit import notifier_courriel as nc  # noqa: PLC0415
 
     if rubriques is None:
@@ -3906,3 +3919,6 @@ def lettre_du_graphe(graphe: str, rapport: str, nom: str = "", periode: str = "j
     if periode == "semaine":
         L["debut"] = passage.get("debut")
     return L
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)

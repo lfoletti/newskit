@@ -26,6 +26,7 @@ from newskit import lettre as lt
 from newskit import publier_fil
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 MOTS_MIN, MOTS_MAX = 80, 150
 PAR_PASSAGE = 15  # textes de fiche écrits par passage, au plus
@@ -479,3 +480,6 @@ def _etoffer(F: dict, graphe: str) -> float:
         ]
         lot[n][0]["fiche"] = refus(lot[n][0], reproches) if reproches else {"texte": textes[n], "tenu": True}
     return cout
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)

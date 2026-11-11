@@ -32,6 +32,7 @@ from newskit import config_sources as cfg  # noqa: E402
 from newskit import couts  # noqa: E402
 from newskit import lettre as lt  # noqa: E402
 from newskit import nouvelles as nv  # noqa: E402
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 POSTE = "fil"
 FRAICHEUR = 2  # jours : une fiche publiée avant n'entre pas au fil
@@ -1829,6 +1830,9 @@ def main() -> int:
         else:
             passer(a.graphe, a.sans_modele)
     return 0
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)
 
 
 if __name__ == "__main__":

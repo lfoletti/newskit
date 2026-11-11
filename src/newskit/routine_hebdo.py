@@ -67,6 +67,7 @@ from newskit import commun  # noqa: E402
 from newskit import config_sources as cfg  # noqa: E402
 from newskit import media  # noqa: E402 — le registre des graphes du média
 from newskit import couts  # noqa: E402
+from newskit import reglages  # noqa: E402 — les réglages du média
 
 DOSSIERS_DENSES = cfg.dossiers_denses()
 PYRAMIDE_PLAFOND = 300  # notions rédigées par nuit et par graphe, sauf `pyramide_plafond` au registre (08.10.2026)
@@ -2072,6 +2073,9 @@ def main() -> int:
         notifier(cfg.edition()["nom"], f"{versees} fiches. Couche 2 en retard sur {len(changees)}.")
     courriel()
     return 0
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)
 
 
 if __name__ == "__main__":

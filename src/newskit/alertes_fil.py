@@ -4,7 +4,7 @@ le fil soit toujours alimenté. éventuellement, alertes e-mail par paliers »).
 La collecte continue appelle `surveiller` après chaque passage du fil. Les constats séparent le blocage (des billets
 attendent, rien ne paraît) de la pénurie (les sources se taisent) :
 
-- palier 2, un courriel par jour et par cause : budget du fil à PALIER2_BUDGET du plafond (les tâches secondaires
+- palier 2, un courriel par jour et par cause : budget du fil à fil.PART_SECONDAIRE du plafond (les tâches secondaires
   s'arrêtent), PALIER2_SILENCE minutes sans billet de jour alors que la pile attend, publication sur le serveur en échec
   ECHECS_PUBLICATION fois de suite ;
 - palier 3, un courriel toutes les REPETITION minutes tant que la cause dure : plafond du jour atteint, limite d'usage,
@@ -24,8 +24,8 @@ from newskit import couts
 from newskit import fil
 from newskit import notifier_courriel as nc
 from newskit.commun import RACINE
+from newskit import reglages  # noqa: E402 — les réglages du média
 
-PALIER2_BUDGET = fil.PART_SECONDAIRE
 PALIER2_SILENCE = 60  # minutes sans billet, de jour, pile non vide : blocage
 PALIER3_SILENCE = 180  # minutes sans billet, de jour, quelle qu'en soit la cause
 REPETITION = 120  # minutes entre deux courriels du palier 3 pour la même cause
@@ -53,7 +53,7 @@ def constats(
         out.append(
             (3, "plafond", f"plafond du jour atteint ({depense:.2f} $ sur {plafond:.2f} $) : plus aucun billet rédigé")
         )
-    elif depense >= PALIER2_BUDGET * plafond:
+    elif depense >= fil.PART_SECONDAIRE * plafond:
         out.append(
             (2, "budget", f"budget du fil à {depense / plafond:.0%} : fiches, liens, définitions et anglais arrêtés")
         )
@@ -144,3 +144,6 @@ def corps(F: dict, graphe: str, quand: str, tous: list[tuple[int, str, str]]) ->
         "Journal : cache/collecte_continue.log.",
     ]
     return "\n".join(lignes) + "\n"
+
+
+reglages.appliquer(__name__, globals())  # les réglages du média (reglages.py)

@@ -1,4 +1,4 @@
-"""La lecture audio des billets (mainteneur, 11.11.2026 : voix « K36-93 » retenue ; « la création des audios pourrait être
+"""La lecture audio des billets (mainteneur, 11.11.2026 : voix « K36-93 » retenue ; « après le titre, après le chapeau, et après chaque paragraphe », « sans intertitres » ; « la création des audios pourrait être
 un processus parallèle indépendant » ; « la génération audio prend toujours le billet le plus récent et va descendant
 dans le fil »).
 
@@ -11,6 +11,8 @@ from __future__ import annotations
 import io
 import json
 import py_compile
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -43,6 +45,11 @@ def _config(tmp_path, valeur):
     return p
 
 
+def test_le_config_admet_des_pauses(tmp_path):
+    v = {**R, "pauses": {"titre": 1.5, "chapeau": 0, "paragraphe": 3}}
+    assert media.charger(_config(tmp_path, v))["lecture_audio"]["pauses"]["titre"] == 1.5
+
+
 def test_le_config_admet_la_lecture_audio(tmp_path):
     assert (
         media.charger(_config(tmp_path, {**R, "sigles": {"DNS": "Domain Name System"}}))["lecture_audio"]["vitesse"]
@@ -60,6 +67,11 @@ def test_le_config_admet_la_lecture_audio(tmp_path):
         {**R, "sigles": ["DNS"]},
         "oui",
         {**R, "inconnu": 1},
+        {**R, "pauses": {"titre": 4}},
+        {**R, "pauses": {"titre": -1}},
+        {**R, "pauses": {"titre": True}},
+        {**R, "pauses": {"intertitre": 0.5}},
+        {**R, "pauses": [1.2]},
     ],
 )
 def test_le_config_refuse_une_lecture_audio_mal_formee(tmp_path, valeur):
@@ -110,6 +122,46 @@ def test_l_empreinte_suit_le_texte_la_voix_la_vitesse_et_le_modele():
     assert la.empreinte("texte.", R) != e
 
 
+def test_les_morceaux_suivent_titre_chapeau_et_paragraphes_sans_intertitres():
+    b = _b(
+        "u",
+        "x",
+        resume="Le résumé.",
+        elements=[{"champ": "Contexte", "texte": "Premier."}, {"champ": "Suite", "texte": "Second."}],
+    )
+    assert la.morceaux(b) == [
+        ("titre", "Titre u."),
+        ("chapeau", "Le résumé."),
+        ("paragraphe", "Premier."),
+        ("paragraphe", "Second."),
+    ]
+    assert "\n\n".join(t for _, t in la.morceaux(b)) == la.texte_lu(b)
+
+
+def test_sans_titre_ni_chapeau_les_morceaux_restent_justes():
+    b = _b("u", "x", titre="", descriptif="", elements=[{"champ": "Fait", "texte": "Seul."}])
+    assert la.morceaux(b) == [("paragraphe", "Seul.")]
+    assert la.morceaux(_b("u", "x", titre="")) == [("chapeau", "Texte u")]
+
+
+def test_les_morceaux_gardent_le_developpement_des_sigles():
+    b = _b("u", "x", titre="Le DNS change", descriptif="Le DNS encore.")
+    assert la.morceaux(b, {"DNS": "Domain Name System"}) == [
+        ("titre", "Le Domain Name System change."),
+        ("chapeau", "Le DNS encore."),
+    ]
+
+
+def test_les_pauses_par_defaut_et_celles_du_media():
+    assert la.pauses(R) == {"titre": 1.2, "chapeau": 1.0, "paragraphe": 0.8}
+    assert la.pauses({**R, "pauses": {"titre": 2}}) == {"titre": 2, "chapeau": 1.0, "paragraphe": 0.8}
+
+
+def test_l_empreinte_suit_les_pauses():
+    assert la.empreinte("texte", {**R, "pauses": {"titre": 2}}) != la.empreinte("texte", R)
+    assert la.empreinte("texte", {**R, "pauses": {"titre": 1.2}}) == la.empreinte("texte", R)
+
+
 # 3. La file : du plus récent au plus ancien, sans reprendre un billet à jour
 
 
@@ -143,6 +195,17 @@ class Lecteur:
         pass
 
 
+class Assembleur:
+    def __init__(self):
+        self.faits = []
+
+    def __call__(self, wavs, silences, sortie, vitesse):
+        assert all(Path(w).is_file() for w in wavs)
+        self.faits.append((len(wavs), list(silences), vitesse))
+        Path(sortie).write_bytes(b"wav")
+        return True
+
+
 @pytest.fixture
 def monde(tmp_path, monkeypatch):
     copies = [[_b("a", "2026-11-11 10:00"), _b("b", "2026-11-11 11:00")]]
@@ -158,17 +221,22 @@ def monde(tmp_path, monkeypatch):
         return True
 
     monkeypatch.setattr(la, "encoder", encoder)
+    monkeypatch.setattr(la, "assembler", Assembleur())
     monkeypatch.setattr(
         la, "deposer", lambda dossier, nouveaux, index: depots.append((list(nouveaux), dict(index))) or "déposé"
     )
     return copies, depots, tmp_path
 
 
+def titres(lec):
+    return [t.split(".")[0] for t in lec.lus if t.startswith("Titre")]
+
+
 def test_un_passage_convertit_du_plus_recent_au_plus_ancien_et_depose_apres_chaque_billet(monde):
     _, depots, tmp = monde
     lec = Lecteur()
     assert la.passer(lecteur=lec) == 2
-    assert [t.split(".")[0] for t in lec.lus] == ["Titre b", "Titre a"]
+    assert titres(lec) == ["Titre b", "Titre a"]
     assert len(depots) == 2 and list(depots[0][1]) == ["b"] and set(depots[1][1]) == {"a", "b"}
     assert json.loads((tmp / "audio" / "audio.json").read_text())["billets"] == depots[1][1]
     assert la.passer(lecteur=Lecteur()) == 0  # tout est à jour
@@ -182,7 +250,7 @@ def test_un_billet_entre_pendant_le_passage_est_le_suivant_converti(monde):
     ]
     lec = Lecteur()
     la.passer(lecteur=lec)
-    assert [t.split(".")[0] for t in lec.lus] == ["Titre b", "Titre n", "Titre a"]
+    assert titres(lec) == ["Titre b", "Titre n", "Titre a"]
 
 
 def test_l_index_ne_nomme_que_des_sons_deposes_et_les_nouveaux_partent_avant(monde):
@@ -196,10 +264,26 @@ def test_un_echec_de_kyutai_laisse_le_billet_dans_la_file(monde):
     _, depots, _ = monde
     lec = Lecteur(echecs={"Titre b"})
     assert la.passer(lecteur=lec) == 1
-    assert [t.split(".")[0] for t in lec.lus] == ["Titre b", "Titre a"]  # pas de boucle sur l'échec
+    assert titres(lec) == ["Titre b", "Titre a"]  # pas de boucle sur l'échec
     assert list(depots[-1][1]) == ["a"]
     lec2 = Lecteur()
     assert la.passer(lecteur=lec2) == 1 and lec2.lus[0].startswith("Titre b")  # repris au passage suivant
+
+
+def test_un_passage_lit_chaque_morceau_a_part_puis_assemble_avec_les_pauses(monde):
+    copies, _, _ = monde
+    elements = [{"champ": "Fait", "texte": "Un."}, {"champ": "Suite", "texte": "Deux."}]
+    copies[:] = [[_b("a", "1", resume="Chapeau.", elements=elements)]]
+    lec = Lecteur()
+    assert la.passer(lecteur=lec) == 1
+    assert lec.lus == ["Titre a.", "Chapeau.", "Un.", "Deux."]
+    assert la.assembler.faits == [(4, [1.2, 1.0, 0.8], 0.93)]
+
+
+def test_un_assemblage_en_echec_laisse_le_billet_dans_la_file(monde, monkeypatch):
+    _, depots, _ = monde
+    monkeypatch.setattr(la, "assembler", lambda *a: False)
+    assert la.passer(lecteur=Lecteur()) == 0 and depots == []
 
 
 def test_un_billet_sorti_de_la_copie_sort_de_l_index(monde):
@@ -265,6 +349,44 @@ def test_l_encodage_ralentit_puis_ecrit_opus_et_aac(tmp_path, monkeypatch):
     assert la.encoder(tmp_path / "x.wav", tmp_path / "e", 0.93)
     assert all("atempo=0.93" in c for c in cmds) and len(cmds) == 2
     assert any("libopus" in c for c in cmds) and any(str(tmp_path / "e.mp4") in c for c in cmds)
+
+
+def test_l_assemblage_met_un_silence_entre_les_morceaux_avant_le_ralenti(tmp_path, monkeypatch):
+    cmds = []
+    monkeypatch.setattr(la.subprocess, "run", lambda cmd, **k: cmds.append(cmd) or type("R", (), {"returncode": 0})())
+    wavs = [tmp_path / f"{i}.wav" for i in range(3)]
+    assert la.assembler(wavs, [1.0, 0.5], tmp_path / "x.wav", 0.8)
+    (c,) = cmds
+    assert [c[i + 1] for i, x in enumerate(c) if x == "-t"] == ["0.8", "0.4"]  # 1,0 s et 0,5 s après le ralenti
+    entrees = [c[i + 1] for i, x in enumerate(c) if x == "-i"]
+    assert entrees[0::2] == [str(w) for w in wavs] and len(entrees) == 5
+    assert "concat=n=5" in c[c.index("-filter_complex") + 1] and c[-1] == str(tmp_path / "x.wav")
+
+
+def test_l_assemblage_en_echec_rend_faux(tmp_path, monkeypatch):
+    monkeypatch.setattr(la.subprocess, "run", lambda cmd, **k: type("R", (), {"returncode": 1})())
+    assert not la.assembler([tmp_path / "a.wav"], [], tmp_path / "x.wav", 1.0)
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg absent")
+def test_l_assemblage_reel_donne_la_duree_attendue(tmp_path):
+    wavs = []
+    for i in range(2):
+        w = tmp_path / f"{i}.wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=d=0.5:r=24000", "-ac", "1", str(w)],
+            check=True,
+        )
+        wavs.append(w)
+    sortie = tmp_path / "x.wav"
+    assert la.assembler(wavs, [1.0], sortie, 0.5)
+    duree = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(sortie)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert float(duree) == pytest.approx(1.5, abs=0.05)  # 0,5 + 1,0 × 0,5 + 0,5
 
 
 def test_le_lecteur_kyutai_se_compile_sans_newskit():

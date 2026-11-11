@@ -3721,6 +3721,164 @@ def _html(L: dict, wip: bool = False, web: bool = False, numeros: bool = False, 
     )
 
 
+# --- Le rapport de routine -------------------------------------------------------------------------------------------
+#
+# Mainteneur, 11.11.2026 : « l'envoi WIP -> rapport de routine, avec la partie stats et coulisses uniquement. mieux
+# organiser/mettre en forme cette partie. supprimer l'envoi de la version WIP ». Le mainteneur reçoit la daily comme les
+# abonnés, puis ce rapport : les chiffres du passage, sans la lettre. Toujours en français.
+
+VERT, VERT_FOND = "#1a6b3c", "#eaf6ee"  # « Rien à signaler »
+
+
+def _rapport_sujets(L: dict) -> list[str]:
+    """Les sujets d'enquête du Sélectionneur, désignés par leur titre : le rapport ne porte pas les numéros de la daily."""
+    return [f"{x['titre']} : {x['hypothese']} ({x['raison']}){_meme_source(x)}" for x in L.get("selection") or []]
+
+
+def _rapport_lignes(L: dict) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Les sections du rapport hors tuiles et santé : (titre, [(libellé, valeur)]). Une valeur vide ne paraît pas."""
+    sections = [
+        (
+            "Corpus et graphe",
+            [
+                ("Sources en tout", nombre(L["fiches"])),
+                ("Sources ajoutées", nombre(L["neuf"].lstrip("+") or 0)),
+                ("Notions neuves", nombre(L["notions_neuves"])),
+                ("Identifiants neufs", nombre(L["identifiants"]) if L.get("identifiants") else ""),
+                ("Nœuds", nombre(L["noeuds"]) + (f" ({ecart(L['ecart_noeuds'])})" if L["ecart_noeuds"] else "")),
+                ("Arêtes", nombre(L["aretes"]) + (f" ({ecart(L['ecart_aretes'])})" if L["ecart_aretes"] else "")),
+            ],
+        ),
+        ("Qualité", [("Actualité", _actualite(L) if L.get("actualite") else ""), ("Banc", _banc(L))]),
+        ("Coût", [("Passage et lettre", _cout(L))]),
+    ]
+    return [(t, [(a, b) for a, b in xs if b]) for t, xs in sections if any(b for _, b in xs)]
+
+
+def rapport_objet(L: dict) -> str:
+    """« Rapport de routine — ai-governance — 11 novembre 2026 — 2 points à suivre »."""
+    with _langue({**L, "langue": "fr"}):
+        quand = date_fr(L.get("envoi") or L.get("heure") or "")
+    n = len(L["sante"])
+    suite = f"{n} point{'s' if n > 1 else ''} à suivre" if n else "rien à signaler"
+    etat = "" if L["etat"].startswith("ok") else f" — {L['etat']}"
+    return f"Rapport de routine — {L['nom']} — {quand}{etat} — {suite}"
+
+
+def rapport_texte(L: dict) -> str:
+    """Le rapport en texte simple : les mêmes sections que le HTML, dans le même ordre."""
+    with _langue({**L, "langue": "fr"}):
+        o = [f"RAPPORT DE ROUTINE — {L['nom']}", f"Passage du {heure_fr(L['heure'])}", "", _verdict(L), ""]
+        for titre_, lignes in _rapport_lignes(L):
+            o += _titre_txt(titre_) + [f"  {a:<20}{b}" for a, b in lignes] + [""]
+        o += _titre_txt("Santé du passage")
+        o += [f"  - {s}" for s in L["sante"]] if L["sante"] else ["  Rien à signaler."]
+        o.append("")
+        if _rapport_sujets(L):
+            o += _titre_txt("Sujets d'enquête proposés") + [f"  - {s}" for s in _rapport_sujets(L)] + [""]
+        o += ["--", f"Rapport complet : graphe/{L['graphe']}/ROUTINE.md du dépôt {L['depot']}."]
+        if L["site"]:
+            o.append(f"Mesures et graphes : {L['site']}/#qualite · {L['site']}/#graphes")
+    return ponctuation(guillemets("\n".join(o) + "\n"))
+
+
+def rapport_html(L: dict) -> str:
+    """Le rapport en HTML de courriel, dans l'habit de la lettre (fond, cartes, encre) : une carte d'en-tête avec le
+    verdict et quatre tuiles, une carte par section, la santé en encadré ambre (ou vert, sans point à suivre)."""
+    with _langue({**L, "langue": "fr"}):
+        return _rapport_html(L)
+
+
+def _rapport_html(L: dict) -> str:
+    ok = L["etat"].startswith("ok") and not L["sante"]
+    tuiles = [
+        (nombre(L["neuf"].lstrip("+") or 0), "sources ajoutées"),
+        (nombre(L["notions_neuves"]), "notions neuves"),
+        (nombre(L["noeuds"]) + (f" {ecart(L['ecart_noeuds'])}" if L["ecart_noeuds"] else ""), "nœuds"),
+        (nombre(L["aretes"]) + (f" {ecart(L['ecart_aretes'])}" if L["ecart_aretes"] else ""), "arêtes"),
+    ]
+    # Outlook ignore inline-block : une table fantôme met les tuiles côte à côte (comme les coulisses de la lettre).
+    tuiles_h = (
+        '<!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="134" valign="top"><![endif]-->'
+        + '<!--[if mso]></td><td width="134" valign="top"><![endif]-->'.join(
+            f'<div class="tuile" style="display:inline-block; width:126px; margin:0 8px 8px 0; vertical-align:top;">{TABLE}'
+            f'<tr><td style="padding:10px 12px; background:#ffffff; border:1px solid {FILET}; border-radius:8px;">'
+            f'<div style="{POLICE} font-variant-numeric:tabular-nums; font-size:20px; font-weight:800; color:{TEXTE};">{_e(v)}</div>'
+            f'<div style="{POLICE} font-size:12px; color:{DOUX};">{_e(t)}</div></td></tr></table></div>'
+            for v, t in tuiles
+        )
+        + "<!--[if mso]></td></tr></table><![endif]-->"
+    )
+    rangs = [
+        _carte(
+            _etiquette("Rapport de routine")
+            + _p(_e(L["nom"]), 22, TEXTE, "titre", "6px 0 2px 0", True, interligne="1.25")
+            + _p(f"Passage du {_e(heure_fr(L['heure']))}", 13, DOUX, "t-doux", "0 0 14px 0")
+            + f'{TABLE}<tr><td style="background:{VERT_FOND if ok else AMBRE_FOND}; border-radius:8px; padding:10px 14px;">'
+            + _p(_e(_verdict(L)), 14, VERT if ok else AMBRE, "t-fort", "0", True)
+            + "</td></tr></table>"
+            + _espace(14)
+            + tuiles_h
+        )
+    ]
+    for titre_, lignes in _rapport_lignes(L):
+        table = "".join(
+            f'<tr><td style="{POLICE} font-size:13px; color:{DOUX}; padding:5px 14px 5px 0; vertical-align:top; '
+            f'white-space:nowrap; border-top:1px solid {FILET};">{_e(a)}</td>'
+            f'<td style="{POLICE} font-size:13px; color:{TEXTE}; padding:5px 0; border-top:1px solid {FILET};">{_e(b)}</td></tr>'
+            for a, b in lignes
+        )
+        rangs += [ESPACE, _carte(_etiquette(titre_, "0 0 8px 0") + f"{TABLE}{table}</table>")]
+    if L["sante"]:
+        sante = "".join(_p("• " + _e(s), 13, TEXTE, "t-texte", "0 0 6px 0") for s in L["sante"])
+        sante_h = (
+            f'{TABLE}<tr><td style="background:{AMBRE_FOND}; border:1px solid #f0d9a8; border-radius:8px; padding:10px 14px;">'
+            + sante
+            + "</td></tr></table>"
+        )
+    else:
+        sante_h = _p("Rien à signaler.", 14, VERT, "t-fort", "0", True)
+    rangs += [ESPACE, _carte(_etiquette("Santé du passage", "0 0 8px 0") + sante_h)]
+    if _rapport_sujets(L):
+        rangs += [
+            ESPACE,
+            _carte(
+                _etiquette("Sujets d'enquête proposés", "0 0 8px 0")
+                + "".join(_p("• " + _e(s), 13, TEXTE, "t-texte", "0 0 6px 0") for s in _rapport_sujets(L))
+            ),
+        ]
+    liens = f"Rapport complet : graphe/{_e(L['graphe'])}/ROUTINE.md du dépôt {_e(L['depot'])}." + (
+        f'<br>Mesures et graphes : <a href="{_e(L["site"])}/#qualite" style="color:{LIEN};">'
+        f'{_e(_court(L["site"]))}/#qualite</a> · <a href="{_e(L["site"])}/#graphes" '
+        f'style="color:{LIEN};">{_e(_court(L["site"]))}/#graphes</a>'
+        if L["site"]
+        else ""
+    )
+    rangs.append(
+        f'<tr><td class="pied" align="center" style="{POLICE} padding:16px 8px 0 8px; text-align:center; font-size:12px; '
+        f'line-height:1.5; color:{DOUX};">{liens}</td></tr>'
+    )
+    page = f"""<!DOCTYPE html>
+<html lang="fr" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<title>{_e(rapport_objet(L))}</title>
+{STYLE}
+{MSO}
+</head>
+<body style="margin:0; padding:0; background:{FOND}; color:{TEXTE};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{FOND}" style="background-color:{FOND};">
+<tr><td align="center" class="fond" style="padding:20px 12px 34px 12px;">
+<!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+{chr(10).join(rangs)}
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table>
+</body></html>
+"""
+    return _texte_seul(page, lambda t: ponctuation(guillemets(t)))
+
+
 def lettre_du_graphe(graphe: str, rapport: str, nom: str = "", periode: str = "jour") -> dict | None:
     """La lettre d'un graphe pour une période (« jour » : le dernier passage ; « semaine » : les 8 derniers jours), ou
     None si nouveautes.json n'a pas encore le format B16."""

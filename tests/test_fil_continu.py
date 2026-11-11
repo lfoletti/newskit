@@ -313,3 +313,36 @@ def test_chaque_passage_du_fil_est_surveille(monkeypatch, tmp_path):
     assert cc.main() == 0 and vus == [("g", 3, "échec du dépôt (ssh 255) : x")]
     monkeypatch.setattr(af, "surveiller", lambda *a: 1 / 0)  # une surveillance en panne n'arrête rien
     assert cc.main() == 0
+
+
+def _fil_plein(n):
+    return {
+        "billets": [{"chemin": f"a/{i}.md", "titre": f"t{i}", "date": f"2026-10-{1 + i % 28:02d}"} for i in range(n)]
+    }
+
+
+def test_le_graphe_fixe_la_longueur_du_fil(monkeypatch):
+    # Mainteneur, 11.11.2026 : « la variable FIL_MAX ne devrait pas passer par newskit, mais se faire en corrigeant le
+    # fichier config » ; « monter la limite d'affichage du fil à 400 ».
+    monkeypatch.setattr(fil.cfg, "graphe_declare", lambda g: {"fil_max": 400})
+    assert fil.fil_max("g") == 400
+    F = _fil_plein(400)
+    F["pile"] = [{"chemin": "neuf.md", "titre": "neuf", "date": "2026-11-11"}]
+    monkeypatch.setattr(fil, "maintenant", lambda: f"{JOUR} 10:00")
+    monkeypatch.setattr(ff, "en_attente", lambda F, g, q=None: [])
+    monkeypatch.setattr(fil, "cadence_du_moment", lambda g, n, q: 1)
+    fil.paraitre("g", F)
+    assert len(F["billets"]) == 400 and F["billets"][0]["chemin"] == "neuf.md"
+    assert len(F["archive"]) == 1
+
+
+def test_sans_declaration_le_fil_garde_fil_max(monkeypatch):
+    monkeypatch.setattr(fil.cfg, "graphe_declare", lambda g: {})
+    assert fil.fil_max("g") == fil.FIL_MAX == 300
+
+
+def test_l_arriere_plan_garde_la_longueur_du_graphe():
+    F = _fil_plein(400)
+    F["pile"] = [{"chemin": "vieux.md", "titre": "vieux", "date": "2026-09-01"}]
+    assert fil.arriere_plan(F, f"{JOUR} 10:00", 400) == 1
+    assert len(F["billets"]) == 400 and list(F["archive"]) == ["vieux.md"] and F["pile"] == []

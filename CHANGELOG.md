@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.26] - 2026-11-11
+
+### Ajouté
+
+- Un graphe déclare la longueur de son fil par `fil_max` dans sa configuration. Sans déclaration, le fil garde 300 billets (`FIL_MAX`).
+
 ## [0.1.25] - 2026-11-11
 
 ### Corrigé

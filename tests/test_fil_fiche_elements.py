@@ -426,7 +426,7 @@ def test_paraitre_ne_sort_pas_le_billet_en_attente(banc, monkeypatch):
     F = {"pile": [attend, pret], "billets": []}
     vus = {}
 
-    def liberer(F2, quand, delai):
+    def liberer(F2, quand, delai, garde=fil.FIL_MAX):
         vus["pile"] = list(F2["pile"])
         F2["pile"] = []
         return 1

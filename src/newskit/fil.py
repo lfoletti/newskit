@@ -8,7 +8,7 @@ Après chaque collecte horaire (collecte_continue.py), les fiches neuves d'un gr
 - un appel groupé : titre, descriptif et doublon, selon la convention du billet (docs/STE_ENQUETE.md, section 6) ;
 - le complément : l'angle critique, au graphe seulement (sans web), fondu en dernière phrase au rendu ;
 - plafond : FIL_USD_JOUR par jour, coupure stricte ; chaque appel a sa ligne au registre des coûts (poste « fil »).
-Sortie : graphe/<graphe>/fil.json, par date de l'article puis heure d'entrée, du plus récent au plus ancien, FIL_MAX billets, et son flux RSS fil.xml.
+Sortie : graphe/<graphe>/fil.json, par date de l'article puis heure d'entrée, du plus récent au plus ancien, fil_max billets (FIL_MAX par défaut), et son flux RSS fil.xml.
 
 Usage :
     python3 -m newskit.fil [--graphe <graphe du site>] [--sans-modele]
@@ -42,7 +42,7 @@ JOURS_SANS_PLAFOND = {
     "2026-11-06",
 }  # mainteneur, 04.11, 05.11 et 06.11.2026 : « lève la limite aujourd'hui », « débloque le plafond aujourd'hui »
 PAR_PASSAGE = 25  # billets rédigés par passage, au plus
-FIL_MAX = 300
+FIL_MAX = 300  # défaut ; un graphe déclare le sien (fil_max, mainteneur, 11.11.2026)
 MOTS_MIN = 120
 
 CONSIGNE = """Tu écris les billets du fil d'actualité d'une veille sur {nom}, en français. Pour chaque fiche, rends
@@ -1538,12 +1538,17 @@ def cadence_du_moment(graphe: str, n: int, quand: str) -> float:
     return d if en_routine else garder(n, quand, d)
 
 
-def liberer(F: dict, quand: str, delai: float | None = None) -> int:
+def fil_max(graphe: str) -> int:
+    """Le nombre de billets que garde le fil du graphe : fil_max de sa déclaration, ou FIL_MAX."""
+    return int(cfg.graphe_declare(graphe).get("fil_max") or FIL_MAX)
+
+
+def liberer(F: dict, quand: str, delai: float | None = None, garde: int = FIL_MAX) -> int:
     """Fait paraître les billets de la pile dus à l'instant `quand` ; rend leur nombre. Le plus récent d'abord (date de
     l'article, puis heure de rédaction). `delai` : les minutes entre deux parutions (défaut : la cadence de la pile).
     À dix minutes ou plus : un billet à la fois, jamais de rafale après un silence. Le billet paru prend l'heure de sa
-    parution (`ajoute`) et garde celle de sa rédaction (`redige`)."""
-    fond = arriere_plan(F, quand)
+    parution (`ajoute`) et garde celle de sa rédaction (`redige`). `garde` : le nombre de billets du fil."""
+    fond = arriere_plan(F, quand, garde)
     pile = F.get("pile") or []
     if not pile:
         return fond
@@ -1557,23 +1562,23 @@ def liberer(F: dict, quand: str, delai: float | None = None) -> int:
         return fond
     pile = classer(pile)
     sortis, F["pile"] = pile[:n], pile[n:]
-    _entrer(F, sortis, quand)
+    _entrer(F, sortis, quand, garde)
     F["paru_le"] = quand
     return fond + len(sortis)
 
 
-def _entrer(F: dict, sortis: list[dict], quand: str) -> None:
+def _entrer(F: dict, sortis: list[dict], quand: str, garde: int = FIL_MAX) -> None:
     """Les billets `sortis` entrent au fil à l'heure `quand` (`ajoute`), avec l'heure de leur rédaction (`redige`)."""
     for b in sortis:
         b["redige"], b["ajoute"] = b.get("ajoute") or quand, quand
     tous = classer(sortis + (F.get("billets") or []))
-    F["billets"] = tous[:FIL_MAX]
+    F["billets"] = tous[:garde]
     # Un billet qui sort du fil garde son résumé : le refus d'un auteur le lit (refus.py, mainteneur, 06.11.2026).
-    for x in tous[FIL_MAX:]:
+    for x in tous[garde:]:
         F.setdefault("archive", {})[x["chemin"]] = {k: x[k] for k in ("titre", "descriptif", "en") if x.get(k)}
 
 
-def arriere_plan(F: dict, quand: str) -> int:
+def arriere_plan(F: dict, quand: str, garde: int = FIL_MAX) -> int:
     """Les billets de la pile qui se rangeraient après le dernier du panneau (article d'une date antérieure) entrent au
     fil tout de suite, sans prendre de tour : la cadence ne sert qu'aux billets que le panneau montre (mainteneur, 06.11.2026 :
     « les autres (qui ne paraissent pas dans le fil) sont ajoutées en background »). Rend leur nombre."""
@@ -1584,7 +1589,7 @@ def arriere_plan(F: dict, quand: str) -> int:
     fond = [b for b in F["pile"] if str(b.get("date") or "") < seuil]
     if fond:
         F["pile"] = [b for b in F["pile"] if str(b.get("date") or "") >= seuil]
-        _entrer(F, fond, quand)
+        _entrer(F, fond, quand, garde)
     return len(fond)
 
 
@@ -1597,7 +1602,7 @@ def paraitre(graphe: str, F: dict) -> int:
     quand = maintenant()
     attente = fil_fiche.en_attente(F, graphe, quand)
     F["pile"] = [b for b in F["pile"] if not any(b is x for x in attente)]
-    n = liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand))
+    n = liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand), fil_max(graphe))
     F["pile"] = F["pile"] + attente
     return n
 

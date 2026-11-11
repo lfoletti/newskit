@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.25] - 2026-11-11
+
+### Corrigé
+
+- La docstring de `rapport_objet` ne nomme plus un graphe d'une édition : le moteur ne porte aucun nom d'édition.
+
 ## [0.1.24] - 2026-11-11
 
 ### Modifié

@@ -134,7 +134,7 @@ def fiche_texte() -> str:
 
 @pytest.fixture(autouse=True)
 def selection_sans_modele(monkeypatch):
-    """La WIP envoyée par un test n'appelle jamais le Sélectionneur réel (un appel au modèle) ; ses tests
+    """Le rapport de routine envoyé par un test n'appelle jamais le Sélectionneur réel (un appel au modèle) ; ses tests
     (test_selectionneur.py) remettent la vraie fonction."""
     from newskit import notifier_courriel
 

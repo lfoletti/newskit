@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.23] - 2026-11-11
+
+### Modifié
+
+- Le mainteneur ne reçoit plus la WIP (la daily numérotée avec les coulisses). Il reçoit la daily, comme les abonnés, puis un rapport de routine : les chiffres du passage, sans la lettre. Objet : « Rapport de routine — <graphe> — <date> — <n> points à suivre ».
+- Le rapport range les chiffres par section : en-tête avec le verdict et quatre tuiles, puis « Corpus et graphe », « Qualité » (actualité, banc), « Coût », « Santé du passage » et « Sujets d'enquête proposés ». Une section sans valeur ne paraît pas. Le verdict est vert sans point à suivre, ambre sinon. Les sujets proposés sont désignés par leur titre. Le rapport est toujours en français.
+- La page de travail numérotée (`--essai <dossier> --wip`) reste disponible.
+
 ## [0.1.22] - 2026-11-10
 
 ### Modifié

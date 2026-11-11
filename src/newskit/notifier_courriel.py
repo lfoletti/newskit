@@ -652,7 +652,7 @@ def main() -> int:
     if lettre_ is not None:
         c_ = cfg.charger()["credences"].get(COMPTE_LETTRE) or {}
         lettre_.setdefault("expediteur", commun.adresse(c_["de"]) if c_.get("de") else "")
-        # La daily est la même pour tous, le mainteneur compris (mainteneur, 04.11.2026) ; il reçoit en plus la WIP (wip()).
+        # La daily est la même pour tous, le mainteneur compris (mainteneur, 04.11.2026) ; il reçoit en plus le rapport de routine (rapport()).
         objet, corps, html = lt.objet(lettre_), lt.texte(lettre_), lt.html(lettre_)
     else:
         objet, corps = resumer(texte)
@@ -677,13 +677,13 @@ def main() -> int:
     code = envoyer(objet, corps, html, compte=COMPTE_LETTRE) if lettre_ is not None else envoyer(objet, corps, html)
     if lettre_ is not None and code == 0:
         lettre_["selection"] = selection(lettre_, graphe or cfg.GRAPHE_PRINCIPAL)
-        code = envoyer(*wip(lettre_))
+        code = envoyer(*rapport(lettre_))
     return code
 
 
 def selection(L: dict, graphe: str) -> list[dict]:
-    """Les sujets d'enquête proposés par le Sélectionneur pour les Coulisses de la WIP (mainteneur, 04.11.2026) ; jamais
-    bloquant : une panne laisse partir la WIP sans eux."""
+    """Les sujets d'enquête proposés par le Sélectionneur pour le rapport de routine (mainteneur, 04.11.2026) ; jamais
+    bloquant : une panne laisse partir le rapport sans eux."""
     try:
         from newskit import selectionneur  # noqa: PLC0415
 
@@ -693,13 +693,13 @@ def selection(L: dict, graphe: str) -> list[dict]:
         return []
 
 
-def wip(L: dict) -> tuple[str, str, str]:
-    """La WIP du mainteneur, à l'adresse du registre seule : la daily, chaque élément numéroté en fin de texte pour le
-    désigner en approfondissement, et les Coulisses (le passage, les chiffres du graphe, la santé) en bas de page
-    (mainteneur, 04.11.2026). (objet, texte, html)."""
+def rapport(L: dict) -> tuple[str, str, str]:
+    """Le rapport de routine du mainteneur, à l'adresse du registre seule : les chiffres du passage, la santé et les
+    sujets proposés, sans la lettre (mainteneur, 11.11.2026 : « l'envoi WIP -> rapport de routine, avec la partie stats
+    et coulisses uniquement [...] supprimer l'envoi de la version WIP »). (objet, texte, html)."""
     from newskit import lettre as lt  # noqa: PLC0415
 
-    return ("[WIP] " + lt.objet(L), lt.texte(L, numeros=True, coulisses=True), lt.html(L, numeros=True, coulisses=True))
+    return lt.rapport_objet(L), lt.rapport_texte(L), lt.rapport_html(L)
 
 
 if __name__ == "__main__":

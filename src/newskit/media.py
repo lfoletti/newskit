@@ -89,6 +89,7 @@ CHAMPS = {
     "sources",
     "diffusion",
     "lettre_aux_abonnes",
+    "lecture_audio",
     "registre_des_graphes",
     "reglages",
 } | BLOCS
@@ -102,6 +103,28 @@ PROPRES = {
 
 class ConfigMediaInvalide(ValueError):
     pass
+
+
+LECTURE_AUDIO = {"modele", "voix", "vitesse", "sigles"}
+VITESSE = (0.8, 1.2)
+
+
+def _valider_lecture_audio(v, nom: str) -> None:
+    """La lecture audio des billets (lecture_audio.py) : modèle et voix nommés, vitesse entre 0,8 et 1,2, sigles en
+    table (sigle → forme longue)."""
+    if not isinstance(v, dict) or set(v) - LECTURE_AUDIO or not {"modele", "voix", "vitesse"} <= set(v):
+        raise ConfigMediaInvalide(
+            f"{nom} : lecture_audio : modele, voix et vitesse attendus ; admis {sorted(LECTURE_AUDIO)}"
+        )
+    for k in ("modele", "voix"):
+        if not isinstance(v[k], str) or not v[k].strip():
+            raise ConfigMediaInvalide(f"{nom} : lecture_audio.{k} : un nom attendu, lu {v[k]!r}")
+    vit = v["vitesse"]
+    if isinstance(vit, bool) or not isinstance(vit, (int, float)) or not VITESSE[0] <= vit <= VITESSE[1]:
+        raise ConfigMediaInvalide(f"{nom} : lecture_audio.vitesse : de {VITESSE[0]} à {VITESSE[1]}, lu {vit!r}")
+    s = v.get("sigles", {})
+    if not isinstance(s, dict) or not all(isinstance(a, str) and isinstance(b, str) for a, b in s.items()):
+        raise ConfigMediaInvalide(f"{nom} : lecture_audio.sigles : une table sigle → forme longue")
 
 
 def est_un_media(dossier: Path) -> bool:
@@ -149,6 +172,8 @@ def charger(chemin: Path = FICHIER) -> dict:
         raise ConfigMediaInvalide(f"{chemin.name} : diffusion : un module .py relatif au dossier du média, lu {f!r}")
     if "lettre_aux_abonnes" in d and not isinstance(d["lettre_aux_abonnes"], bool):
         raise ConfigMediaInvalide(f"{chemin.name} : lettre_aux_abonnes : true ou false, lu {d['lettre_aux_abonnes']!r}")
+    if "lecture_audio" in d:
+        _valider_lecture_audio(d["lecture_audio"], chemin.name)
     r = d.get("registre_des_graphes")
     if r is not None and (not isinstance(r, str) or not r.strip()):
         raise ConfigMediaInvalide(f"{chemin.name} : registre_des_graphes : un chemin de fichier, lu {r!r}")

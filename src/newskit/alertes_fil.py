@@ -54,9 +54,7 @@ def constats(
             (3, "plafond", f"plafond du jour atteint ({depense:.2f} $ sur {plafond:.2f} $) : plus aucun billet rédigé")
         )
     elif depense >= fil.PART_SECONDAIRE * plafond:
-        out.append(
-            (2, "budget", f"budget du fil à {depense / plafond:.0%} : fiches, liens, définitions et anglais arrêtés")
-        )
+        out.append((2, "budget", f"budget du fil à {depense / plafond:.0%} : fiches, liens et définitions arrêtés"))
     if en_limite:
         out.append((3, "limite", "limite d'usage de l'abonnement atteinte : plus aucun billet rédigé"))
     if echecs_fil >= ECHECS_FIL:

@@ -2,6 +2,13 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.29] - 2026-11-11
+
+### Modifié
+
+- Au palier 2 du budget du fil (80 % du plafond du jour), la version anglaise des billets continue avec la rédaction, jusqu’au plafond. Un billet sans version anglaise ne paraît pas sur le site : le palier arrêtait donc la parution.
+- Le courriel du palier 2 nomme les tâches arrêtées : fiches, liens et définitions.
+
 ## [0.1.28] - 2026-11-11
 
 ### Ajouté

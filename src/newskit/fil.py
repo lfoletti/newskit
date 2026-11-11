@@ -1633,13 +1633,13 @@ def a_relire(F: dict) -> list[dict]:
     return [b for b in F["pile"] + F["billets"] if "tenu" not in b]
 
 
-PART_SECONDAIRE = 0.8  # part du plafond du jour au-delà de laquelle seule la rédaction des billets neufs tourne
+PART_SECONDAIRE = 0.8  # part du plafond du jour au-delà de laquelle seules la rédaction et l'anglais tournent
 
 
 def budget_secondaire(F: dict, graphe: str, jour: str) -> float:
     """Le budget du jour qui reste aux tâches secondaires (rapprochement, relecture des billets d'avant, définitions,
-    liens, anglais, fiches) : elles s'arrêtent à PART_SECONDAIRE du plafond, la rédaction des billets neufs continue
-    jusqu'au plafond (mainteneur, 11.11.2026)."""
+    liens, fiches) : elles s'arrêtent à PART_SECONDAIRE du plafond, la rédaction des billets neufs et leur version
+    anglaise continuent jusqu'au plafond (mainteneur, 11.11.2026)."""
     return max(0.0, PART_SECONDAIRE * plafond(jour, graphe) - depense_du_jour(F, jour))
 
 
@@ -1764,7 +1764,9 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
 
     cout += definir(F, graphe, sec())  # le terme que la source n'explique pas
     cout += lier(F, graphe) if sec() >= 0.10 else 0.0  # les billets neufs avec ceux du registre
-    cout += fil_anglais().anglais(F, graphe, sec())  # la version anglaise, d'après la source
+    # La version anglaise, d'après la source, jusqu'au plafond comme la rédaction : sans elle, le billet ne paraît pas
+    # (publier_fil.aligne ; mainteneur, 11.11.2026, option A).
+    cout += fil_anglais().anglais(F, graphe, max(0.0, reste - cout))
     cout += fil_fiche.etoffer(F, graphe, sec())  # le texte long de la fiche, d'après la source
     parus += paraitre(graphe, F)
     # Lue : le modèle a répondu sur la fiche. Une fiche sans réponse (appel échoué) reste à lire : « lue sans

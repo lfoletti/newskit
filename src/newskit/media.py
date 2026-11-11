@@ -105,13 +105,15 @@ class ConfigMediaInvalide(ValueError):
     pass
 
 
-LECTURE_AUDIO = {"modele", "voix", "vitesse", "sigles"}
+LECTURE_AUDIO = {"modele", "voix", "vitesse", "sigles", "pauses"}
 VITESSE = (0.8, 1.2)
+PAUSES = {"titre", "chapeau", "paragraphe"}
+PAUSE_MAX = 3
 
 
 def _valider_lecture_audio(v, nom: str) -> None:
     """La lecture audio des billets (lecture_audio.py) : modèle et voix nommés, vitesse entre 0,8 et 1,2, sigles en
-    table (sigle → forme longue)."""
+    table (sigle → forme longue), pauses en secondes (de 0 à 3) après le titre, le chapeau ou un paragraphe."""
     if not isinstance(v, dict) or set(v) - LECTURE_AUDIO or not {"modele", "voix", "vitesse"} <= set(v):
         raise ConfigMediaInvalide(
             f"{nom} : lecture_audio : modele, voix et vitesse attendus ; admis {sorted(LECTURE_AUDIO)}"
@@ -125,6 +127,15 @@ def _valider_lecture_audio(v, nom: str) -> None:
     s = v.get("sigles", {})
     if not isinstance(s, dict) or not all(isinstance(a, str) and isinstance(b, str) for a, b in s.items()):
         raise ConfigMediaInvalide(f"{nom} : lecture_audio.sigles : une table sigle → forme longue")
+    p = v.get("pauses", {})
+    if (
+        not isinstance(p, dict)
+        or set(p) - PAUSES
+        or not all(not isinstance(s, bool) and isinstance(s, (int, float)) and 0 <= s <= PAUSE_MAX for s in p.values())
+    ):
+        raise ConfigMediaInvalide(
+            f"{nom} : lecture_audio.pauses : secondes de 0 à {PAUSE_MAX} pour {sorted(PAUSES)}, lu {p!r}"
+        )
 
 
 def est_un_media(dossier: Path) -> bool:

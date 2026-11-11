@@ -7,6 +7,9 @@ son à chaque billet qui n'en a pas d'à jour, du plus récent au plus ancien. I
 index (audio.json : adresse du billet → empreinte). Après chaque billet, il relit la copie et repart du haut : un billet
 entrant passe avant le retard. Le site montre un picto audio pour chaque billet de l'index.
 
+Chaque morceau du billet (titre, chapeau, paragraphes, sans les intertitres) se lit à part ; ffmpeg les assemble avec
+un silence après chacun (mainteneur, 11.11.2026 : « après le titre, après le chapeau, et après chaque paragraphe »).
+
 Le modèle (Kyutai TTS, MLX) tourne dans un environnement Python à part : NEWSKIT_AUDIO_PYTHON nomme son interpréteur,
 qui lance kyutai_lecteur.py et garde le modèle chargé le temps du passage. ffmpeg ralentit le son (vitesse) et l'écrit
 en Opus, puis en AAC. Les réglages viennent de `lecture_audio` dans le config.yaml du média.
@@ -39,7 +42,8 @@ CACHE = RACINE / "cache" / "audio"
 FORMATS = (".webm", ".mp4")  # Opus, puis AAC pour les navigateurs sans Opus
 DUREE_MAX = 50 * 60  # secondes de conversion par passage, au plus : le passage suivant reprend
 LIRE_MAX = 15 * 60  # secondes pour un billet ; au-delà, le lecteur est arrêté (un modèle bloqué garderait le verrou)
-VERSION = 1  # la façon de lire le texte ; la changer refait tous les sons
+VERSION = 2  # la façon de lire le texte ; la changer refait tous les sons (2 : lecture par morceaux, avec pauses)
+PAUSES = {"titre": 1.2, "chapeau": 1.0, "paragraphe": 0.8}  # secondes de silence après chaque morceau, sauf le dernier
 LECTEUR = Path(__file__).with_name("kyutai_lecteur.py")
 
 
@@ -77,23 +81,40 @@ def _net(t: str) -> str:
     return " ".join(t.split())
 
 
-def texte_lu(b: dict, sigles: dict | None = None) -> str:
-    """Le texte que la voix lit : titre, chapeau (résumé, sinon descriptif), textes des éléments sans leurs intertitres.
-    Signes remplacés ; un sigle de `sigles` se développe à sa première apparition, si le texte ne le développe pas."""
+def _pieces(b: dict) -> list[tuple[str, str]]:
     titre = _net(b.get("titre"))
     if titre and titre[-1] not in ".!?…":
         titre += "."
-    corps = [_net(b.get("resume") or b.get("descriptif"))] + [_net(e.get("texte")) for e in b.get("elements") or []]
-    t = "\n\n".join(p for p in [titre, *corps] if p)
+    p = [("titre", titre), ("chapeau", _net(b.get("resume") or b.get("descriptif")))]
+    p += [("paragraphe", _net(e.get("texte"))) for e in b.get("elements") or []]
+    return [(g, x) for g, x in p if x]
+
+
+def texte_lu(b: dict, sigles: dict | None = None) -> str:
+    """Le texte que la voix lit : titre, chapeau (résumé, sinon descriptif), textes des éléments sans leurs intertitres.
+    Signes remplacés ; un sigle de `sigles` se développe à sa première apparition, si le texte ne le développe pas."""
+    t = "\n\n".join(x for _, x in _pieces(b))
     for sigle, long in (sigles or {}).items():
         if long not in t:
             t = re.sub(rf"\b{re.escape(sigle)}\b", long, t, count=1)
     return t
 
 
+def morceaux(b: dict, sigles: dict | None = None) -> list[tuple[str, str]]:
+    """Les morceaux lus un à un : (titre, chapeau ou paragraphe ; texte). Ensemble, ils font le texte lu : un morceau ne
+    contient pas de saut de paragraphe, `_net` les retire."""
+    return list(zip([g for g, _ in _pieces(b)], texte_lu(b, sigles).split("\n\n"), strict=True))
+
+
+def pauses(r: dict) -> dict:
+    """Les silences après chaque genre de morceau : ceux du média, sinon PAUSES."""
+    return {**PAUSES, **(r.get("pauses") or {})}
+
+
 def empreinte(texte: str, r: dict) -> str:
-    """Le nom du son : il change avec le texte lu, la voix, la vitesse ou le modèle."""
-    cle = json.dumps([VERSION, texte, r["modele"], r["voix"], r["vitesse"]], ensure_ascii=False)
+    """Le nom du son : il change avec le texte lu, la voix, la vitesse, le modèle ou les pauses."""
+    p = pauses(r)
+    cle = json.dumps([VERSION, texte, r["modele"], r["voix"], r["vitesse"], [p[g] for g in PAUSES]], ensure_ascii=False)
     return hashlib.sha256(cle.encode()).hexdigest()[:16]
 
 
@@ -154,6 +175,33 @@ def encoder(wav: Path, base: Path, vitesse: float) -> bool:
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(wav), "-af", f"atempo={vitesse}", "-ac", "1", *codec]
         codes.append(subprocess.run([*cmd, str(base) + ext], capture_output=True, check=False).returncode)
     return not any(codes)
+
+
+def assembler(wavs: list[Path], silences: list[float], sortie: Path, vitesse: float) -> bool:
+    """Les morceaux bout à bout, un silence entre deux. Le silence est raccourci d'avance de `vitesse` : après le
+    ralenti de l'encodage, il dure ce que dit le réglage."""
+    entrees, n = [], 0
+    for i, w in enumerate(wavs):
+        entrees += ["-i", str(w)]
+        n += 1
+        if i < len(silences):
+            entrees += ["-f", "lavfi", "-t", f"{round(silences[i] * vitesse, 3):g}", "-i", "anullsrc=r=24000:cl=mono"]
+            n += 1
+    filtre = "".join(f"[{k}:a]aresample=24000,aformat=sample_fmts=fltp:channel_layouts=mono[a{k}];" for k in range(n))
+    filtre += "".join(f"[a{k}]" for k in range(n)) + f"concat=n={n}:v=0:a=1[o]"
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", *entrees, "-filter_complex", filtre, "-map", "[o]", str(sortie)]
+    return not subprocess.run(cmd, capture_output=True, check=False).returncode
+
+
+def lire_billet(lec, b: dict, r: dict, e: str) -> bool:
+    """Le billet lu morceau par morceau, puis assemblé et encodé sous le nom `e`."""
+    m = morceaux(b, r.get("sigles"))
+    wavs = [CACHE / f"{e}.{i}.wav" for i in range(len(m))]
+    if not m or not all(lec.lire(x, w) for (_, x), w in zip(m, wavs, strict=True)):
+        return False
+    p = pauses(r)
+    wav = CACHE / f"{e}.wav"
+    return assembler(wavs, [p[g] for g, _ in m[:-1]], wav, r["vitesse"]) and encoder(wav, CACHE / e, r["vitesse"])
 
 
 def deposer(dossier: Path, nouveaux: list[str], index: dict, env: Path = publier_fil.ENV) -> str:
@@ -255,15 +303,14 @@ def passer(lecteur=None, horloge=time.monotonic) -> int:
                 file = [x for x in a_convertir(billets, index, r) if x[0].get("url") not in echoues]
                 if not file or horloge() - debut > DUREE_MAX:
                     break
-                b, texte, e = file[0]
+                b, _, e = file[0]
                 if lec is None:
                     try:
                         lec = Lecteur(r)
                     except (RuntimeError, OSError) as err:
                         print(f"modèle indisponible : {err}", file=sys.stderr)
                         break
-                wav = CACHE / f"{e}.wav"
-                if not (lec.lire(texte, wav) and encoder(wav, CACHE / e, r["vitesse"])):
+                if not lire_billet(lec, b, r, e):
                     print(f"échec de la conversion : {b.get('url')}", file=sys.stderr)
                     echoues.add(b.get("url"))
                     continue

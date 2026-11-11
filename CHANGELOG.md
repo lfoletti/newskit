@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.31] - 2026-11-11
+
+### Modifié
+
+- La lecture audio lit chaque morceau du billet à part : le titre, le chapeau, puis chaque paragraphe. Les intertitres restent absents. ffmpeg assemble les morceaux avec un silence après chacun : 1,2 s après le titre, 1,0 s après le chapeau, 0,8 s après un paragraphe.
+- La clé `pauses` de `lecture_audio` change ces durées, de 0 à 3 secondes. L’empreinte d’un son suit les pauses : une durée changée refait les sons.
+- Tous les sons se refont une fois, car la façon de lire change (version 2).
+
 ## [0.1.30] - 2026-11-11
 
 ### Ajouté

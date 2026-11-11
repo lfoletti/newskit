@@ -137,14 +137,22 @@ def _passer(monkeypatch, depense):
 
 def test_sous_quatre_vingts_pour_cent_les_taches_secondaires_tournent(monkeypatch):
     b = _passer(monkeypatch, 50.0)
-    assert b["definir"] == b["anglais"] == b["etoffer"] == pytest.approx(30.0)
+    assert b["definir"] == b["etoffer"] == pytest.approx(30.0)
+    assert b["anglais"] == pytest.approx(50.0)  # l'anglais suit le plafond, comme la rédaction
     assert b["lier"] and b["rapprocher"] and b["relus"] == 1
 
 
 def test_au_dela_de_quatre_vingts_pour_cent_seule_la_redaction_tourne(monkeypatch):
     b = _passer(monkeypatch, 85.0)
-    assert b["definir"] == b["anglais"] == b["etoffer"] == 0.0
+    assert b["definir"] == b["etoffer"] == 0.0
     assert "lier" not in b and "rapprocher" not in b and b["relus"] == 0  # les billets d'avant attendent demain
+
+
+def test_au_dela_de_quatre_vingts_pour_cent_l_anglais_continue_jusqu_au_plafond(monkeypatch):
+    """Mainteneur, 11.11.2026 (option A) : un billet sans version anglaise ne paraît pas (publier_fil.aligne). Au palier
+    2, l'anglais continue donc avec la rédaction, jusqu'au plafond du jour."""
+    assert _passer(monkeypatch, 85.0)["anglais"] == pytest.approx(15.0)
+    assert _passer(monkeypatch, 99.0)["anglais"] == pytest.approx(1.0)
 
 
 # 3. La réserve de la pile contre les heures sans nouvelle

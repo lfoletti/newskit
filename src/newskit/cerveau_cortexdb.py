@@ -40,6 +40,8 @@ BINAIRE = Path(
     os.environ.get("CORTEXDB_BINAIRE") or Path.home() / ".local" / "bin" / "cortexdb-grpc"
 )  # deployer_cortexdb.py (C1)
 PYTHON_CLIENT = RACINE / "cache" / "pilote_cortexdb" / "venv" / "bin" / "python"  # cortexdb_client
+# Le chemin que reçoit le Python du client : un lien vers le paquet Newskit, rien d'autre (13.11.2026).
+CHEMIN_CLIENT = RACINE / "cache" / "pilote_cortexdb" / "chemin"
 DOSSIER = Path(os.environ.get("CORTEXDB_DOSSIER") or RACINE / "cache" / "cortexdb")  # un banc écrit ailleurs
 EN_PLACE_DES = (
     2,
@@ -402,6 +404,27 @@ class Encodeur:
         return f"http://127.0.0.1:{self.port}/v1"
 
 
+def env_du_client() -> dict:
+    """L'environnement du Python du client (venv du pilote, qui n'a que cortexdb_client) : PYTHONPATH porte un dossier
+    où ne vit qu'un lien vers le paquet Newskit installé. Du 08.11 au 13.11.2026, le versement mourait chaque nuit sur
+    « No module named 'newskit' » et le cerveau publié restait celui du 7 novembre. Le dossier des paquets du poste
+    n'est pas ouvert au client : ses grpcio et protobuf masqueraient ceux du client."""
+    lien = CHEMIN_CLIENT / "newskit"
+    CHEMIN_CLIENT.mkdir(parents=True, exist_ok=True)
+    if lien.is_symlink() and lien.resolve() != CODE:
+        lien.unlink()
+    if not lien.exists():
+        lien.symlink_to(CODE, target_is_directory=True)
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join([str(CHEMIN_CLIENT), *[p for p in [env.get("PYTHONPATH")] if p]])
+    return env
+
+
+def lancer_client(args: list[str]) -> subprocess.CompletedProcess:
+    """Un script de Newskit sous le Python du client (le versement)."""
+    return subprocess.run(args, capture_output=True, text=True, timeout=6 * 3600, env=env_du_client())
+
+
 def appeler_outil(serveur: Serveur, nom: str, args: dict) -> dict:
     code = (
         "import json, sys\nfrom cortexdb_client import CortexClient, proto\n"
@@ -414,6 +437,7 @@ def appeler_outil(serveur: Serveur, nom: str, args: dict) -> dict:
         capture_output=True,
         text=True,
         timeout=6 * 3600,
+        env=env_du_client(),
     )
     if r.returncode:
         raise RuntimeError(f"{nom} : {r.stderr[-500:]}")
@@ -539,7 +563,7 @@ def construire(
             s.jeton,
             *options,
         ]
-        return subprocess.run(args, capture_output=True, text=True, timeout=6 * 3600)
+        return lancer_client(args)
 
     if mode == "en_place":
         # En place, l'encodeur sert dès le versement : sans lui, CortexDB remplit un document neuf de vecteurs lexicaux

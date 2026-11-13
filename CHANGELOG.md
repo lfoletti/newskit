@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.41] - 2026-11-13
+
+### Corrigé
+
+- Le versement au cerveau CortexDB trouve Newskit : le Python du client (`cache/pilote_cortexdb/venv`) reçoit un chemin qui ne porte qu’un lien vers le paquet installé (`cerveau_cortexdb.env_du_client`, `lancer_client`). Du 8 au 13 novembre, chaque nuit, le versement mourait sur « No module named 'newskit' », en « non bloquant » ; le cerveau publié restait celui du 7 novembre. Les paquets du poste ne sont pas ouverts au client : leurs grpcio et protobuf masqueraient ceux du client.
+
 ## [0.1.40] - 2026-11-13
 
 ### Changé

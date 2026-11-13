@@ -114,7 +114,7 @@ def _passer(monkeypatch, depense):
     monkeypatch.setattr(fil, "rediger", lambda lot, recents, g: ([], 0.0))
     monkeypatch.setattr(fil, "proposer", lambda *a: None)
     monkeypatch.setattr(fil, "textes_du_registre", lambda F: {})
-    monkeypatch.setattr(fil, "relire", lambda billets, g, F=None: budgets.__setitem__("relus", len(billets)) or 0.0)
+    monkeypatch.setattr(fil, "relire", lambda billets, g: budgets.__setitem__("relus", len(billets)) or 0.0)
     monkeypatch.setattr(fil, "reviser_titres", lambda b, g: 0.0)
     monkeypatch.setattr(fil, "completer", lambda b, g, reste: 0.0)
     monkeypatch.setattr(fil, "a_relire", lambda F: [F["billets"][0]])

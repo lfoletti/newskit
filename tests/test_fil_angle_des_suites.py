@@ -99,7 +99,7 @@ def _passer(monkeypatch, F, cands, reps, textes, relire=None):
     monkeypatch.setattr(fil, "proposer", lambda *a: None)
     monkeypatch.setattr(fil, "textes_du_registre", lambda F_: textes)
     monkeypatch.setattr(fil, "rapprocher", lambda F_, g: 0.0)
-    monkeypatch.setattr(fil, "relire", relire or (lambda billets, g, F_=None: 0.0))
+    monkeypatch.setattr(fil, "relire", relire or (lambda billets, g: 0.0))
     monkeypatch.setattr(fil, "reviser_titres", lambda b, g: 0.0)
     monkeypatch.setattr(fil, "completer", lambda b, g, reste: 0.0)
     monkeypatch.setattr(fil, "enrichir", lambda b: None)
@@ -276,27 +276,36 @@ def test_une_suite_que_la_reecriture_ne_met_pas_sur_son_angle_se_fond_dans_sa_no
     s = _suite("Jensen Huang quitte la direction de Nvidia")
     F = _F(a, s)
     reecritures += [{"titre": "Jensen Huang part", "texte": "Jensen Huang a quitté Nvidia."}] * fil.REECRITURES
-    fil.relire([s], "g", F)
+    fil.relire([s], "g")
+    assert s["tenu"] is False and s["sans_angle"] is True
+    assert fil.fondre_sans_angle(F, [s]) == 1
     assert F["billets"] == [a] and nv.nouvelle_de(F, "s/fortune.md") is a
     assert s["fondu_dans"] == "s/a.md"
 
 
-def test_sans_registre_une_suite_sans_angle_n_est_pas_tenue(relecture):
+def test_un_billet_non_tenu_qui_n_est_pas_une_suite_ne_se_fond_pas(relecture):
     _, reecritures = relecture
+    a = _b("a", ALJAZEERA)
     s = _suite("Jensen Huang quitte la direction de Nvidia")
-    reecritures += [{"titre": "Jensen Huang part", "texte": "Jensen Huang a quitté Nvidia."}] * fil.REECRITURES
-    fil.relire([s], "g")
-    assert s["tenu"] is False and "fondu_dans" not in s
+    s["sans_angle"] = True  # sans origine au registre : rien où se fondre
+    s["tenu"] = False
+    F = _F(a, s)
+    s["suite_de"] = "s/inconnue.md"
+    assert fil.fondre_sans_angle(F, [s]) == 0 and "fondu_dans" not in s
+    s["suite_de"], s["tenu"] = "s/a.md", True  # tenue : elle reste
+    assert fil.fondre_sans_angle(F, [s]) == 0
+    x = _b("x", tenu=False, suite_de="s/a.md")  # non tenue, sans `sans_angle` : hors du fil, sans fonte
+    F["billets"].append(x)
+    assert fil.fondre_sans_angle(F, [x]) == 0 and x in F["billets"]
 
 
-def test_au_passage_une_suite_fondue_par_la_relecture_ne_parait_pas(monkeypatch):
+def test_au_passage_une_suite_sans_angle_ne_parait_pas_et_rejoint_sa_nouvelle(monkeypatch):
     a = _b("a", ALJAZEERA)
     F = _F(a)
 
-    def relire(billets, g, F_=None):
+    def relire(billets, g):
         for b in billets:
-            nv.fusionner(F_, a, b)
-            b["fondu_dans"] = a["chemin"]
+            b["tenu"], b["sans_angle"] = False, True
         return 0.0
 
     _passer(monkeypatch, F, [_cand("marcus")], [_rep(DEV_KRESS)], {"s/a.md": ALJAZEERA}, relire=relire)

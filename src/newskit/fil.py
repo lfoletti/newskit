@@ -682,7 +682,7 @@ def angle_tenu(b: dict, titre: str, texte: str) -> bool:
     return nv.dit_le_fait(titre, b["neuf"]) and nv.dit_le_fait(premiere, b["neuf"])
 
 
-def relire(billets: list[dict], graphe: str, F: dict | None = None) -> float:
+def relire(billets: list[dict], graphe: str) -> float:
     """La relecture adverse d'un lot, titre et texte ensemble ; rend son coût. Un billet refusé (écart de forme, fait
     absent de la source, titre ou texte qui arrête le lecteur) est réécrit, et le relecteur juge la réécriture ; une
     réécriture qu'il refuse est reprise, REECRITURES fois en tout. Reste un titre et un texte de la même main, parmi
@@ -691,8 +691,8 @@ def relire(billets: list[dict], graphe: str, F: dict | None = None) -> float:
     `tenu` ; l'ancien titre, l'ancien texte et les reproches restent au billet (`relecture`), les écarts gardés aussi
     (`ecarts`), et la notion que le lecteur ne connaît pas et que la source n'explique pas (`terme` : sa définition
     se cherche ailleurs, la réécriture la garde). Non tenu : ses reproches sont dans `ecarts`, et ses essais au journal des refus. Un billet sans verdict
-    reste à relire. Une suite dont aucun essai ne fait du fait neuf son angle (angle_tenu) se fond dans la nouvelle
-    dont elle est la suite, quand le registre `F` est donné (`fondu_dans`) ; sans lui, elle n'est pas tenue."""
+    reste à relire. Une suite dont aucun essai ne fait du fait neuf son angle (angle_tenu), ou qui n'est pas tenue
+    pour une autre raison, reçoit `sans_angle` : fondre_sans_angle la rend à sa nouvelle."""
     fiches = lt.charger_fiches([b["chemin"] for b in billets])
     lot = [(b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches]
     refus = []
@@ -777,7 +777,7 @@ def relire(billets: list[dict], graphe: str, F: dict | None = None) -> float:
             essais[n].append((*neufs[n], v[k]))
             if v[k]["absents"] or not v[k]["clair"] or v[k]["pays"] or not angle_tenu(lot[n][0], *neufs[n]):
                 a_reecrire[n] = reproches(n)
-    changes = non_tenus = fondues = 0
+    changes = non_tenus = 0
     for n in essais:
         b, f = lot[n]
         if n in sans_verdict:
@@ -786,14 +786,10 @@ def relire(billets: list[dict], graphe: str, F: dict | None = None) -> float:
         mains = [
             (t, x, v) for t, x, v in reversed(essais[n]) if v["clair"] and not v["absents"] and angle_tenu(b, t, x)
         ]
-        origine = next((y for y in nv.toutes(F) if y.get("chemin") == b.get("suite_de")), None) if F else None
-        if not mains and origine is not None and b.get("neuf"):  # une suite sans angle : une source de plus
-            nv.fusionner(F, origine, b)
-            b["fondu_dans"] = origine["chemin"]
-            fondues += 1
-            continue
         if not mains:
             b["tenu"], b["ecarts"] = False, premiers[n]
+            if b.get("suite_de") and b.get("neuf"):  # une suite sans billet tenu : sa source rejoint sa nouvelle
+                b["sans_angle"] = True
             non_tenus += 1
             journaliser_refus(
                 graphe,
@@ -831,9 +827,24 @@ def relire(billets: list[dict], graphe: str, F: dict | None = None) -> float:
     print(
         f"relecture : {len(v1)} billet(s) jugé(s), {len([r for r in premiers.values() if r])} refusé(s), "
         f"{changes} réécrit(s), {non_tenus} non tenu(s)"
-        + (f", {fondues} suite(s) fondue(s) faute d'angle" if fondues else "")
     )
     return cout
+
+
+def fondre_sans_angle(F: dict, billets: list[dict]) -> int:
+    """Une suite que la relecture n'a pas su mettre sur son fait neuf (`sans_angle`) n'est pas une nouvelle : elle
+    devient une source de plus de la nouvelle dont elle est la suite (`fondu_dans`). Rend leur nombre."""
+    par_chemin = {x.get("chemin"): x for x in nv.toutes(F)}
+    fondues = 0
+    for b in billets:
+        origine = par_chemin.get(b.get("suite_de"))
+        if b.get("sans_angle") and b.get("tenu") is False and origine is not None and origine is not b:
+            nv.fusionner(F, origine, b)
+            b["fondu_dans"] = origine["chemin"]
+            fondues += 1
+    if fondues:
+        print(f"relecture : {fondues} suite(s) sans angle fondue(s) dans leur nouvelle")
+    return fondues
 
 
 # La révision des titres (mainteneur, 9.11.2026 : « l'expression des titres est toujours médiocre... on manque du sens
@@ -1854,9 +1865,9 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
             }
         )
     anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(neufs))]
-    cout += relire(neufs + anciens, graphe, F)  # avant le complément : il part du billet relu
-    # Sans titre ni texte qui tienne, ou suite fondue faute d'angle : pas de billet.
-    neufs = [b for b in neufs if b.get("tenu") is not False and not b.get("fondu_dans")]
+    cout += relire(neufs + anciens, graphe)  # avant le complément : il part du billet relu
+    fondre_sans_angle(F, neufs + anciens)  # une suite sans angle : une source de plus de sa nouvelle
+    neufs = [b for b in neufs if b.get("tenu") is not False]  # sans titre ni texte qui tienne : pas de billet
     cout += reviser_titres(neufs, graphe)  # trois titres, puis un juge (mainteneur, 9.11.2026)
     cout += completer(neufs, graphe, max(0.0, reste - cout))
     for b in neufs + [x for x in anciens if x.get("relecture")]:  # le billet relu entre à la fiche, donc au graphe

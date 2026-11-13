@@ -27,7 +27,7 @@ def test_le_passage_revise_les_titres_apres_la_relecture(monkeypatch):
         "rubrique_finale": lambda f, r, rubs: "",
         "langue_source": lambda f: "fr",
         "maintenant": lambda: "now",
-        "relire": lambda b, g, F=None: ordre.append("relire") or 0.0,
+        "relire": lambda b, g: ordre.append("relire") or 0.0,
         "reviser_titres": lambda b, g: ordre.append(("reviser", [x["chemin"] for x in b])) or 0.5,
         "completer": lambda b, g, r: ordre.append("completer") or 0.0,
         "enrichir": lambda b: None,

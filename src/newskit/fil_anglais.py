@@ -245,7 +245,7 @@ def _angle(b: dict, titre: str, texte: str) -> list[str]:
     """Le titre et la première phrase d'une suite nomment son fait neuf (fil.angle_tenu ; mainteneur, 13.11.2026)."""
     if fil.angle_tenu(b, titre, texte):
         return []
-    return [f"the title and the first sentence do not say the new fact: {b.get('developpement') or ''}"]
+    return [fil.reproche_angle(b, "en")]
 
 
 def _reproches(titre: str, texte: str, v: dict) -> list[str]:

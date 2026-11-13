@@ -682,6 +682,34 @@ def angle_tenu(b: dict, titre: str, texte: str) -> bool:
     return nv.dit_le_fait(titre, b["neuf"]) and nv.dit_le_fait(premiere, b["neuf"])
 
 
+def a_nommer(b: dict) -> list[str]:
+    """Les mots du fait neuf d'une suite, dans leur forme du développement, voisins réunis (« Harvey Jones ») : ce que
+    son titre doit dire. Un terme que le développement ne porte pas se nomme tel quel. Rien pour un autre billet."""
+    if not (b.get("suite_de") and b.get("neuf")):
+        return []
+    dev, neuf = str(b.get("developpement") or ""), set(b["neuf"])
+    pris = [m.span() for m in nv.RE_NOMBRE.finditer(dev) if "#" + nv._nombres(m.group(0))[0] in neuf]
+    pris += [m.span() for m in re.finditer(r"\w+", dev) if nv._plier(m.group(0)) in neuf]
+    groupes: list[list[int]] = []
+    for d, f in sorted(pris):
+        if groupes and not dev[groupes[-1][1] : d].strip():
+            groupes[-1][1] = max(groupes[-1][1], f)
+        else:
+            groupes.append([d, f])
+    noms = list(dict.fromkeys(dev[d:f].strip() for d, f in groupes))
+    vus = {nv._plier(m) for n in noms for m in re.findall(r"\w+", n)} | {"#" + x for n in noms for x in nv._nombres(n)}
+    return noms + [t.lstrip("#") for t in b["neuf"] if t not in vus]
+
+
+def reproche_angle(b: dict, langue: str) -> str:
+    """Le reproche fait à une suite qui ne nomme pas son fait neuf : les mots à dire, puis le fait (13.11.2026 : un
+    reproche qui ne disait que le fait laissait le rédacteur sur le nom déjà dit par la nouvelle d'avant)."""
+    noms, dev = ", ".join(a_nommer(b)), b.get("developpement") or ""
+    if langue == "en":
+        return f"the title and the first sentence must name the new fact ({noms}): {dev}"
+    return f"le titre et la première phrase ne nomment pas le fait neuf ({noms}) : {dev}"
+
+
 def relire(billets: list[dict], graphe: str) -> float:
     """La relecture adverse d'un lot, titre et texte ensemble ; rend son coût. Un billet refusé (écart de forme, fait
     absent de la source, titre ou texte qui arrête le lecteur) est réécrit, et le relecteur juge la réécriture ; une
@@ -716,11 +744,7 @@ def relire(billets: list[dict], graphe: str) -> float:
         titre, texte, x = essais[n][essai]
         r = [*forme(titre, texte, lot[n][1]), *(f"absent de la source : {a}" for a in x["absents"])]
         b = lot[n][0]
-        angle = (
-            []
-            if angle_tenu(b, titre, texte)
-            else [f"le titre et la première phrase ne disent pas le fait neuf : {b.get('developpement') or ''}"]
-        )
+        angle = [] if angle_tenu(b, titre, texte) else [reproche_angle(b, "fr")]
         return r + ([x["motif"] or "peu clair"] if not x["clair"] else []) + pays_manquant(x) + angle
 
     premiers = {n: reproches(n) for n in essais}

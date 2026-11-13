@@ -2,6 +2,16 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.35] - 2026-11-13
+
+### Ajouté
+
+- Une page par fiche, à une adresse lisible (`pages_fiches.py`) : `/<langue>/<titre de la fiche>-<identifiant>`, le titre en minuscules, sans accents ni ponctuation, coupé entre deux mots. L’identifiant est celui du site : le serveur retrouve la fiche par lui seul, d’une seule règle. Un titre réécrit change l’adresse ; l’ancienne mène encore à la fiche, dont le lien canonique nomme la nouvelle.
+- Pour chaque billet publié, le Mac dépose sur le serveur l’en-tête de la page, la fiche en HTML simple et la carte d’aperçu, dans les deux langues, à chaque passage de la collecte. L’en-tête porte le titre, la description, le lien canonique, les liens entre les langues, l’aperçu (og : et twitter :) et les données structurées d’un article de presse. La fiche se lit sans script : un titre de niveau 1, le chapeau, la date, la source, un titre de niveau 2 par élément.
+- Seule une fiche développée s’indexe : un billet bref porte `noindex`. Le plan des fiches (`plan_fiches.xml`) liste les fiches développées, celles sorties du registre comprises.
+- La carte d’aperçu (1200 × 630) se dessine avec Pillow d’après la marque que le média déclare (`pages_fiches : marque :` dans `config.yaml`) : points du logo, polices, couleurs, nom, textes des deux langues. Chrome sans écran échouait sous le daemon.
+- Dépendance : Pillow.
+
 ## [0.1.34] - 2026-11-13
 
 ### Modifié

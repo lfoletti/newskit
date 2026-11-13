@@ -33,6 +33,7 @@ from newskit import fil  # noqa: E402
 from newskit import notifier_courriel as nc  # noqa: E402
 from newskit import alertes_fil  # noqa: E402
 from newskit import publier_fil  # noqa: E402
+from newskit import pages_fiches  # noqa: E402 — une page par fiche (13.11.2026)
 from newskit import routine_hebdo as rh  # noqa: E402
 
 chemin_fil = fil.chemin_fil
@@ -136,6 +137,11 @@ def main() -> int:
         if g == rh.cfg.graphe_du_site():  # le graphe de la page d'accueil : son fil part sur le VPS (04.11.2026)
             publication = publier_fil.publier(chemin_fil(g).parent)
             print(time.strftime("%Y-%m-%d %H:%M"), g, "fil en ligne :", publication, flush=True)
+            try:  # une page par fiche ; sa panne n'arrête jamais le fil
+                pages = pages_fiches.publier(g)
+            except Exception as e:  # noqa: BLE001
+                pages = type(e).__name__
+            print(time.strftime("%Y-%m-%d %H:%M"), g, "pages des fiches :", pages, flush=True)
         surveiller(g, r.returncode, publication)
     ligne = inscriptions()
     if ligne:

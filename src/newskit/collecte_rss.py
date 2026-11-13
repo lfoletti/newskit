@@ -430,7 +430,10 @@ def meta_de_page(html: str) -> dict:
         elif isinstance(aut, str):
             meta["auteur"] = aut
         kw = d.get("keywords")
-        meta["mots_cles"] = ", ".join(kw) if isinstance(kw, list) else str(kw or "")
+        # Des nombres ou des vides parmi les mots-clés (13.11.2026) : chacun en texte, les vides dehors.
+        meta["mots_cles"] = (
+            ", ".join(str(k) for k in kw if k not in (None, "")) if isinstance(kw, list) else str(kw or "")
+        )
         break
     if not meta.get("date"):
         # Les balises méta de date, dans l'ordre de fiabilité : celles des pages académiques (RePEc, revues), puis

@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.43] - 2026-11-13
+
+### Corrigé
+
+- Une page dont le ld+json mêle des nombres à ses mots-clés se lit : `meta_de_page` les écrit en texte et laisse les vides dehors. La reprise des fiches de l’OCDE s’arrêtait sur une erreur de type (un nombre au lieu d’un texte) ; une source déclarée `agregateur` aurait fait de même à la collecte.
+
 ## [0.1.42] - 2026-11-13
 
 ### Ajouté

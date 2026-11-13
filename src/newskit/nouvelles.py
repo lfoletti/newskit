@@ -198,12 +198,54 @@ def proches(cible: set[str], autres: dict[str, set[str]], k: int = PROCHES, plaf
     return [c for c in sorted(notes, key=lambda c: -notes[c]) if notes[c] > 0][:k]
 
 
-def fait_neuf(developpement: str, avant: str) -> bool:
+# Qui rapporte le fait n'est pas le fait (13.11.2026 : « Colette Kress assure l'intérim, d'après Gary Marcus » passait
+# pour un fait neuf par le seul nom de Gary Marcus, auteur de la source).
+RE_ATTRIBUTION = re.compile(
+    r"\b(?i:d['’]\s?après|selon|according to)\s+(?:(?:le|la|les|l['’])\s?)?[A-ZÀ-ÖØ-Þ][\w.-]*(?:[ -][A-ZÀ-ÖØ-Þ][\w.-]*)*"
+)
+
+
+def termes_neufs(developpement: str, avant: str, auteurs=()) -> list[str]:
+    """Ce qu'un développement apporte que les sources d'avant ne disent pas : les nombres (« #13% »), et les mots des
+    noms propres (pliés). Ni le nom qui suit « d'après », « selon » ou « according to », ni le nom d'un auteur ou d'un
+    éditeur de la source (`auteurs`) : ils disent qui rapporte le fait."""
+    dev = RE_ATTRIBUTION.sub(" ", str(developpement or ""))
+    connus = set(re.findall(r"\w+", _plier(" ".join([str(avant or ""), *(str(a or "") for a in auteurs)]))))
+    mots = {m for n in _noms(dev) for m in re.findall(r"\w+", n) if len(m) > 2}
+    nombres = {"#" + n for n in set(_nombres(dev)) - set(_nombres(str(avant or "")))}
+    return sorted(nombres) + sorted(mots - connus)
+
+
+def fait_neuf(developpement: str, avant: str, auteurs=()) -> bool:
     """Un développement porte un fait neuf : un nombre, une date ou un nom propre absent des sources d'avant. Sans
     cela, la source redit la nouvelle : elle s'y attache."""
-    connus = set(re.findall(r"\w+", _plier(str(avant or ""))))
-    mots = {m for n in _noms(str(developpement or "")) for m in re.findall(r"\w+", n) if len(m) > 2}
-    return bool(set(_nombres(str(developpement or ""))) - set(_nombres(str(avant or ""))) or mots - connus)
+    return bool(termes_neufs(developpement, avant, auteurs))
+
+
+def dit_le_fait(texte: str, neuf: list[str]) -> bool:
+    """Le texte nomme le fait neuf d'une suite : un de ses termes (termes_neufs), mot entier ou nombre."""
+    mots = set(re.findall(r"\w+", _plier(str(texte or ""))))
+    nombres = {"#" + n for n in _nombres(str(texte or ""))}
+    return any(t in nombres if t.startswith("#") else t in mots for t in neuf or [])
+
+
+def affaire(F: dict, b: dict) -> list[dict]:
+    """Les nouvelles de la même affaire que `b`, `b` comprise, dans l'ordre du registre : celles que relient les suites
+    (`suite_de`, dans les deux sens) et le contexte (fil.lier)."""
+    tous = toutes(F)
+    par_chemin = {x.get("chemin"): x for x in tous}
+    vus, file = {id(b)}, [b]
+    while file:
+        x = file.pop()
+        voisins = [par_chemin.get(x.get("suite_de"))]
+        voisins += [y for y in tous if y.get("suite_de") == x.get("chemin")]
+        if x.get("contexte"):
+            voisins += [y for y in tous if y.get("contexte") == x["contexte"]]
+        for y in voisins:
+            if y is not None and id(y) not in vus:
+                vus.add(id(y))
+                file.append(y)
+    return [x for x in tous if id(x) in vus] or [b]
 
 
 def fusionner(F: dict, garde: dict, absorbe: dict) -> None:

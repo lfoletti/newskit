@@ -2,6 +2,13 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.34] - 2026-11-13
+
+### Modifié
+
+- La version anglaise d’une suite garde son angle. Sa rédaction et sa réécriture reçoivent le fait neuf (« developpement »). Son titre et la première phrase de son texte le nomment, sinon elle est réécrite avec ce reproche. Une version anglaise qui ne le nomme jamais n’est pas tenue.
+- Inventaire fait : le titre et le texte d’un billet s’écrivent à quatre endroits (la relecture, la révision des titres, la fiche, la version anglaise). Les quatre tiennent maintenant l’angle d’une suite.
+
 ## [0.1.33] - 2026-11-13
 
 ### Modifié

@@ -65,6 +65,8 @@ source only: write from the source, every name, number and fact comes from it. R
   sentence carries one fact; a short source gives a short text, without padding. The speaker carries the attribution
   ("According to Name (Institution), ..."). Never "According to <publisher>" when the publisher is the source. A
   research paper: "Researchers X and Y ...".
+- an item that carries "developpement" follows a news item already published: this new fact is its angle; the title
+  says it, the first sentence of the text says it, and the earlier event comes after, as context;
 {regles}Return the object {{"billets": [...]}}.
 
 Items:
@@ -111,6 +113,8 @@ item you receive the refused title and text, the reviewer's objections and the s
   replaces the jargon word; a little-known person or organisation is followed by its role, or replaced by it; no
   question; {mots} words and {max} characters at most;
 - texte: 30 to 70 words, 4 sentences at most, 2 numbers at most besides dates; the first sentence says what the source establishes or argues; the speaker carries the attribution ("According to Name (Institution), ...").
+- an item that carries "developpement" follows a news item already published: this new fact is its angle; the title
+  says it, the first sentence of the text says it, and the earlier event comes after, as context;
 {regles}Return the object {{"billets": [...]}}.
 
 Items:
@@ -232,6 +236,18 @@ def _juger(
     return out, cout
 
 
+def _suite(b: dict) -> dict:
+    """Le fait neuf d'une suite, donné au rédacteur et à la réécriture ; rien pour un autre billet."""
+    return {"developpement": b["developpement"]} if b.get("suite_de") and b.get("neuf") else {}
+
+
+def _angle(b: dict, titre: str, texte: str) -> list[str]:
+    """Le titre et la première phrase d'une suite nomment son fait neuf (fil.angle_tenu ; mainteneur, 13.11.2026)."""
+    if fil.angle_tenu(b, titre, texte):
+        return []
+    return [f"the title and the first sentence do not say the new fact: {b.get('developpement') or ''}"]
+
+
 def _reproches(titre: str, texte: str, v: dict) -> list[str]:
     return [
         *forme(titre, texte),
@@ -273,6 +289,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
                         "editeur": f.get("editeur"),
                         "date": b.get("date") or f.get("date"),
                         "titre": f.get("titre"),
+                        **_suite(b),
                         "source": fil.extrait(b, SOURCE_MAX),
                     },
                     ensure_ascii=False,
@@ -295,8 +312,9 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
         for n, (t, x) in a_juger.items():
             if n in v:
                 essais[n].append((t, x, v[n]))
-                if v[n]["absents"] or not v[n]["clair"] or v[n]["pays"]:
-                    refuses[n] = _reproches(t, x, v[n])
+                angle = _angle(lot[n][0], t, x)
+                if v[n]["absents"] or not v[n]["clair"] or v[n]["pays"] or angle:
+                    refuses[n] = _reproches(t, x, v[n]) + angle
         if not refuses or tour == REECRITURES:
             break
         r, c = fil.demander(
@@ -312,6 +330,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
                             "titre": essais[n][-1][0],
                             "texte": essais[n][-1][1],
                             "reproches": m,
+                            **_suite(lot[n][0]),
                             "source": fil.extrait(lot[n][0], SOURCE_MAX),
                         },
                         ensure_ascii=False,
@@ -329,9 +348,10 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
     for n, liste in essais.items():
         if not liste:
             continue  # sans verdict : reste à écrire
-        mains = [(t, x, v) for t, x, v in reversed(liste) if v["clair"] and not v["absents"]]
+        b = lot[n][0]
+        mains = [(t, x, v) for t, x, v in reversed(liste) if v["clair"] and not v["absents"] and not _angle(b, t, x)]
         if not mains:
-            ecrits[n] = {"tenu": False, "reproches": _reproches(*liste[0])}
+            ecrits[n] = {"tenu": False, "reproches": _reproches(*liste[0]) + _angle(b, *liste[0][:2])}
             continue
         t, x, _ = min(mains, key=lambda m: (bool(m[2]["pays"]), len(forme(m[0], m[1]))))
         ecrits[n] = {"titre": t, "texte": x, "tenu": True}

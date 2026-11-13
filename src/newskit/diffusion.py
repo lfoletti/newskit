@@ -21,23 +21,20 @@ from types import ModuleType
 from newskit.commun import RACINE  # noqa: E402
 from newskit import media  # noqa: E402
 
-_module: ModuleType | None = None
+_charges: dict[str, ModuleType] = {}
 
 
-def module() -> ModuleType | None:
-    """Le module de diffusion que nomme config.yaml, chargé une fois ; None sans déclaration."""
-    global _module
-    if _module is not None:
-        return _module
-    nom = media.courant().get("diffusion")
-    if not nom:
-        return None
+def charger(nom: str) -> ModuleType:
+    """Le module de l'édition `nom` (un .py relatif au dossier du média), chargé une fois. Sert aussi au pas
+    `apres_redaction` du passage (collecte_continue)."""
     chemin = RACINE / nom
+    if str(chemin) in _charges:
+        return _charges[str(chemin)]
     if not chemin.is_file():
-        raise FileNotFoundError(f"config.yaml : diffusion {nom} introuvable sous {RACINE}")
+        raise FileNotFoundError(f"config.yaml : {nom} introuvable sous {RACINE}")
     deja = sys.modules.get(chemin.stem)
     if deja is not None and Path(getattr(deja, "__file__", "") or "").resolve() == chemin.resolve():
-        _module = deja  # le même fichier, déjà importé sous son nom : une seule instance
+        _charges[str(chemin)] = deja  # le même fichier, déjà importé sous son nom : une seule instance
         return deja
     if str(chemin.parent) not in sys.path:
         sys.path.insert(0, str(chemin.parent))  # le module de l'édition importe ses voisins
@@ -45,8 +42,14 @@ def module() -> ModuleType | None:
     m = importlib.util.module_from_spec(spec)
     sys.modules[chemin.stem] = m
     spec.loader.exec_module(m)
-    _module = m
+    _charges[str(chemin)] = m
     return m
+
+
+def module() -> ModuleType | None:
+    """Le module de diffusion que nomme config.yaml, chargé une fois ; None sans déclaration."""
+    nom = media.courant().get("diffusion")
+    return charger(nom) if nom else None
 
 
 def envoyer(lettre: dict) -> int:

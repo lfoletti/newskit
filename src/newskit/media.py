@@ -14,6 +14,7 @@ dossier courant s'il porte un `config.yaml` de média, sinon le dépôt du code)
       extraction: claude-opus-5-5
     sources: sources.yaml        # le fichier des sources, relatif au dossier
     diffusion: newskit.abonnes   # le module de l'édition qui sert ses abonnés (diffusion.py) ; aucun par défaut
+    apres_redaction: scripts/contacts.py   # un pas de l'édition après le fil de chaque passage ; aucun par défaut
     lettre_aux_abonnes: true     # la daily part aussi aux abonnés, sans validation (notifier_courriel) ; false par défaut
     registre_des_graphes: graphes.json   # libellés et sujets déclarés des graphes, réécrits par le moteur (défaut)
     graphes: {…}                 # et les autres blocs du registre que le média tient lui-même (BLOCS)
@@ -88,6 +89,7 @@ CHAMPS = {
     "modeles",
     "sources",
     "diffusion",
+    "apres_redaction",
     "lettre_aux_abonnes",
     "lecture_audio",
     "pages_fiches",
@@ -189,11 +191,12 @@ def charger(chemin: Path = FICHIER) -> dict:
     for role, v in mod.items():
         if not isinstance(v, str) or not v.strip():
             raise ConfigMediaInvalide(f"{chemin.name} : modeles.{role} : le nom d'un modèle")
-    f = d.get("diffusion")
-    if f is not None and (
-        not isinstance(f, str) or not f.endswith(".py") or Path(f).is_absolute() or ".." in Path(f).parts
-    ):
-        raise ConfigMediaInvalide(f"{chemin.name} : diffusion : un module .py relatif au dossier du média, lu {f!r}")
+    for champ in ("diffusion", "apres_redaction"):
+        f = d.get(champ)
+        if f is not None and (
+            not isinstance(f, str) or not f.endswith(".py") or Path(f).is_absolute() or ".." in Path(f).parts
+        ):
+            raise ConfigMediaInvalide(f"{chemin.name} : {champ} : un module .py relatif au dossier du média, lu {f!r}")
     if "lettre_aux_abonnes" in d and not isinstance(d["lettre_aux_abonnes"], bool):
         raise ConfigMediaInvalide(f"{chemin.name} : lettre_aux_abonnes : true ou false, lu {d['lettre_aux_abonnes']!r}")
     if "lecture_audio" in d:

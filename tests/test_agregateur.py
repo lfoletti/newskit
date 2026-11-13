@@ -277,6 +277,7 @@ def test_la_page_garde_son_html_seulement_sur_demande(monkeypatch):
     monkeypatch.setattr(rss.ss, "imite", lambda h: False)
     monkeypatch.setattr(rss.ss, "succes", lambda *a: None)
     monkeypatch.setattr(rss, "_ouvrir", lambda url, req: page)
+    monkeypatch.setattr(rss, "agent_robot", lambda: "robot-de-test")  # la CI n'a pas d'adresse de contact
     assert "html" not in rss.corps_de_page("https://oecd.ai/x")[3]
     assert rss.corps_de_page("https://oecd.ai/x", garder_html=True)[3]["html"] == page.decode()
 

@@ -101,3 +101,8 @@ def test_la_redaction_de_la_fiche_recoit_le_fait_neuf_d_une_suite(banc):
     ff.etoffer({"billets": [{**billet(), "developpement": DEV}]}, "g", 20)  # sans suite_de : pas un fait neuf
     (x,) = [json.loads(ligne) for ligne in banc["invite"].split("\n") if ligne.startswith('{"n"')]
     assert "developpement" not in x
+
+
+def test_la_consigne_de_la_fiche_demande_l_angle_d_une_suite():
+    assert "Un billet qui porte « developpement » est la suite d'une nouvelle déjà parue" in ff.REDACTION_ELEMENTS
+    assert "titre_en le disent, la première phrase de resume et de resume_en aussi" in ff.REDACTION_ELEMENTS

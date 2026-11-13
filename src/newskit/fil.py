@@ -518,9 +518,15 @@ def poser_langues(billets: list[dict], charger=None) -> int:
 
 
 def classer(billets: list[dict]) -> list[dict]:
-    """Le fil par date de l'article, puis par heure d'entrée pour les articles du même jour (mainteneur, 05.11.2026 :
-    « classe par date de l'article »). Rangé par heure d'entrée seule, un article ancien rédigé tard coiffait les
-    nouvelles du jour. Un billet sans date va en fin de liste."""
+    """Le fil par heure de parution (`ajoute`), la plus récente en tête, puis par date de l'article (mainteneur,
+    13.11.2026 : « ok, trie par heure de parution »). Rangé par date de l'article (05.11.2026), un article de la veille
+    paru à 12:52 passait sous ceux du jour parus à 11:47 : la tête du fil ne bougeait plus. Un billet sans heure de
+    parution va en fin de liste."""
+    return sorted(billets, key=lambda b: (str(b.get("ajoute") or ""), str(b.get("date") or "")), reverse=True)
+
+
+def classer_pile(billets: list[dict]) -> list[dict]:
+    """La pile par date de l'article, puis par heure de rédaction : l'article le plus récent paraît d'abord."""
     return sorted(billets, key=lambda b: (str(b.get("date") or ""), str(b.get("ajoute") or "")), reverse=True)
 
 
@@ -1683,24 +1689,25 @@ def liberer(F: dict, quand: str, delai: float | None = None, garde: int = FIL_MA
     """Fait paraître les billets de la pile dus à l'instant `quand` ; rend leur nombre. Le plus récent d'abord (date de
     l'article, puis heure de rédaction). `delai` : les minutes entre deux parutions (défaut : la cadence de la pile).
     À dix minutes ou plus : un billet à la fois, jamais de rafale après un silence. Le billet paru prend l'heure de sa
-    parution (`ajoute`) et garde celle de sa rédaction (`redige`). `garde` : le nombre de billets du fil."""
-    fond = arriere_plan(F, quand, garde)
+    parution (`ajoute`) et garde celle de sa rédaction (`redige`). `garde` : le nombre de billets du fil. Chaque billet
+    prend son tour, même un article plus ancien que ceux du panneau (mainteneur, 13.11.2026 : « tous à la cadence » ;
+    l'entrée en arrière-plan du 06.11.2026 est retirée)."""
     pile = F.get("pile") or []
     if not pile:
-        return fond
+        return 0
     d, n = delai or delai_de_parution(len(pile)), 1
     if d == math.inf:  # la nuit, la réserve se refait
-        return fond
+        return 0
     if F.get("paru_le"):
         n = int((_instant(quand) - _instant(F["paru_le"])).total_seconds() / 60 // d)
         n = min(n, 1 if d >= PILE_DELAI else PILE_PAR_PASSAGE)
     if n <= 0:
-        return fond
-    pile = classer(pile)
+        return 0
+    pile = classer_pile(pile)
     sortis, F["pile"] = pile[:n], pile[n:]
     _entrer(F, sortis, quand, garde)
     F["paru_le"] = quand
-    return fond + len(sortis)
+    return len(sortis)
 
 
 def _entrer(F: dict, sortis: list[dict], quand: str, garde: int = FIL_MAX) -> None:
@@ -1712,21 +1719,6 @@ def _entrer(F: dict, sortis: list[dict], quand: str, garde: int = FIL_MAX) -> No
     # Un billet qui sort du fil garde son résumé : le refus d'un auteur le lit (refus.py, mainteneur, 06.11.2026).
     for x in tous[garde:]:
         F.setdefault("archive", {})[x["chemin"]] = {k: x[k] for k in ("titre", "descriptif", "en") if x.get(k)}
-
-
-def arriere_plan(F: dict, quand: str, garde: int = FIL_MAX) -> int:
-    """Les billets de la pile qui se rangeraient après le dernier du panneau (article d'une date antérieure) entrent au
-    fil tout de suite, sans prendre de tour : la cadence ne sert qu'aux billets que le panneau montre (mainteneur, 06.11.2026 :
-    « les autres (qui ne paraissent pas dans le fil) sont ajoutées en background »). Rend leur nombre."""
-    billets = classer(F.get("billets") or [])
-    if len(billets) < PANNEAU or not F.get("pile"):
-        return 0
-    seuil = str(billets[PANNEAU - 1].get("date") or "")
-    fond = [b for b in F["pile"] if str(b.get("date") or "") < seuil]
-    if fond:
-        F["pile"] = [b for b in F["pile"] if str(b.get("date") or "") >= seuil]
-        _entrer(F, fond, quand, garde)
-    return len(fond)
 
 
 def paraitre(graphe: str, F: dict) -> int:
@@ -1807,7 +1799,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     vues = set(F.get("vues") or [])
     F.setdefault("pile", [])
     change = False
-    if not sans_modele:  # les billets d'avant : leur langue, et le fil rangé par date de l'article
+    if not sans_modele:  # les billets d'avant : leur langue, et le fil rangé par heure de parution
         poses, ranges = poser_langues(F["billets"] + F["pile"]), classer(F["billets"])
         poses += poser_versions(F["billets"] + F["pile"])
         change = bool(poses or ranges != F["billets"])

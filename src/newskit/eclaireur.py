@@ -106,15 +106,6 @@ def compter_domaine(memoire: dict, domaine: str, graphe: str, aujourdhui: str) -
         depots.etudier_source(domaine, memoire, aujourdhui)
 
 
-def noter_trouvaille(url: str, graphe: str, aujourdhui: str) -> None:
-    """Un article trouvé hors de l'éclaireur (l'origine d'une page d'agrégateur, 13.11.2026 ; mainteneur : « les adresses
-    en source deviennent parfois de nouvelles sources pour la routine ») compte comme une trouvaille de son domaine."""
-    memoire = lire_memoire()
-    compter_domaine(memoire, domaine_de(url), graphe, aujourdhui)
-    MEMOIRE.parent.mkdir(parents=True, exist_ok=True)
-    MEMOIRE.write_text(json.dumps(memoire, ensure_ascii=False, indent=1), encoding="utf-8")
-
-
 def adresses_connues(graphe: str) -> set[str]:
     """Les adresses (canoniques) et les identifiants arXiv des fiches que le graphe a déjà, sous-dossiers compris :
     l'index d'identité de fiche (06.11.2026 ; avant, un glob d'un seul niveau et la seule barre finale retirée)."""
@@ -419,6 +410,10 @@ def declarer_sources(graphe: str, memoire: dict, registre: Path | None = None) -
         for s in toutes
     }
     lexique = next((s.propres["mots_cles"] for s in cfg.toutes(graphe=graphe) if s.propres.get("mots_cles")), None)
+    # Le sujet du graphe : une source n'entre que si elle en parle surtout (13.11.2026). Sans déclaration, pas de mesure.
+    spec = cfg.graphe_declare(graphe).get("specialisation")
+    from newskit import depots  # noqa: PLC0415
+
     cles = {s.cle for s in toutes}
     out = []
     for dom, d in memoire["domaines"].items():
@@ -447,6 +442,19 @@ def declarer_sources(graphe: str, memoire: dict, registre: Path | None = None) -
             continue
         if any(dom == j or dom.endswith("." + j) for j in ps.JAMAIS):
             continue
+        if spec:
+            if "textes" not in e:  # étude d'avant la mesure de spécialisation : refaite avant de juger
+                d["etudie_le"] = None
+                d = depots.etudier_source(dom, memoire, aujourdhui)
+                e = d.get("etude") or {}
+            part = ps.specialisation(e.get("textes"), spec["motif"])
+            if part is None or part < spec["part"]:
+                d["ecartee"] = {"date": aujourdhui, "graphe": graphe, "part": round(part or 0, 2)}
+                out.append(
+                    f"  écartée (généraliste) : {dom} — {round((part or 0) * 100)} % des entrées sur le sujet du "
+                    f"graphe, seuil {round(spec['part'] * 100)} %"
+                )
+                continue
         if dom in domaines_connus or (e.get("flux") or "").rstrip("/") in flux_connus:
             d["declaree"] = {"date": aujourdhui, "note": "déjà au registre"}
             continue

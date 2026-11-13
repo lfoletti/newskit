@@ -2,6 +2,16 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.44] - 2026-11-13
+
+### Ajouté
+
+- Une source doit être spécialisée pour que l’éclaireur la déclare. Un graphe déclare son sujet (`specialisation: {motif, part}` dans `graphes:` du registre) ; l’étude d’un domaine garde le début de ses 12 dernières entrées ; la part de celles qui répondent au motif (sans égard aux accents) doit atteindre `part`. Un domaine en dessous est noté `ecartee` et n’entre pas. Une étude d’avant cette mesure se refait avant de juger. Sans `specialisation`, rien ne change.
+
+### Retiré
+
+- L’article atteint par un agrégateur ne compte plus comme trouvaille de l’éclaireur (`eclaireur.noter_trouvaille`, 0.1.42) : l’OCDE cite surtout la presse généraliste : 250 médias généralistes seraient devenus candidats.
+
 ## [0.1.43] - 2026-11-13
 
 ### Corrigé

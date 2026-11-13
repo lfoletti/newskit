@@ -94,6 +94,7 @@ def essai_substack(domaine: str) -> dict | None:
     payants = sum(1 for p in d if p.get("audience") == "only_paid")
     return {
         "echantillon": " ".join((p.get("title") or "") + " " + (p.get("subtitle") or "") for p in d),
+        "textes": [_texte(p.get("title") or "", p.get("subtitle") or "") for p in d[:12]],
         "voie": "Substack",
         "adresse": f"https://{domaine}",
         "entrees": len(d),
@@ -146,12 +147,30 @@ def essai_flux(domaine: str) -> dict | None:
     return None
 
 
+def _texte(titre: str, corps: str) -> str:
+    """Le titre et le début d'une entrée, sans balises : ce que la mesure de spécialisation lit (300 signes)."""
+    return " ".join(f"{titre} {re.sub(r'<[^>]+>', ' ', htmlmod.unescape(corps or ''))}".split())[:300]
+
+
+def specialisation(textes: list[str] | None, motif: str) -> float | None:
+    """La part des entrées qui parlent du sujet du graphe (`motif`, sans égard à la casse ni aux accents) ; None sans
+    entrée. Le critère d'admission d'une source (mainteneur, 13.11.2026 : « il faut resserrer sur les sources
+    spécialisées et éviter d'ouvrir au tout venant. c'est même un critère d'admissibilité pour une source »)."""
+    if not textes:
+        return None
+    from newskit import lettre as lt  # noqa: PLC0415
+
+    r = re.compile(motif, re.I)
+    return sum(1 for t in textes if r.search(lt.plier(t))) / len(textes)
+
+
 def mesurer_flux(url: str, items: list[dict], decouvert: bool = False) -> dict:
     mots = [len(html_to_md(htmlmod.unescape(i["corps"])).split()) for i in items[:12]]
     dates = [i["date"] for i in items if i["date"]]
     echantillon = " ".join((i["titre"] + " " + htmlmod.unescape(i["corps"])[:1500]) for i in items[:12])
     return {
         "echantillon": re.sub(r"<[^>]+>", " ", echantillon),
+        "textes": [_texte(i["titre"], i["corps"]) for i in items[:12]],
         "voie": "flux" + (" (autodécouvert)" if decouvert else ""),
         "adresse": url,
         "entrees": len(items),

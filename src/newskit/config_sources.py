@@ -737,9 +737,12 @@ def _valider(d: dict, p: Path) -> dict:
             "fiche_usd_jour",
             "fil_usd_jour",
             "fil_max",
+            "specialisation",
         }
         if surplus:
             raise ConfigInvalide(f"{p.name} : graphes.{nom} : champs inconnus {sorted(surplus)}")
+        if "specialisation" in v:
+            valider_specialisation(v["specialisation"], nom)
         fl = v.get("fil")  # le titre et la description du flux RSS du graphe, par langue (fil.rss)
         if fl is not None and (
             not isinstance(fl, dict)
@@ -1245,6 +1248,22 @@ def lit_cortexdb(nom: str) -> bool:
     """Vrai si les passages d'une réponse se lisent dans le cerveau CortexDB du graphe (`graphes.<nom>.lecture_cortexdb:
     true` ; absent = non). Distinct de `cortexdb` : un cerveau se construit d'abord, se mesure, puis se lit."""
     return bool((charger().get("graphes", {}).get(nom) or {}).get("lecture_cortexdb", False))
+
+
+def valider_specialisation(spec, graphe: str) -> dict:
+    """`specialisation: {motif, part}` d'un graphe : l'expression rationnelle de son sujet, et la part des entrées d'un
+    flux qui doivent en parler pour que l'éclaireur déclare la source (13.11.2026)."""
+    import re as _re  # noqa: PLC0415
+
+    if not isinstance(spec, dict) or set(spec) != {"motif", "part"}:
+        raise ConfigInvalide(f"graphes.{graphe}.specialisation : {{motif, part}}")
+    try:
+        _re.compile(str(spec["motif"]))
+    except _re.error as e:
+        raise ConfigInvalide(f"graphes.{graphe}.specialisation.motif : {e}") from None
+    if not isinstance(spec["part"], (int, float)) or isinstance(spec["part"], bool) or not 0 < spec["part"] <= 1:
+        raise ConfigInvalide(f"graphes.{graphe}.specialisation.part : un nombre entre 0 et 1")
+    return spec
 
 
 def graphe_declare(nom: str) -> dict:

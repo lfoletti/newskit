@@ -243,6 +243,26 @@ def test_une_suite_dont_la_premiere_phrase_tait_le_fait_neuf_est_reecrite(relect
     assert s["descriptif"] == "Colette Kress assure l'intérim. Huang est parti."
 
 
+def test_une_suite_dont_seul_le_titre_tait_le_fait_neuf_est_reecrite(relecture):
+    _, reecritures = relecture
+    s = _suite("Jensen Huang quitte la direction de Nvidia", "Colette Kress assure l'intérim. Huang est parti.")
+    reecritures.append({"titre": "Colette Kress assure l'intérim de Nvidia", "texte": s["descriptif"]})
+    fil.relire([s], "g")
+    assert s["titre"] == "Colette Kress assure l'intérim de Nvidia"
+
+
+def test_une_reecriture_encore_sans_angle_est_reprise(relecture):
+    appels, reecritures = relecture
+    s = _suite("Jensen Huang quitte la direction de Nvidia")
+    reecritures += [
+        {"titre": "Jensen Huang part", "texte": "Jensen Huang a quitté Nvidia."},
+        {"titre": "Colette Kress assure l'intérim de Nvidia", "texte": "Colette Kress assure l'intérim. Huang part."},
+    ]
+    fil.relire([s], "g")
+    assert [n for n, _ in appels].count("réécriture") == 2
+    assert s["titre"] == "Colette Kress assure l'intérim de Nvidia" and s["tenu"] is True
+
+
 def test_une_suite_qui_dit_son_fait_neuf_n_est_pas_reecrite(relecture):
     appels, _ = relecture
     s = _suite("Colette Kress assure l'intérim de Nvidia", "Colette Kress assure l'intérim. Huang est parti.")
@@ -317,7 +337,8 @@ def test_les_candidats_d_une_suite_recoivent_son_fait_neuf(monkeypatch):
     demander = fil.demander
     monkeypatch.setattr(fil, "demander", lambda inv, *a, **k: vus.append(inv) or demander(inv, *a, **k))
     fil.reviser_titres([s], "g")
-    assert "Colette Kress assure l'intérim." in vus[0] and "developpement" in vus[0]
+    (x,) = [json.loads(ligne) for ligne in vus[0].split("\n") if ligne.startswith('{"n"')]
+    assert x["developpement"] == "Colette Kress assure l'intérim."
 
 
 # --- 2 et 3. Le rattrapage : une suite se fait réécrire ; deux suites du même fait se fondent -------------------------

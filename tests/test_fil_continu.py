@@ -349,8 +349,45 @@ def test_sans_declaration_le_fil_garde_fil_max(monkeypatch):
     assert fil.fil_max("g") == fil.FIL_MAX == 300
 
 
-def test_l_arriere_plan_garde_la_longueur_du_graphe():
-    F = _fil_plein(400)
-    F["pile"] = [{"chemin": "vieux.md", "titre": "vieux", "date": "2026-09-01"}]
-    assert fil.arriere_plan(F, f"{JOUR} 10:00", 400) == 1
-    assert len(F["billets"]) == 400 and list(F["archive"]) == ["vieux.md"] and F["pile"] == []
+def test_le_fil_se_range_par_heure_de_parution():
+    # Mainteneur, 13.11.2026 : « il n'y a plus de publication depuis un moment », puis « ok, trie par heure de
+    # parution » : rangé par date de l'article, un article de la veille paru à 12:52 passait sous ceux du jour parus
+    # à 11:47, et la tête du fil ne bougeait plus.
+    tot = _b("tot", ajoute="2026-11-13 11:47", date="2026-11-13")
+    tard = _b("tard", ajoute="2026-11-13 12:52", date="2026-11-12")
+    sans = _b("sans", ajoute="", date="2026-11-13")
+    assert [b["url"] for b in fil.classer([tot, sans, tard])] == ["tard", "tot", "sans"]
+    # À la même minute, l'article le plus récent d'abord.
+    a, b = _b("a", ajoute="2026-11-13 12:00", date="2026-11-10"), _b("b", ajoute="2026-11-13 12:00", date="2026-11-12")
+    assert [x["url"] for x in fil.classer([a, b])] == ["b", "a"]
+
+
+def test_la_pile_sert_d_abord_l_article_le_plus_recent():
+    vieux = _b("vieux", ajoute="2026-11-13 08:00", date="2026-11-01")
+    frais = _b("frais", ajoute="2026-11-13 07:00", date="2026-11-13")
+    assert [b["url"] for b in fil.classer_pile([vieux, frais])] == ["frais", "vieux"]
+
+
+def test_un_article_ancien_prend_son_tour_et_parait_en_tete():
+    # « Tous à la cadence » (mainteneur, 13.11.2026) : plus d'entrée en arrière-plan. Un article plus ancien que le
+    # panneau attend son tour dans la pile, puis paraît en tête du fil, à son heure de parution. « vieux » est rédigé
+    # après « frais » : la pile se range par date de l'article, pas par heure de rédaction.
+    F = {
+        "billets": [_b(f"n{i}", ajoute=f"2026-11-13 {10 + i // 60:02d}:{i % 60:02d}") for i in range(20)],
+        "pile": [_b("vieux", date="2026-09-01", ajoute="2026-11-13 10:00"), _b("frais", date="2026-11-13")],
+    }
+    assert not hasattr(fil, "arriere_plan")
+    assert fil.liberer(F, "2026-11-13 12:52", delai=30) == 1
+    assert F["billets"][0]["url"] == "frais" and [b["url"] for b in F["pile"]] == ["vieux"]
+    assert fil.liberer(F, "2026-11-13 13:30", delai=30) == 1
+    assert [b["url"] for b in F["billets"][:2]] == ["vieux", "frais"]
+    assert F["billets"][0]["ajoute"] == "2026-11-13 13:30"
+
+
+def test_le_fil_trop_long_perd_ses_plus_anciennes_parutions():
+    F = {
+        "billets": [_b(f"n{i}", ajoute=f"2026-11-12 {i:02d}:00", date="2026-11-13") for i in range(3)],
+        "pile": [_b("neuf", date="2026-11-01")],
+    }
+    fil.liberer(F, "2026-11-13 12:00", delai=30, garde=3)
+    assert [b["url"] for b in F["billets"]] == ["neuf", "n2", "n1"] and list(F["archive"]) == ["sources/n0.md"]

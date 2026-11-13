@@ -617,6 +617,7 @@ def corps_de_page(
     navigateur: bool = False,
     titre_motif: str | None = None,
     corps_motif: str | None = None,
+    garder_html: bool = False,
 ) -> tuple[int, str, bool, dict]:
     """Lit la page d'un article et en rend le texte principal.
 
@@ -649,6 +650,8 @@ def corps_de_page(
         return 0, "", False, {}
     ss.succes(url, _maintenant(), False)
     meta = meta_de_page(html)
+    if garder_html:  # la classification d'une page d'agrégateur se lit dans son HTML (suivre_l_agregat)
+        meta["html"] = html
     trouve = re.search(titre_motif, html, re.S | re.I) if titre_motif else None
     if trouve:  # le titre sur la page même, quand <title> est celui du site (06.11.2026)
         meta["titre"] = " ".join(htmlmod.unescape(re.sub(r"<[^>]+>", " ", trouve.group(1))).split())
@@ -1064,6 +1067,79 @@ def nom_libre(dossier: Path, nom: str, lien: str) -> str:
     return f"{nom[:-3]}-{hashlib.sha1(lien.encode()).hexdigest()[:6]}.md"
 
 
+ESSAIS_AGREGAT = 4  # articles d'origine essayés au plus par page d'agrégateur
+LIEN_AGREGAT = re.compile(r"^\[#{1,6}\s*(.+?)\]\((https?://[^)\s]+)\)\s*$")
+
+
+def sources_de_l_agregat(md: str) -> list[dict]:
+    """Les articles qu'une page d'agrégateur cite : chaque lien posé en intertitre (« [##### titre](adresse) »), suivi
+    de sa date et du nom de sa publication sur les lignes d'après (l'AI Incidents Monitor de l'OCDE)."""
+    lignes = [l.strip() for l in md.splitlines()]
+    out = []
+    for i, l in enumerate(lignes):
+        m = LIEN_AGREGAT.match(l)
+        if not m:
+            continue
+        suite = [x for x in lignes[i + 1 : i + 8] if x][:3]
+        date = suite.pop(0) if suite and re.fullmatch(r"\d{4}-\d{2}-\d{2}", suite[0]) else ""
+        pub = suite[0] if suite and not suite[0].startswith(("[", "Why")) else ""
+        out.append({"titre": m.group(1).strip(), "url": m.group(2), "date": date, "publication": pub})
+    return out
+
+
+def classification_de(html: str, motif: str) -> str:
+    """« libellé : étiquette, étiquette ; … » : `motif` rend (libellé, bloc), les étiquettes sont les <span class="tag">
+    du bloc. Générée par l'agrégateur ; gardée en métadonnée (mainteneur, 13.11.2026)."""
+    if not html or not motif:
+        return ""
+    parts = []
+    for libelle, bloc in re.findall(motif, html, re.S | re.I):
+        tags = [
+            " ".join(htmlmod.unescape(t).split())
+            for t in re.findall(r'<span[^>]*class="[^"]*\btag\b[^"]*"[^>]*>([^<]+)</span>', bloc, re.I)
+        ]
+        if tags:
+            parts.append(f"{' '.join(libelle.split()).rstrip(':').strip()}: {', '.join(tags)}")
+    return " ; ".join(parts)
+
+
+def suivre_l_agregat(lien: str, md: str, html: str, motif: str, lire=None, exclu=None) -> dict | None:
+    """L'article d'origine d'une page d'agrégateur (mainteneur, 13.11.2026 : « leur page n'a d'intérêt que parce
+    qu'elle mène à une source, et c'est cette source qui devrait être intégrée ») : parmi les articles cités, le plus
+    ancien d'abord (les sans date en dernier), le premier qui se lit — robots.txt admis, au moins MOTS_MINIMUM mots,
+    pas d'aperçu derrière un mur. None si aucun ne se lit : la page de l'agrégateur reste."""
+    lire = lire or corps_de_page
+    exclu = exclu or _robots_exclut_ia
+    cites = sources_de_l_agregat(md)
+    essais = 0
+    for c in sorted(cites, key=lambda c: c["date"] or "9999"):
+        if essais >= ESSAIS_AGREGAT:
+            break
+        if exclu(c["url"]):
+            continue
+        essais += 1
+        n, corps, mur, meta = lire(c["url"])
+        time.sleep(PAUSE_PAGE)
+        if n < MOTS_MINIMUM or (mur and n < MOTS_TEXTE):
+            continue
+        return {
+            "lien": c["url"],
+            "titre": meta.get("titre") or c["titre"],
+            "auteur": meta.get("auteur") or "",
+            "date": c["date"] or (meta.get("date") or "")[:10],
+            "publication": c["publication"] or (urllib.parse.urlsplit(c["url"]).hostname or "").removeprefix("www."),
+            "corps": corps,
+            "mots": n,
+            "complet": n >= MOTS_TEXTE and not mur,
+            "champs": {
+                "via": lien,
+                "autres_sources": " ; ".join(x["url"] for x in cites if x["url"] != c["url"]),
+                "classification": classification_de(html, motif),
+            },
+        }
+    return None
+
+
 def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = "") -> dict:
     """Collecte une source de flux. Rend le décompte, ou ajoute à `echecs`.
 
@@ -1132,6 +1208,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                 file=sys.stderr,
             )
     mots_cles = list(getattr(src, "mots_cles", []) or [])
+    agregateur = bool(getattr(src, "propres", {}).get("agregateur"))
     # `exclure` : expression régulière, sans égard à la casse, sur l'adresse et le titre. Pour les
     # flux qui mêlent au sujet des ordres du jour, des pages de service ou une seconde langue
     # (03.10.2026 : LINC publie chaque article en anglais puis en français).
@@ -1170,6 +1247,8 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                 n_page, md_page, mur, meta = page_par_api(src, it["lien"])
             else:
                 motifs = {k: v for k in ("titre_motif", "corps_motif") if (v := getattr(src, "propres", {}).get(k))}
+                if agregateur:
+                    motifs["garder_html"] = True
                 n_page, md_page, mur, meta = corps_de_page(
                     it["lien"], cookie, navigateur=getattr(src, "propres", {}).get("entetes") == "navigateur", **motifs
                 )
@@ -1192,6 +1271,15 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
                     # La session est présentée et la page se ferme quand même :
                     # session expirée, ou palier payant que le compte ne couvre pas.
                     print(f"  !! réservé malgré la session : {it['lien'][:80]}", file=sys.stderr)
+            origine = None
+            if agregateur:
+                origine = suivre_l_agregat(
+                    it["lien"], md_page, meta.get("html", ""), str(src.propres.get("classification_motif") or "")
+                )
+                it["origine"] = origine
+            if origine:
+                corps_md, mots, complet = origine["corps"], origine["mots"], origine["complet"]
+                n_page = 0
             if n_page > mots:
                 # Une page lue n'est un texte entier qu'au-delà de MOTS_TEXTE et
                 # sans mur : entre 120 et 300 mots, c'est un aperçu, qui entre
@@ -1213,15 +1301,26 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             date = "" if mode == "plan" else aujourdhui
         if mode == "plan" and not date:
             it["origine_date"] = "inconnue"
-        nom = nom_libre(src.chemin, f"{date or aujourdhui}_{slug(it['lien'], it['titre'])}.md", it["lien"])
+        origine = it.get("origine")
+        if origine:  # l'article d'origine d'une page d'agrégateur : sa date, son titre, son auteur, sa publication
+            date = origine["date"] or date
+            it_url, it_titre, it_auteur, it_pub = (
+                origine["lien"],
+                origine["titre"],
+                origine["auteur"],
+                origine["publication"],
+            )
+        else:
+            it_url, it_titre, it_auteur, it_pub = it["lien"], it["titre"], it["auteur"], src.nom
+        nom = nom_libre(src.chemin, f"{date or aujourdhui}_{slug(it_url, it_titre)}.md", it_url)
         champs = {
-            "title": it["titre"],
+            "title": it_titre,
             "subtitle": "",
-            "author": it["auteur"],
+            "author": it_auteur,
             "date": date,
-            "url": it["lien"],
+            "url": it_url,
             "plateforme": getattr(src, "plateforme", "Flux RSS"),
-            "publication": src.nom,
+            "publication": it_pub,
             "complet": complet,
             "collected": time.strftime("%Y-%m-%d"),
             "source": {
@@ -1235,15 +1334,29 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             champs["origine_date"] = it.get("origine_date") or "inconnue"
             if it.get("lastmod"):
                 champs["date_modification"] = it["lastmod"][:10]
+        if origine:
+            champs.update(origine["champs"])
+            champs["source"] = f"article cité par {src.nom}"
+            champs["origine_date"] = "agrégateur" if origine["date"] else champs.get("origine_date", "inconnue")
+        elif agregateur:
+            champs["note"] = "agrégateur : aucun article d'origine lisible"
         try:
-            fiche.ecrire(src.chemin / nom, champs, f"# {it['titre']}\n\n{corps_md}")
+            fiche.ecrire(src.chemin / nom, champs, f"# {it_titre}\n\n{corps_md}")
         except fiche.IdentiteDejaVue as deja:  # une autre fiche du graphe porte déjà ce document
             print(f"  déjà vue : {deja}")
             continue
         except ValueError as e:
             echecs.append(f"{src.nom} : {str(e)[:100]}")
             continue
-        manifeste[it["lien"]] = {"file": nom, "title": it["titre"], "date": date, "complet": complet, "words": mots}
+        manifeste[it["lien"]] = {"file": nom, "title": it_titre, "date": date, "complet": complet, "words": mots}
+        if origine:  # l'agrégat reste la clé du manifeste : il n'est pas relu ; son article compte pour l'éclaireur
+            manifeste[it["lien"]]["origine"] = origine["lien"]
+            from newskit import eclaireur  # noqa: PLC0415
+
+            try:
+                eclaireur.noter_trouvaille(origine["lien"], getattr(src, "graphe", ""), aujourdhui)
+            except Exception as e:  # noqa: BLE001 — la fiche est écrite ; la mémoire des domaines attendra
+                print(f"  mémoire des domaines : {type(e).__name__} pour {origine['lien'][:70]}", file=sys.stderr)
         compte["neuves"] += 1
         compte["partielles"] += 0 if complet else 1
 

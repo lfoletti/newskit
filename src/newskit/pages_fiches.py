@@ -192,6 +192,7 @@ def tete(p: dict, langue: str, site: str, version: str = "") -> str:
     """L'en-tête de la page de la fiche : titre, description, canonique, langues, aperçu, données structurées."""
     titre, chap = _titre(p, langue), description(_chapeau(p, langue))
     ici, image = site + adresse(p, langue), carte_url(p, langue, site, version)
+    media = {"@type": "Organization", "name": site.split("://", 1)[-1], "url": site + "/"}
     donnees = {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
@@ -203,12 +204,15 @@ def tete(p: dict, langue: str, site: str, version: str = "") -> str:
         "image": [image],
         "mainEntityOfPage": ici,
         "isBasedOn": p.get("lien_" + langue) or p.get("url", ""),
-        "publisher": {"@type": "Organization", "name": site.split("://", 1)[-1], "url": site + "/"},
+        # Le média signe la synthèse qu'il édite ; l'auteur de l'article d'origine reste cité comme source.
+        "author": media,
+        "publisher": media,
     }
     ld = json.dumps(donnees, ensure_ascii=False).replace("<", "\\u003c")
     lignes = [
         f"<title>{_e(titre)} · {_e(site.split('://', 1)[-1])}</title>",
         f'<meta name="description" content="{_e(chap)}">',
+        f'<meta name="author" content="{_e(media["name"])}">',
         *([] if developpee(p, langue) else ['<meta name="robots" content="noindex, follow">']),
         f'<link rel="canonical" href="{_e(ici)}">',
         *(f'<link rel="alternate" hreflang="{lg}" href="{_e(site + adresse(p, lg))}">' for lg in LANGUES),

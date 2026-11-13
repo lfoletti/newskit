@@ -130,6 +130,8 @@ refusés, les reproches du relecteur et la source. Rends {{"n": numéro, "titre"
 - un reproche « le billet ne dit pas où le fait se passe » : le pays nommé entre dans le titre ou dans la
   première phrase du texte (« aux États-Unis », « en Indonésie », « une université indonésienne ») ;
 - un fait reproché comme absent de la source part ;
+- un billet qui porte « developpement » est la suite d'une nouvelle déjà parue : ce fait neuf est son angle ; le
+  titre le dit, la première phrase du texte le dit, l'événement d'avant vient ensuite, en contexte ;
 - titre : 16 mots et {max} caractères au plus ;
 - texte : de 30 à 70 mots, 4 phrases au plus, 2 nombres au plus, hors dates.
 Les règles de la lettre d'information, qui reprend ces billets :
@@ -670,6 +672,16 @@ def journaliser_refus(graphe: str, refus: list[dict]) -> None:
         print(f"  fil : refus non journalisés ({e})", file=sys.stderr)
 
 
+def angle_tenu(b: dict, titre: str, texte: str) -> bool:
+    """Une suite fait de son fait neuf son angle (mainteneur, 13.11.2026 : « un fait nouveau peut tout à fait justifier
+    une nouvelle fiche, à condition d'en faire l'angle de la fiche, et de la titrer adéquatement ») : son titre et la
+    première phrase de son texte le nomment. Un billet qui n'est pas une suite tient toujours."""
+    if not (b.get("suite_de") and b.get("neuf")):
+        return True
+    premiere = (lt.phrases(texte) or [texte])[0]
+    return nv.dit_le_fait(titre, b["neuf"]) and nv.dit_le_fait(premiere, b["neuf"])
+
+
 def relire(billets: list[dict], graphe: str) -> float:
     """La relecture adverse d'un lot, titre et texte ensemble ; rend son coût. Un billet refusé (écart de forme, fait
     absent de la source, titre ou texte qui arrête le lecteur) est réécrit, et le relecteur juge la réécriture ; une
@@ -679,7 +691,8 @@ def relire(billets: list[dict], graphe: str) -> float:
     `tenu` ; l'ancien titre, l'ancien texte et les reproches restent au billet (`relecture`), les écarts gardés aussi
     (`ecarts`), et la notion que le lecteur ne connaît pas et que la source n'explique pas (`terme` : sa définition
     se cherche ailleurs, la réécriture la garde). Non tenu : ses reproches sont dans `ecarts`, et ses essais au journal des refus. Un billet sans verdict
-    reste à relire."""
+    reste à relire. Une suite dont aucun essai ne fait du fait neuf son angle (angle_tenu), ou qui n'est pas tenue
+    pour une autre raison, reçoit `sans_angle` : fondre_sans_angle la rend à sa nouvelle."""
     fiches = lt.charger_fiches([b["chemin"] for b in billets])
     lot = [(b, fiches[b["chemin"]]) for b in billets if b["chemin"] in fiches]
     refus = []
@@ -702,7 +715,13 @@ def relire(billets: list[dict], graphe: str) -> float:
     def reproches(n: int, essai: int = -1) -> list[str]:
         titre, texte, x = essais[n][essai]
         r = [*forme(titre, texte, lot[n][1]), *(f"absent de la source : {a}" for a in x["absents"])]
-        return r + ([x["motif"] or "peu clair"] if not x["clair"] else []) + pays_manquant(x)
+        b = lot[n][0]
+        angle = (
+            []
+            if angle_tenu(b, titre, texte)
+            else [f"le titre et la première phrase ne disent pas le fait neuf : {b.get('developpement') or ''}"]
+        )
+        return r + ([x["motif"] or "peu clair"] if not x["clair"] else []) + pays_manquant(x) + angle
 
     premiers = {n: reproches(n) for n in essais}
     a_reecrire, sans_verdict = {n: r for n, r in premiers.items() if r}, set()
@@ -723,6 +742,11 @@ def relire(billets: list[dict], graphe: str) -> float:
                             "texte": essais[n][-1][1],
                             "reproches": m,
                             **({"a_definir": essais[n][-1][2]["terme"]} if essais[n][-1][2].get("terme") else {}),
+                            **(
+                                {"developpement": lot[n][0]["developpement"]}
+                                if lot[n][0].get("suite_de") and lot[n][0].get("neuf")
+                                else {}
+                            ),
                             "source": extrait(lot[n][0], 3000),
                         },
                         ensure_ascii=False,
@@ -751,7 +775,7 @@ def relire(billets: list[dict], graphe: str) -> float:
                 sans_verdict.add(n)  # réécrit, sans verdict : à relire au passage suivant
                 continue
             essais[n].append((*neufs[n], v[k]))
-            if v[k]["absents"] or not v[k]["clair"] or v[k]["pays"]:
+            if v[k]["absents"] or not v[k]["clair"] or v[k]["pays"] or not angle_tenu(lot[n][0], *neufs[n]):
                 a_reecrire[n] = reproches(n)
     changes = non_tenus = 0
     for n in essais:
@@ -759,9 +783,13 @@ def relire(billets: list[dict], graphe: str) -> float:
         if n in sans_verdict:
             continue
         b.pop("ecarts", None)
-        mains = [(t, x, v) for t, x, v in reversed(essais[n]) if v["clair"] and not v["absents"]]
+        mains = [
+            (t, x, v) for t, x, v in reversed(essais[n]) if v["clair"] and not v["absents"] and angle_tenu(b, t, x)
+        ]
         if not mains:
             b["tenu"], b["ecarts"] = False, premiers[n]
+            if b.get("suite_de") and b.get("neuf"):  # une suite sans billet tenu : sa source rejoint sa nouvelle
+                b["sans_angle"] = True
             non_tenus += 1
             journaliser_refus(
                 graphe,
@@ -803,6 +831,22 @@ def relire(billets: list[dict], graphe: str) -> float:
     return cout
 
 
+def fondre_sans_angle(F: dict, billets: list[dict]) -> int:
+    """Une suite que la relecture n'a pas su mettre sur son fait neuf (`sans_angle`) n'est pas une nouvelle : elle
+    devient une source de plus de la nouvelle dont elle est la suite (`fondu_dans`). Rend leur nombre."""
+    par_chemin = {x.get("chemin"): x for x in nv.toutes(F)}
+    fondues = 0
+    for b in billets:
+        origine = par_chemin.get(b.get("suite_de"))
+        if b.get("sans_angle") and b.get("tenu") is False and origine is not None and origine is not b:
+            nv.fusionner(F, origine, b)
+            b["fondu_dans"] = origine["chemin"]
+            fondues += 1
+    if fondues:
+        print(f"relecture : {fondues} suite(s) sans angle fondue(s) dans leur nouvelle")
+    return fondues
+
+
 # La révision des titres (mainteneur, 9.11.2026 : « l'expression des titres est toujours médiocre... on manque du sens
 # commun qui fait qu'un titre fonctionne ou pas ») : trois candidats, puis un juge qui ne voit pas le rédacteur raisonner.
 SENS_COMMUN = (
@@ -816,7 +860,8 @@ SENS_COMMUN = (
 )
 CANDIDATS = (
     "Tu révises les titres d'un fil d'actualité sur {nom}. {sens}\nPour chaque billet, propose trois titres "
-    "différents, d'après le texte et la source, qui fonctionnent mieux que le titre en place. Rends "
+    "différents, d'après le texte et la source, qui fonctionnent mieux que le titre en place. Un billet qui porte "
+    "« developpement » est la suite d'une nouvelle déjà parue : chaque titre dit ce fait neuf. Rends "
     '{{"titres": [{{"n": rang, "candidats": [trois titres]}}]}}.\n\nBillets :\n{billets}'
 )
 JUGE = (
@@ -847,8 +892,11 @@ SCHEMA_CANDIDATS = _schema_titres({"candidats": {"type": "array", "items": {"typ
 SCHEMA_JUGE = _schema_titres({"choix": {"type": "integer"}, "raison": {"type": "string"}})
 
 
-def titre_refuse(titre: str, source: str) -> str:
-    """Sans modèle : pourquoi un titre proposé ne peut pas remplacer le titre en place, ou une chaîne vide."""
+def titre_refuse(titre: str, source: str, b: dict | None = None) -> str:
+    """Sans modèle : pourquoi un titre proposé ne peut pas remplacer le titre en place du billet `b`, ou une chaîne
+    vide. Le titre d'une suite dit son fait neuf."""
+    if b and b.get("suite_de") and b.get("neuf") and not nv.dit_le_fait(titre, b["neuf"]):
+        return "le titre ne dit pas le fait neuf"
     if len(titre) > TITRE_MAX:
         return f"titre de {len(titre)} caractères, {TITRE_MAX} au plus"
     if "?" in titre:
@@ -873,7 +921,14 @@ def reviser_titres(billets: list[dict], graphe: str) -> float:
             sens=sens,
             billets="\n".join(
                 json.dumps(
-                    {"n": n, "titre": b["titre"], "texte": b["descriptif"], "source": srcs[n]}, ensure_ascii=False
+                    {
+                        "n": n,
+                        "titre": b["titre"],
+                        "texte": b["descriptif"],
+                        **({"developpement": b["developpement"]} if b.get("suite_de") and b.get("neuf") else {}),
+                        "source": srcs[n],
+                    },
+                    ensure_ascii=False,
                 )
                 for n, (b, _) in enumerate(lot)
             ),
@@ -922,7 +977,7 @@ def reviser_titres(billets: list[dict], graphe: str) -> float:
             "choix": k,
             "raison": " ".join(str(x.get("raison") or "").split()),
         }
-        refus = titre_refuse(titre, srcs[n]) if k else ""
+        refus = titre_refuse(titre, srcs[n], b) if k else ""
         if refus:
             rev["refus"] = refus
         else:
@@ -976,6 +1031,8 @@ entrée la première, et « b ». Pour chaque paire rends {{"n": numéro, "lien"
 - suite : b porte le même événement et un fait survenu après a (une décision prise, une réaction officielle datée, un
   chiffre publié ensuite). developpement : ce fait, en une phrase.
 - autre : deux événements distincts, même s'ils ont un acteur, un éditeur ou un thème en commun.
+Une nouvelle qui porte « developpement » est la suite d'une autre : son fait est ce développement. Deux suites qui
+apportent le même fait sont « meme » ; deux suites qui apportent deux faits distincts sont « autre ».
 Compare les faits (acteurs, nombres, dates), pas les titres.
 Rends l'objet {{"paires": [...]}}.
 
@@ -1127,6 +1184,40 @@ def textes_du_registre(F: dict) -> dict[str, str]:
     }
 
 
+def auteurs_de(x: dict) -> list[str]:
+    """Qui rapporte : l'éditeur d'une fiche, ou les éditeurs des sources d'une nouvelle."""
+    return [
+        str(e)
+        for e in [
+            x.get("editeur"),
+            (x.get("source") or {}).get("editeur"),
+            *(s.get("editeur") for s in x.get("sources_plus") or []),
+        ]
+        if e
+    ]
+
+
+def avant_de(F: dict, a: dict, textes: dict[str, str], sauf: dict | None = None) -> str:
+    """Tout ce que le registre sait déjà de l'affaire de `a` (nouvelles.affaire) : le texte de chaque nouvelle, sauf
+    `sauf` et celles entrées après elle."""
+    return ". ".join(
+        textes.get(x["chemin"], "")
+        for x in nv.affaire(F, a)
+        if x is not sauf and (sauf is None or _entree(x) <= _entree(sauf))
+    )
+
+
+def porteuse(F: dict, a: dict, dev: str, textes: dict[str, str], auteurs=()) -> dict:
+    """La nouvelle de l'affaire de `a` qui dit déjà le développement `dev` : une suite d'abord, la plus récente, sinon
+    `a`. Une source qui redit un fait déjà au registre s'attache à la nouvelle de ce fait."""
+    suites = [
+        x
+        for x in nv.affaire(F, a)
+        if x.get("suite_de") and not nv.termes_neufs(dev, textes.get(x["chemin"], ""), auteurs)
+    ]
+    return max(suites, key=_entree) if suites else a
+
+
 def proposer(lot: list[dict], F: dict, recents: list[dict], textes: dict[str, str]) -> None:
     """Chaque fiche du lot reçoit `proches` : les numéros, dans `recents`, des nouvelles qui partagent avec elle des noms
     ou des nombres rares. Une nouvelle proche plus ancienne que les récentes s'ajoute à `recents`."""
@@ -1164,6 +1255,18 @@ def paires_a_juger(F: dict, textes: dict[str, str]) -> list[tuple[dict, dict]]:
                 and x["chemin"] not in (y.get("comparee_a") or [])
             ):
                 paires[x["chemin"], y["chemin"]] = (x, y)
+    # Deux suites de la même nouvelle peuvent porter le même fait (13.11.2026 : l'intérim de Colette Kress chez
+    # Fortune et chez Gary Marcus) : elles se comparent une fois, même rapprochées, et quoi que dise leur signature.
+    suites: dict[str, list[dict]] = {}
+    for b in par_chemin.values():
+        if b.get("suite_de"):
+            suites.setdefault(b["suite_de"], []).append(b)
+    for groupe in suites.values():
+        groupe.sort(key=lambda n: (_entree(n), n["chemin"]))
+        for i, x in enumerate(groupe):
+            for y in groupe[i + 1 :]:
+                if x["chemin"] not in (y.get("comparee_a") or []):
+                    paires[x["chemin"], y["chemin"]] = (x, y)
     return [paires[k] for k in sorted(paires, key=lambda k: (_entree(paires[k][0]), _entree(paires[k][1]), k))]
 
 
@@ -1189,6 +1292,7 @@ def rapprocher(F: dict, graphe: str) -> float:
                                     "titre": x["titre"],
                                     "date": x.get("date"),
                                     "descriptif": x.get("descriptif") or "",
+                                    **({"developpement": x["developpement"]} if x.get("developpement") else {}),
                                 }
                                 for cle, x in (("a", a), ("b", b))
                             },
@@ -1210,9 +1314,16 @@ def rapprocher(F: dict, graphe: str) -> float:
         if a is b or not lien:
             continue
         dev = " ".join(str(liens[n].get("developpement") or "").split())
-        if lien == "suite" and dev and nv.fait_neuf(dev, textes.get(a["chemin"], "")) and not b.get("suite_de"):
-            b["suite_de"], b["developpement"] = a["chemin"], dev
+        neuf = nv.termes_neufs(dev, avant_de(F, a, textes, sauf=b), auteurs_de(b)) if lien == "suite" and dev else []
+        if neuf and not b.get("suite_de"):
+            # Une suite fait de son fait neuf son angle : relue, elle est réécrite sur lui (mainteneur, 13.11.2026).
+            b["suite_de"], b["developpement"], b["neuf"] = a["chemin"], dev, neuf
+            b.pop("tenu", None)
             suites += 1
+        elif lien == "meme" and b.get("suite_de") and b["suite_de"] == a.get("suite_de"):
+            nv.fusionner(F, a, b)  # deux suites du même fait : la seconde est une source de plus de la première
+            devenue[id(b)] = a
+            fondues += 1
         elif lien == "autre" or b.get("suite_de"):  # deux événements, ou la suite d'un autre : la paire est jugée
             b.setdefault("comparee_a", []).append(a["chemin"])
         else:
@@ -1726,10 +1837,13 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         k, suite = r.get("doublon_de", -1), {}
         if 0 <= k < len(recents):  # le même événement : une source de plus, ou un développement
             dev = " ".join(str(r.get("developpement") or "").split())
-            if not (dev and nv.fait_neuf(dev, textes.get(recents[k]["chemin"], ""))):
-                nv.attacher(recents[k], f)
+            # Le fait neuf se mesure contre toute l'affaire, sans le nom de qui le rapporte (13.11.2026).
+            neuf = nv.termes_neufs(dev, avant_de(F, recents[k], textes), auteurs_de(f)) if dev else []
+            if not neuf:
+                nv.attacher(porteuse(F, recents[k], dev, textes, auteurs_de(f)) if dev else recents[k], f)
                 continue
-            suite = {"suite_de": recents[k]["chemin"], "developpement": dev}
+            # Une suite reste à rapprocher : une autre suite de l'affaire peut porter le même fait.
+            suite = {"suite_de": recents[k]["chemin"], "developpement": dev, "neuf": neuf, "rapproche": False}
         rubrique = rubrique_finale(f, r, rubs)
         if rubs and not rubrique:  # hors des rubriques du graphe : pas au fil
             continue
@@ -1752,6 +1866,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         )
     anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(neufs))]
     cout += relire(neufs + anciens, graphe)  # avant le complément : il part du billet relu
+    fondre_sans_angle(F, neufs + anciens)  # une suite sans angle : une source de plus de sa nouvelle
     neufs = [b for b in neufs if b.get("tenu") is not False]  # sans titre ni texte qui tienne : pas de billet
     cout += reviser_titres(neufs, graphe)  # trois titres, puis un juge (mainteneur, 9.11.2026)
     cout += completer(neufs, graphe, max(0.0, reste - cout))

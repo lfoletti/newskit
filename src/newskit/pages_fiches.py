@@ -60,6 +60,7 @@ from newskit import reglages  # noqa: E402 — les réglages du média
 
 LANGUES = ("fr", "en")
 SLUG_MAX = 90  # caractères du texte de l'adresse, coupé entre deux mots
+VERSION_CARTE = 10  # signes de l'empreinte de la carte dans son adresse
 DESCRIPTION_MAX = 160  # la description qu'un moteur de recherche affiche
 DOSSIER_VPS = "/var/www/kg-mcp/fiches"
 LARGEUR, HAUTEUR = 1200, 630
@@ -172,18 +173,25 @@ def description(texte: str) -> str:
     return coupe + "…"
 
 
-def carte_url(p: dict, langue: str, site: str) -> str:
-    return f"{site}/fiches/cartes/{ident(p['url'])}-{langue}.png"
+def carte_url(p: dict, langue: str, site: str, version: str = "") -> str:
+    """L'adresse de la carte ; `version` la change quand la carte change (les réseaux gardent une image par adresse)."""
+    return f"{site}/fiches/cartes/{ident(p['url'])}-{langue}.png" + (f"?v={version}" if version else "")
+
+
+def version_carte(champs: dict, empreinte_marque: str = "") -> str:
+    """La version de la carte : ce qu'elle montre et la marque qui la dessine."""
+    donnees = json.dumps([champs, empreinte_marque], ensure_ascii=False, sort_keys=True).encode()
+    return hashlib.sha256(donnees).hexdigest()[:VERSION_CARTE]
 
 
 def _e(x: str) -> str:
     return html.escape(str(x), quote=True)
 
 
-def tete(p: dict, langue: str, site: str) -> str:
+def tete(p: dict, langue: str, site: str, version: str = "") -> str:
     """L'en-tête de la page de la fiche : titre, description, canonique, langues, aperçu, données structurées."""
     titre, chap = _titre(p, langue), description(_chapeau(p, langue))
-    ici, image = site + adresse(p, langue), carte_url(p, langue, site)
+    ici, image = site + adresse(p, langue), carte_url(p, langue, site, version)
     donnees = {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
@@ -479,7 +487,11 @@ def deposer(
     fichiers, neuf, sans_carte = {}, {}, 0
     for p in billets:
         i = ident(p["url"])
-        pages = {lg: (tete(p, lg, site), article(p, lg, site), champs_carte(p, lg, rubriques_en)) for lg in LANGUES}
+        cartes = {lg: champs_carte(p, lg, rubriques_en) for lg in LANGUES}
+        pages = {
+            lg: (tete(p, lg, site, version_carte(cartes[lg], empreinte_marque)), article(p, lg, site), cartes[lg])
+            for lg in LANGUES
+        }
         empreinte = hashlib.sha256(
             json.dumps([pages, empreinte_marque], ensure_ascii=False, sort_keys=True).encode()
         ).hexdigest()

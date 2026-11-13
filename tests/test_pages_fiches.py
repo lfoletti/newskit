@@ -254,7 +254,9 @@ def test_le_depot_porte_l_en_tete_l_article_et_la_carte_des_deux_langues(banc, t
         "cartes/110kh65-en.png",
         "plan_fiches.xml",
     } == set(envoi)
-    assert envoi["fr/110kh65.head"].decode() == pf.tete(item(), "fr", SITE)
+    assert envoi["fr/110kh65.head"].decode() == pf.tete(
+        item(), "fr", SITE, pf.version_carte(pf.champs_carte(item(), "fr"))
+    )
     assert envoi["cartes/110kh65-fr.png"] == banc.rendre(pf.champs_carte(item(), "fr"), "fr")
     assert envoi["cartes/110kh65-en.png"] == banc.rendre(pf.champs_carte(item(), "en"), "en")
     assert "1 fiche" in ligne
@@ -621,3 +623,47 @@ def test_le_module_se_lance_en_commande(monkeypatch, capsys):
     with pytest.raises(SystemExit) as fin:
         runpy.run_module("newskit.pages_fiches", run_name="__main__")
     assert fin.value.code == 0 and "sans pages" in capsys.readouterr().out
+
+
+# L'adresse de la carte porte sa version (13.11.2026) : les réseaux gardent une image par adresse, une carte refaite
+# (titre réécrit, marque changée) doit changer d'adresse ; le fichier, lui, garde son nom.
+
+
+def _image_deposee(banc, langue="fr"):
+    t = banc.envois[-1][f"{langue}/110kh65.head"].decode()
+    return (
+        _meta(t, "og:image"),
+        _meta(t, "twitter:image"),
+        json.loads(re.search(r"<script[^>]*>(.*?)</script>", t, re.S).group(1))["image"][0],
+    )
+
+
+def test_l_adresse_de_la_carte_porte_sa_version(banc, tmp_path):
+    deposer(banc, [item()], tmp_path / "pages.json")
+    og, tw, ld = _image_deposee(banc)
+    assert og.startswith(f"{SITE}/fiches/cartes/110kh65-fr.png?v=") and len(og.split("?v=")[1]) == pf.VERSION_CARTE
+    assert og == tw == ld
+    assert _image_deposee(banc, "en")[0].startswith(f"{SITE}/fiches/cartes/110kh65-en.png?v=")
+
+
+def test_un_titre_reecrit_change_l_adresse_de_la_carte(banc, tmp_path):
+    deposer(banc, [item()], tmp_path / "pages.json")
+    avant = _image_deposee(banc)[0]
+    deposer(banc, [item(titre="Harvey Jones préside Nvidia")], tmp_path / "pages.json")
+    apres = _image_deposee(banc)[0]
+    assert avant != apres and avant.split("?")[0] == apres.split("?")[0]
+    assert "cartes/110kh65-fr.png" in banc.envois[-1]
+
+
+def test_une_marque_changee_change_l_adresse_de_la_carte(banc, tmp_path):
+    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="a")
+    avant = _image_deposee(banc)[0]
+    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="b")
+    assert _image_deposee(banc)[0] != avant
+
+
+def test_une_carte_inchangee_garde_son_adresse(banc, tmp_path):
+    deposer(banc, [item()], tmp_path / "a.json")
+    deposer(banc, [item(descriptif="Harvey Jones préside le conseil. Colette Kress dirige.")], tmp_path / "b.json")
+    assert banc.envois[0]["fr/110kh65.head"] != banc.envois[1]["fr/110kh65.head"]
+    assert _image_deposee(banc)[0] == _meta(banc.envois[0]["fr/110kh65.head"].decode(), "og:image")

@@ -2,6 +2,17 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.32] - 2026-11-13
+
+### Modifié
+
+- Une suite fait de son fait neuf son angle. Le titre et la première phrase de son texte nomment ce fait. Sinon la relecture le reproche et fait réécrire le billet, avec le fait neuf sous les yeux. Une suite qui ne tient pas devient une source de plus de sa nouvelle (`sans_angle`, `fondre_sans_angle`).
+- La révision des titres refuse, pour une suite, un titre qui ne dit pas le fait neuf. Les candidats reçoivent ce fait.
+- Le rattrapage fait relire une nouvelle qu’il change en suite : elle est réécrite sur son fait neuf.
+- Deux suites de la même nouvelle se comparent une fois, même rapprochées. Si elles portent le même fait, la seconde devient une source de plus de la première.
+- Le fait neuf se mesure contre toute l’affaire : la chaîne des suites avec leurs sources attachées, puis les nouvelles du même contexte entrées avant. Ni le nom qui suit « d’après », « selon » ou « according to », ni l’éditeur de la source ne comptent plus comme un fait. Une source qui redit le fait d’une suite s’attache à cette suite.
+- Une suite garde ses termes neufs (`neuf`).
+
 ## [0.1.31] - 2026-11-11
 
 ### Modifié

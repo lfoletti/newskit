@@ -6,11 +6,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
-- Le fil se range par heure de parution, la plus récente en tête, puis par date de l’article (`fil.classer`). Rangé par date de l’article, un article de la veille paru à 12:52 passait sous ceux du jour parus à 11:47 : la tête du fil ne bougeait plus. La pile garde l’ordre par date de l’article (`fil.classer_pile`) : l’article le plus récent paraît d’abord.
+- Le fil se range par heure de parution, la plus récente en tête, puis par date de l’article (`fil.classer`). Rangé par date de l’article, un article de la veille paru à 12:52 passait sous ceux du jour parus à 11:47 : la tête du fil ne bougeait plus. La pile garde l’ordre par date de l’article (`fil.classer_pile`) : l’article le plus récent paraît d’abord.
 
 ### Retiré
 
-- L’entrée en arrière-plan (`fil.arriere_plan`) : un article plus ancien que ceux du panneau prend son tour dans la pile comme les autres, puis paraît en tête du fil. Sinon, le nouveau rangement l’aurait fait entrer en paquet en tête.
+- L’entrée en arrière-plan (`fil.arriere_plan`) : un article plus ancien que ceux du panneau prend son tour dans la pile comme les autres, puis paraît en tête du fil. Sinon, le nouveau rangement l’aurait fait entrer en paquet en tête.
 
 ## [0.1.39] - 2026-11-13
 

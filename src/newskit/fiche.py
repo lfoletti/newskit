@@ -125,6 +125,11 @@ OPTIONNELS: dict[str, type] = {
     "section": str,  # source « Dossier local »
     "source_manquante": str,  # « <code>, <date> » : la source a disparu (404, 410, 451) ; la fiche reste (mainteneur, 01.11.2026)
     "note": str,
+    # L'article d'origine d'une page d'agrégateur (collecte_rss.suivre_l_agregat, 13.11.2026) : la page de l'agrégateur,
+    # les autres articles qu'elle cite, sa classification (générée par l'agrégateur, gardée en métadonnée).
+    "via": str,
+    "autres_sources": str,
+    "classification": str,
     "depot_id": int,  # source « Dépôt » : ce que le porteur a dit en déposant
     # Texte de référence (diachronie.py, 09.10.2026) : la famille du texte, la date de sa version, « en vigueur » ou
     # « remplacée », la fiche de la version en vigueur qui remplace celle-ci, et le rang de la partie (art-015).
@@ -167,6 +172,9 @@ NON_IDENTITE = frozenset(
         "chemin_local",
         "papier_arxiv",
         "origine_date",
+        "via",  # la page d'agrégateur qui a mené à l'article : l'identité est l'adresse de l'article
+        "autres_sources",
+        "classification",
         "date_avant_correction",
         "date_modification",
         "origine_auteur",

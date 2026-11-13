@@ -194,7 +194,13 @@ PROPRES = {
     # Trouvées par l'audit d'accès /sap (07.10.2026) : sur 50 sites « sans flux », 23 publiaient un plan de site vivant
     # et 11 une page de liste lisible en HTML statique. `chemins` : expression rationnelle sur l'adresse, qui ne garde
     # que les articles (les plans de site listent aussi les pages de service) ; `jours` : fenêtre sur <lastmod>.
-    "Plan de site": ({"plan", "chemins"}, {"site", "mots_cles", "exclure", "entetes", "jours"}),
+    # `agregateur` : la page ne vaut que par les articles où elle mène (l'AI Incidents Monitor de l'OCDE) ; la fiche porte
+    # l'article d'origine, la page reste en métadonnée ; `classification_motif` : (libellé, bloc d'étiquettes) sur sa
+    # page (mainteneur, 13.11.2026).
+    "Plan de site": (
+        {"plan", "chemins"},
+        {"site", "mots_cles", "exclure", "entetes", "jours", "agregateur", "classification_motif"},
+    ),
     "Page de liste": (
         {"liste", "chemins"},
         {"site", "mots_cles", "exclure", "entetes", "lien_motif", "lien_modele", "titre_motif", "corps_motif"},

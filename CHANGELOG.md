@@ -2,6 +2,13 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.42] - 2026-11-13
+
+### Ajouté
+
+- Une source « Plan de site » se déclare `agregateur: true` quand sa page ne vaut que par les articles où elle mène (l’AI Incidents Monitor de l’OCDE). La fiche porte alors l’article d’origine (`collecte_rss.suivre_l_agregat`) : parmi les articles cités, le plus ancien qui se lit (robots.txt admis, pas d’aperçu derrière un mur, `ESSAIS_AGREGAT` essais au plus). Son adresse, son titre, son auteur, sa date et sa publication font la fiche. La page de l’agrégateur reste en métadonnée (`via`), avec les autres articles cités (`autres_sources`) et sa classification (`classification`, lue par `classification_motif`). Sans article lisible, la page de l’agrégateur reste, avec une note. Le manifeste garde l’agrégat pour clé, avec son `origine`.
+- Le domaine de l’article d’origine compte comme une trouvaille de l’éclaireur (`eclaireur.noter_trouvaille`, `compter_domaine`) : trouvé deux fois, il est étudié, puis il entre au registre si son flux se lit.
+
 ## [0.1.41] - 2026-11-13
 
 ### Ajouté

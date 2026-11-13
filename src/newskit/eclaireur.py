@@ -92,6 +92,29 @@ def lire_memoire() -> dict:
     return json.loads(MEMOIRE.read_text(encoding="utf-8")) if MEMOIRE.exists() else {"domaines": {}}
 
 
+def compter_domaine(memoire: dict, domaine: str, graphe: str, aujourdhui: str) -> None:
+    """Un dépôt de plus pour ce domaine ; trouvé deux fois, il est étudié (la prospection, gardée trente jours), puis
+    declarer_sources le fait entrer au registre si son flux se lit (09.10.2026)."""
+    from newskit import depots  # noqa: PLC0415
+
+    d = memoire["domaines"].setdefault(domaine, {"depots": 0, "graphes": [], "etude": None, "etudie_le": None})
+    d["depots"] += 1
+    d["dernier"] = aujourdhui
+    if graphe not in d["graphes"]:
+        d["graphes"].append(graphe)
+    if d["depots"] >= 2 and not depots.deja_declaree(domaine):
+        depots.etudier_source(domaine, memoire, aujourdhui)
+
+
+def noter_trouvaille(url: str, graphe: str, aujourdhui: str) -> None:
+    """Un article trouvé hors de l'éclaireur (l'origine d'une page d'agrégateur, 13.11.2026 ; mainteneur : « les adresses
+    en source deviennent parfois de nouvelles sources pour la routine ») compte comme une trouvaille de son domaine."""
+    memoire = lire_memoire()
+    compter_domaine(memoire, domaine_de(url), graphe, aujourdhui)
+    MEMOIRE.parent.mkdir(parents=True, exist_ok=True)
+    MEMOIRE.write_text(json.dumps(memoire, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def adresses_connues(graphe: str) -> set[str]:
     """Les adresses (canoniques) et les identifiants arXiv des fiches que le graphe a déjà, sous-dossiers compris :
     l'index d'identité de fiche (06.11.2026 ; avant, un glob d'un seul niveau et la seule barre finale retirée)."""
@@ -301,13 +324,7 @@ def ingerer(
         connues.add(url.rstrip("/"))
         return f"  =   [{genre}] {titre[:64]} — déjà vue ({deja.cle}, {deja.existante.name})"
     connues.add(url.rstrip("/"))
-    d = memoire["domaines"].setdefault(domaine, {"depots": 0, "graphes": [], "etude": None, "etudie_le": None})
-    d["depots"] += 1
-    d["dernier"] = aujourdhui
-    if graphe not in d["graphes"]:
-        d["graphes"].append(graphe)
-    if d["depots"] >= 2 and not depots.deja_declaree(domaine):
-        depots.etudier_source(domaine, memoire, aujourdhui)  # la prospection, gardée trente jours
+    compter_domaine(memoire, domaine, graphe, aujourdhui)
     return f"  ok  [{genre}] {titre[:64]} — {n_mots} mots — {domaine}"
 
 

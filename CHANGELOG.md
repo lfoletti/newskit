@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.37] - 2026-11-13
+
+### Corrigé
+
+- L’adresse de la carte d’aperçu porte sa version (`?v=…`) : elle change quand la carte change (titre, rubrique, date, source ou marque). Les réseaux gardent une image par adresse ; une fiche réécrite montrait encore l’ancienne carte. Le fichier garde son nom.
+
 ## [0.1.36] - 2026-11-13
 
 ### Corrigé

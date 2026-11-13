@@ -29,6 +29,7 @@ from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
 from newskit import diffusion  # noqa: E402 — la liste des abonnés de l'édition (config.yaml)
+from newskit import media  # noqa: E402
 from newskit import fil  # noqa: E402
 from newskit import notifier_courriel as nc  # noqa: E402
 from newskit import alertes_fil  # noqa: E402
@@ -57,6 +58,21 @@ def inscriptions() -> str:
     except Exception as e:  # noqa: BLE001
         ligne = f"échec ({type(e).__name__}: {str(e)[:120]})"
     return f"{time.strftime('%Y-%m-%d %H:%M')} inscriptions : {ligne}" if ligne else ""
+
+
+def apres_redaction(graphe: str) -> str:
+    """Le pas de l'édition après le fil du graphe (config.yaml, `apres_redaction` : un module qui porte
+    `apres_redaction(graphe) -> str` ; mainteneur, 13.11.2026 : « la récupération d'adresse devrait faire partie du
+    pipeline standard et accompagner la rédaction »). Sa ligne de journal ; vide sans déclaration ni rien à dire. Une
+    panne se dit et n'arrête pas le passage."""
+    nom = media.courant().get("apres_redaction")
+    if not nom:
+        return ""
+    try:
+        ligne = diffusion.charger(nom).apres_redaction(graphe)
+    except Exception as e:  # noqa: BLE001
+        ligne = f"échec ({type(e).__name__}: {str(e)[:120]})"
+    return f"{time.strftime('%Y-%m-%d %H:%M')} {graphe} après la rédaction : {ligne}" if ligne else ""
 
 
 def lignes_d_echec(code: int, stderr: str) -> list[str]:
@@ -143,6 +159,9 @@ def main() -> int:
                 pages = type(e).__name__
             print(time.strftime("%Y-%m-%d %H:%M"), g, "pages des fiches :", pages, flush=True)
         surveiller(g, r.returncode, publication)
+        ligne = apres_redaction(g)
+        if ligne:
+            print(ligne, flush=True)
     ligne = inscriptions()
     if ligne:
         print(ligne, flush=True)

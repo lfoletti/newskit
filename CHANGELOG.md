@@ -4,6 +4,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [0.1.41] - 2026-11-13
 
+### Ajouté
+
+- Un pas de l’édition après le fil de chaque passage : le `config.yaml` du média nomme un module (`apres_redaction: scripts/contacts.py`) qui porte `apres_redaction(graphe) -> str`. `collecte_continue` l’appelle après le fil de chaque graphe et écrit sa ligne au journal. Sa panne se dit et n’arrête jamais le passage. `diffusion.charger(nom)` charge tout module de l’édition, une fois.
+
 ### Corrigé
 
 - Le versement au cerveau CortexDB trouve Newskit : le Python du client (`cache/pilote_cortexdb/venv`) reçoit un chemin qui ne porte qu’un lien vers le paquet installé (`cerveau_cortexdb.env_du_client`, `lancer_client`). Du 8 au 13 novembre, chaque nuit, le versement mourait sur « No module named 'newskit' », en « non bloquant » ; le cerveau publié restait celui du 7 novembre. Les paquets du poste ne sont pas ouverts au client : leurs grpcio et protobuf masqueraient ceux du client.

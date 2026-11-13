@@ -329,7 +329,7 @@ def angle_perdu(b: dict, f: dict) -> list[str]:
     siens."""
     if all(fil.angle_tenu(b, x["titre"], x["resume"]) for x in (f, f["en"])):
         return []
-    return [f"le titre et la première phrase ne disent pas le fait neuf : {b.get('developpement') or ''}"]
+    return [fil.reproche_angle(b, "fr")]
 
 
 def _reporter(b: dict, f: dict) -> None:

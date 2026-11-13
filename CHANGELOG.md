@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.36] - 2026-11-13
+
+### Corrigé
+
+- Le reproche fait à une suite dont le titre tait le fait neuf nomme les mots à dire, dans leur forme du développement (« Harvey Jones »), en français comme en anglais ; il sert la relecture, la fiche et la version anglaise. Le reproche ne disait que le fait ; le rédacteur gardait le nom déjà dit par la nouvelle d’avant ; la suite épuisait ses essais.
+
 ## [0.1.35] - 2026-11-13
 
 ### Ajouté

@@ -235,6 +235,18 @@ def test_une_suite_titree_sur_l_evenement_d_avant_est_reecrite_sur_son_fait_neuf
     assert any("fait neuf" in r for r in x["reproches"])
 
 
+def test_la_reecriture_recoit_les_mots_du_fait_neuf_a_nommer(relecture):
+    appels, reecritures = relecture
+    s = _suite("Jensen Huang quitte la direction de Nvidia")
+    reecritures.append(
+        {"titre": "Colette Kress assure l'intérim de Nvidia", "texte": "Colette Kress assure l'intérim."}
+    )
+    fil.relire([s], "g")
+    (inv,) = [i for n, i in appels if n == "réécriture"]
+    x = json.loads(next(ligne for ligne in inv.split("\n") if ligne.startswith('{"n"')))
+    assert fil.reproche_angle(s, "fr") in x["reproches"] and "(Colette Kress)" in fil.reproche_angle(s, "fr")
+
+
 def test_une_suite_dont_la_premiere_phrase_tait_le_fait_neuf_est_reecrite(relecture):
     appels, reecritures = relecture
     s = _suite("Colette Kress assure l'intérim de Nvidia")  # le titre le dit, la première phrase non

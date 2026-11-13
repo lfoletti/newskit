@@ -2,6 +2,17 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.39] - 2026-11-13
+
+### Changé
+
+- La carte d’aperçu se réduit au groupe logo du média, grandi au centre : dans un fil réduit, le titre dessiné dans l’image devenait illisible ; le réseau l’écrit déjà dessous. Une carte par langue (`cartes/marque-<langue>.png`), la même pour toutes les fiches ; son adresse porte l’empreinte de l’image. La marque ne garde que `polices: {nom, sous}`, `couleurs: {fond, marque, accent, discret}`, `textes: {<langue>: {sous}}` ; une marque à l’ancien format est refusée.
+- Le titre de la page commence par le nom du site (`governance.news · <titre de la fiche>`) : c’est lui qui s’affiche dans l’onglet ; la suite reste propre à chaque page pour les moteurs. `og:title` garde le titre de la fiche seul.
+
+### Retiré
+
+- Les fonctions de l’ancienne carte : `champs_carte`, `titre_carte`, `couper`, `rubriques_anglaises`. `deposer` ne prend plus `rubriques_en` ni `empreinte_marque`. `rendre` reçoit la seule langue.
+
 ## [0.1.38] - 2026-11-13
 
 ### Ajouté

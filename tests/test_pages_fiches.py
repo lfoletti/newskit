@@ -108,7 +108,10 @@ def _meta(tete, cle):
 def test_l_en_tete_met_en_avant_le_contenu_de_la_fiche():
     t = pf.tete(item(), "fr", SITE)
     adr = SITE + pf.adresse(item(), "fr")
-    assert "<title>Colette Kress et Harvey Jones dirigent Nvidia après la démission de Jensen Huang" in t
+    assert (
+        "<title>exemple.news · Colette Kress et Harvey Jones dirigent Nvidia après la démission de Jensen Huang</title>"
+        in t
+    )
     assert _meta(t, "og:title") == item()["titre"]
     assert (
         _meta(t, "description")
@@ -116,7 +119,7 @@ def test_l_en_tete_met_en_avant_le_contenu_de_la_fiche():
         == "Colette Kress et Harvey Jones dirigent Nvidia. D&#x27;après Fortune, l&#x27;industrie hésite."
     )
     assert f'<link rel="canonical" href="{adr}">' in t and _meta(t, "og:url") == adr
-    assert _meta(t, "og:image") == f"{SITE}/fiches/cartes/110kh65-fr.png"
+    assert _meta(t, "og:image") == f"{SITE}/fiches/cartes/marque-fr.png"
     assert _meta(t, "og:image:width") == "1200" and _meta(t, "og:image:height") == "630"
     assert _meta(t, "twitter:card") == "summary_large_image" and _meta(t, "og:type") == "article"
     assert _meta(t, "og:locale") == "fr_FR"
@@ -140,7 +143,7 @@ def test_l_en_tete_dit_l_article_de_presse_en_donnees_structurees():
     d = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', t, re.S).group(1))
     assert d["@type"] == "NewsArticle" and d["headline"] == item()["titre"] and d["inLanguage"] == "fr"
     assert d["datePublished"] == "2026-11-12" and d["isBasedOn"] == FORTUNE
-    assert d["image"] == [f"{SITE}/fiches/cartes/110kh65-fr.png"] and d["mainEntityOfPage"] == SITE + pf.adresse(
+    assert d["image"] == [f"{SITE}/fiches/cartes/marque-fr.png"] and d["mainEntityOfPage"] == SITE + pf.adresse(
         item(), "fr"
     )
 
@@ -200,21 +203,15 @@ def test_l_article_d_un_billet_bref_n_a_que_son_chapeau():
     assert re.findall(r"<(h[1-6])>", a) == ["h1"] and item()["descriptif"].split(".")[0] in a
 
 
-# La carte d'aperçu
+# Le titre de l'onglet (le mainteneur, 13.11.2026 : « le titre de la page devrait être governance.news (affiché en
+# onglet) ») : le site d'abord, puis le titre de la fiche, propre à chaque page pour les moteurs.
 
 
-def test_la_carte_porte_le_titre_la_rubrique_la_date_et_la_source():
-    assert pf.champs_carte(item(), "fr") == {
-        "titre": item()["titre"],
-        "rubrique": "Secteurs",
-        "date": "12 novembre 2026",
-        "source": "Fortune",
-    }
-
-
-def test_la_carte_anglaise_nomme_la_rubrique_en_anglais():
-    c = pf.champs_carte(item(), "en", {"Secteurs": "Sectors"})
-    assert c["rubrique"] == "Sectors" and c["date"] == "12 November 2026" and c["titre"] == item()["titre_en"]
+def test_le_titre_de_l_onglet_commence_par_le_site():
+    for langue in pf.LANGUES:
+        t = pf.tete(item(), langue, SITE)
+        assert re.search(r"<title>(.*?)</title>", t).group(1) == "exemple.news · " + pf._titre(item(), langue)
+    assert _meta(pf.tete(item(), "fr", SITE), "og:title") == item()["titre"]  # l'aperçu garde le titre seul
 
 
 # Les billets publiés
@@ -232,11 +229,11 @@ def test_les_pages_suivent_la_copie_publique_sans_sa_limite(monkeypatch):
 
 class Banc:
     def __init__(self):
-        self.rendus, self.envois = [], []
+        self.rendus, self.envois, self.marque = [], [], "a"
 
-    def rendre(self, champs, langue):
-        self.rendus.append((champs, langue))
-        return b"PNG" + json.dumps([champs, langue], ensure_ascii=False, sort_keys=True).encode()
+    def rendre(self, langue):
+        self.rendus.append(langue)
+        return b"PNG" + langue.encode() + self.marque.encode()
 
     def envoyer(self, archive):
         with tarfile.open(fileobj=io.BytesIO(archive)) as t:
@@ -261,32 +258,30 @@ def test_le_depot_porte_l_en_tete_l_article_et_la_carte_des_deux_langues(banc, t
         "fr/110kh65.html",
         "en/110kh65.head",
         "en/110kh65.html",
-        "cartes/110kh65-fr.png",
-        "cartes/110kh65-en.png",
+        "cartes/marque-fr.png",
+        "cartes/marque-en.png",
         "plan_fiches.xml",
     } == set(envoi)
-    assert envoi["fr/110kh65.head"].decode() == pf.tete(
-        item(), "fr", SITE, pf.version_carte(pf.champs_carte(item(), "fr"))
-    )
-    assert envoi["cartes/110kh65-fr.png"] == banc.rendre(pf.champs_carte(item(), "fr"), "fr")
-    assert envoi["cartes/110kh65-en.png"] == banc.rendre(pf.champs_carte(item(), "en"), "en")
+    assert envoi["fr/110kh65.head"].decode() == pf.tete(item(), "fr", SITE, pf.version_carte(banc.rendre("fr")))
+    assert envoi["cartes/marque-fr.png"] == banc.rendre("fr") and envoi["cartes/marque-en.png"] == banc.rendre("en")
     assert "1 fiche" in ligne
 
 
 def test_une_fiche_inchangee_ne_repart_pas(banc, tmp_path):
     deposer(banc, [item()], tmp_path / "pages.json")
     assert deposer(banc, [item()], tmp_path / "pages.json") == "inchangé"
-    assert len(banc.envois) == 1 and len(banc.rendus) == 2
+    assert len(banc.envois) == 1
 
 
-def test_une_marque_changee_refait_les_cartes(banc, tmp_path):
-    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="a")
-    assert deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="a") == "inchangé"
-    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="b")
-    assert len(banc.envois) == 2 and "cartes/110kh65-fr.png" in banc.envois[1]
+def test_une_marque_changee_refait_les_cartes_et_les_en_tetes(banc, tmp_path):
+    deposer(banc, [item()], tmp_path / "pages.json")
+    banc.marque = "b"
+    deposer(banc, [item()], tmp_path / "pages.json")
+    assert len(banc.envois) == 2 and banc.envois[1]["cartes/marque-fr.png"] == b"PNGfrb"
+    assert banc.envois[1]["fr/110kh65.head"] != banc.envois[0]["fr/110kh65.head"]
 
 
-def test_une_fiche_changee_repart_seule(banc, tmp_path):
+def test_une_fiche_changee_repart_seule_avec_les_cartes(banc, tmp_path):
     deposer(banc, [item(), item(url=OSIRIS)], tmp_path / "pages.json")
     deposer(banc, [item(titre="Nouveau titre"), item(url=OSIRIS)], tmp_path / "pages.json")
     assert {n for n in banc.envois[1] if n != "plan_fiches.xml"} == {
@@ -294,8 +289,8 @@ def test_une_fiche_changee_repart_seule(banc, tmp_path):
         "fr/110kh65.html",
         "en/110kh65.head",
         "en/110kh65.html",
-        "cartes/110kh65-fr.png",
-        "cartes/110kh65-en.png",
+        "cartes/marque-fr.png",
+        "cartes/marque-en.png",
     }
 
 
@@ -307,13 +302,13 @@ def test_un_depot_manque_se_refait_au_passage_suivant(banc, tmp_path):
     assert "fr/110kh65.head" in b2.envois[0]
 
 
-def test_une_carte_non_rendue_ne_marque_pas_la_fiche_deposee(banc, tmp_path):
-    banc.rendre = lambda champs, langue: None
+def test_une_carte_non_rendue_ne_depose_rien(banc, tmp_path):
+    banc.rendre = lambda langue: None
     ligne = deposer(banc, [item()], tmp_path / "pages.json")
     assert banc.envois == [] and "carte" in ligne
     b2 = Banc()
     deposer(b2, [item()], tmp_path / "pages.json")
-    assert "cartes/110kh65-fr.png" in b2.envois[0]
+    assert "cartes/marque-fr.png" in b2.envois[0] and "fr/110kh65.head" in b2.envois[0]
 
 
 def _plan(xml):
@@ -414,17 +409,6 @@ def test_l_envoi_passe_par_ssh(monkeypatch, tmp_path):
     assert pf.envoyer_ssh(b"a") == "ssh 255 : refus"
 
 
-def test_les_rubriques_anglaises_viennent_de_l_arbre_des_fiches(monkeypatch, tmp_path):
-    (tmp_path / "arbre.yaml").write_text("racines:\n- {cle: s, fr: Secteurs, en: Sectors}\n", encoding="utf-8")
-    monkeypatch.setattr(pf, "RACINE", tmp_path)
-    from newskit import config_sources as cfg
-
-    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {"arbre_fiches": "arbre.yaml"})
-    assert pf.rubriques_anglaises("g") == {"Secteurs": "Sectors"}
-    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {})
-    assert pf.rubriques_anglaises("g") == {}
-
-
 def test_la_publication_lit_le_media_et_le_fil(monkeypatch, tmp_path):
     from newskit import config_sources as cfg
     from newskit import fil, media
@@ -433,7 +417,6 @@ def test_la_publication_lit_le_media_et_le_fil(monkeypatch, tmp_path):
     (tmp_path / "fil.json").write_text(json.dumps({"billets": []}), encoding="utf-8")
     monkeypatch.setattr(fil, "chemin_fil", lambda g: tmp_path / "fil.json")
     monkeypatch.setattr(cfg, "edition", lambda: {"lettre_site": SITE + "/"})
-    monkeypatch.setattr(cfg, "graphe_declare", lambda g: {})
     monkeypatch.setattr(media, "courant", lambda: {})
     assert "sans pages" in pf.publier("g")
     ecrire_marque(tmp_path)
@@ -442,12 +425,9 @@ def test_la_publication_lit_le_media_et_le_fil(monkeypatch, tmp_path):
     monkeypatch.setattr(pf, "items", lambda F: [item()])
     monkeypatch.setattr(pf, "deposer", lambda *a: vus.append(a) or "ok")
     assert pf.publier("g") == "ok"
-    billets, site, cache, rendre, envoyer, rubriques, empreinte = vus[0]
+    billets, site, cache, rendre, envoyer = vus[0]
     assert site == SITE and cache == tmp_path / "cache" / "pages_fiches_g.json" and billets == [item()]
-    assert rendre(pf.champs_carte(item(), "fr"), "fr").startswith(PNG_SIG) and envoyer is pf.envoyer_ssh
-    (tmp_path / "carte.yaml").write_text((tmp_path / "carte.yaml").read_text() + "# changée\n", encoding="utf-8")
-    pf.publier("g")
-    assert vus[1][6] != empreinte  # une marque changée refait toutes les cartes
+    assert rendre("fr").startswith(PNG_SIG) and envoyer is pf.envoyer_ssh
 
 
 def test_la_commande_publie_le_graphe_demande(monkeypatch, capsys):
@@ -459,15 +439,7 @@ def test_la_commande_publie_le_graphe_demande(monkeypatch, capsys):
 
 POLICE = Path(__file__).parent / "polices" / "JosefinSans-variable.ttf"
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
-COULEURS = {
-    "fond": "#eef0f3",
-    "titre": "#16233b",
-    "marque": "#3c4a60",
-    "accent": "#b4560f",
-    "discret": "#56637a",
-    "source": "#2c8a3c",
-    "filet": "#aab2bf",
-}
+COULEURS = {"fond": "#eef0f3", "marque": "#3c4a60", "accent": "#b4560f", "discret": "#2c8a3c"}
 # Un grand point : son bord gauche (x = 10 dans la viewBox, échelle 2) tombe sur la marge ; son centre à (92, 114).
 LOGO = '<svg viewBox="0 0 110 58"><circle cx="20" cy="29" r="10"/><circle cx="60.5" cy="10" r="1.5"/></svg>'
 
@@ -479,7 +451,7 @@ def ecrire_marque(dossier, **k):
         "polices": {r: [str(POLICE), 600] for r in pf.POLICES},
         "couleurs": COULEURS,
         "nom": ["exemple", ".news"],
-        "textes": {lg: {"sous": "Sous", "pied": "Pied", "d_apres": "D'après"} for lg in pf.LANGUES},
+        "textes": {"fr": {"sous": "Media synthetique"}, "en": {"sous": "Synthetic media"}},
         **k,
     }
     (dossier / "carte.yaml").write_text(yaml.safe_dump(m, allow_unicode=True), encoding="utf-8")
@@ -505,69 +477,47 @@ def _compte(im, boite, couleur):
     )
 
 
-CHAMPS = {
-    "titre": "Harvey Jones dirige Nvidia",
-    "rubrique": "Secteurs",
-    "date": "12 novembre 2026",
-    "source": "Fortune",
-}
+# La carte se réduit au groupe logo (le mainteneur, 13.11.2026 : « la carte de l'article devrait se limiter au groupe
+# logo », « la carte apparaît en réduit dans le fil linkedin, le titre y devient illisible ») : LinkedIn écrit le titre
+# sous l'image. Une carte par langue, la même pour toutes les fiches.
+
+
+def _cadre(im, fond):
+    """La boîte des pixels qui ne sont pas le fond."""
+    xs, ys = [], []
+    for y in range(0, im.height, 2):
+        for x in range(0, im.width, 2):
+            if not _proche(im.getpixel((x, y)), fond, 12):
+                xs.append(x)
+                ys.append(y)
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def test_la_carte_est_une_image_de_1200_sur_630(marque):
-    png = pf.dessiner(CHAMPS, "fr", marque)
+    png = pf.dessiner("fr", marque)
     assert png.startswith(PNG_SIG) and _image(png).size == (pf.LARGEUR, pf.HAUTEUR)
 
 
-def test_la_marque_s_aligne_sur_la_marge(marque):
-    im = _image(pf.dessiner(CHAMPS, "fr", marque))
-    assert _proche(im.getpixel((92, 114)), COULEURS["marque"])  # le centre du grand point
-    assert _proche(im.getpixel((pf.MARGE + 2, 114)), COULEURS["marque"])
-    assert _proche(im.getpixel((pf.MARGE - 3, 114)), COULEURS["fond"])
+def test_le_groupe_logo_est_centre_et_seul(tmp_path):
+    # Un logo qui remplit sa viewBox : la boîte du logo, centrée comme le bandeau du site, est celle de ses points.
+    plein = '<svg viewBox="0 0 110 58"><circle cx="12" cy="10" r="10"/><circle cx="12" cy="48" r="10"/></svg>'
+    marque = pf.charger_marque(ecrire_marque(tmp_path, svg=plein))
+    x0, y0, x1, y1 = _cadre(_image(pf.dessiner("fr", marque)), COULEURS["fond"])
+    assert abs((x0 + x1) / 2 - pf.LARGEUR / 2) <= 6 and abs((y0 + y1) / 2 - pf.HAUTEUR / 2) <= 6
+    assert y1 - y0 <= pf.LOGO_H * pf.LOGO_ECHELLE + 4  # rien d'autre que le groupe : ni titre ni pied
+    assert x1 - x0 >= pf.LARGEUR * 0.5  # grand : lisible dans un fil réduit
 
 
 def test_le_nom_porte_son_suffixe_en_couleur_d_accent(marque):
-    im = _image(pf.dessiner(CHAMPS, "fr", marque))
-    nom = (150, 70, 600, 110)
-    assert _compte(im, nom, COULEURS["accent"]) > 30 and _compte(im, nom, COULEURS["marque"]) > 30
+    im = _image(pf.dessiner("fr", marque))
+    tout = (0, 0, pf.LARGEUR, pf.HAUTEUR)
+    assert _compte(im, tout, COULEURS["accent"]) > 200 and _compte(im, tout, COULEURS["marque"]) > 200
 
 
-def test_la_rubrique_et_la_date_sont_en_haut_a_droite(marque):
-    im = _image(pf.dessiner(CHAMPS, "fr", marque))
-    assert _compte(im, (800, 70, pf.LARGEUR - pf.MARGE, 110), COULEURS["discret"]) > 30
-    vide = dict(CHAMPS, rubrique="", date="")
-    assert _compte(_image(pf.dessiner(vide, "fr", marque)), (800, 70, 1120, 110), COULEURS["discret"]) < 5
-
-
-def test_le_pied_porte_un_filet_et_la_source(marque):
-    im = _image(pf.dessiner(CHAMPS, "fr", marque))
-    assert _compte(im, (pf.MARGE, 520, pf.LARGEUR - pf.MARGE, 545), COULEURS["filet"]) > 500
-    assert _compte(im, (pf.MARGE, 550, 400, 590), COULEURS["source"]) > 30
-
-
-def test_le_titre_occupe_le_milieu(marque):
-    im = _image(pf.dessiner(CHAMPS, "fr", marque))
-    assert _compte(im, (pf.MARGE, 200, 1128, 500), COULEURS["titre"]) > 500
-
-
-def test_un_long_titre_se_reduit_pour_tenir(marque):
-    court = pf.titre_carte("Un titre court", marque, 360)
-    long = pf.titre_carte(" ".join(["gouvernance"] * 30), marque, 360)
-    assert court[0] == pf.TITRE_TAILLES[0] and len(court[1]) == 1
-    assert long[0] < pf.TITRE_TAILLES[0] and len(long[1]) <= pf.TITRE_LIGNES
-
-
-def test_un_titre_qui_ne_tient_jamais_garde_ses_mots(marque):
-    taille, lignes = pf.titre_carte(" ".join(["gouvernance"] * 200), marque, 360)
-    assert taille == pf.TITRE_TAILLES[-1] and len(lignes) == pf.TITRE_LIGNES
-    assert " ".join(lignes).split() == ["gouvernance"] * 200
-
-
-def test_le_titre_se_coupe_entre_deux_mots(marque):
-    f = pf._police(str(POLICE), 600, 40)
-    lignes = pf.couper("un deux trois quatre cinq six sept huit neuf dix", f, 200)
-    assert len(lignes) > 1 and " ".join(lignes) == "un deux trois quatre cinq six sept huit neuf dix"
-    assert all(f.getlength(x) <= 200 for x in lignes if " " in x)
-    assert pf.couper("anticonstitutionnellement", f, 10) == ["anticonstitutionnellement"]
+def test_le_sous_titre_est_dans_la_langue_de_la_carte(marque):
+    fr, en = _image(pf.dessiner("fr", marque)), _image(pf.dessiner("en", marque))
+    tout = (0, 0, pf.LARGEUR, pf.HAUTEUR)
+    assert _compte(fr, tout, COULEURS["discret"]) > 200 and fr.tobytes() != en.tobytes()
 
 
 def test_une_police_statique_se_prend_telle_quelle(monkeypatch):
@@ -593,13 +543,13 @@ def test_la_graisse_d_une_police_variable_est_appliquee():
 @pytest.mark.parametrize(
     "faute",
     [
-        {"polices": {"titre": [str(POLICE), 500]}},
+        {"polices": {"nom": [str(POLICE), 500]}},
         {"polices": {r: ["absente.ttf", 500] for r in pf.POLICES}},
         {"couleurs": {**COULEURS, "fond": "pas une couleur"}},
         {"couleurs": {"fond": "#fff"}},
         {"nom": ["seul"]},
-        {"textes": {"fr": {"sous": "S", "pied": "P", "d_apres": "D"}}},
-        {"textes": {lg: {"sous": "S"} for lg in pf.LANGUES}},
+        {"textes": {"fr": {"sous": "S"}}},
+        {"textes": {lg: {"sous": "S", "pied": "P"} for lg in pf.LANGUES}},
         {"logo": "absent.svg"},
         {"autre": 1},
     ],
@@ -636,8 +586,8 @@ def test_le_module_se_lance_en_commande(monkeypatch, capsys):
     assert fin.value.code == 0 and "sans pages" in capsys.readouterr().out
 
 
-# L'adresse de la carte porte sa version (13.11.2026) : les réseaux gardent une image par adresse, une carte refaite
-# (titre réécrit, marque changée) doit changer d'adresse ; le fichier, lui, garde son nom.
+# L'adresse de la carte porte sa version (13.11.2026) : les réseaux gardent une image par adresse ; une carte refaite
+# (marque changée) change d'adresse, le fichier garde son nom. La version est l'empreinte de l'image.
 
 
 def _image_deposee(banc, langue="fr"):
@@ -652,29 +602,21 @@ def _image_deposee(banc, langue="fr"):
 def test_l_adresse_de_la_carte_porte_sa_version(banc, tmp_path):
     deposer(banc, [item()], tmp_path / "pages.json")
     og, tw, ld = _image_deposee(banc)
-    assert og.startswith(f"{SITE}/fiches/cartes/110kh65-fr.png?v=") and len(og.split("?v=")[1]) == pf.VERSION_CARTE
-    assert og == tw == ld
-    assert _image_deposee(banc, "en")[0].startswith(f"{SITE}/fiches/cartes/110kh65-en.png?v=")
+    assert og == f"{SITE}/fiches/cartes/marque-fr.png?v={pf.version_carte(b'PNGfra')}" and og == tw == ld
+    assert len(og.split("?v=")[1]) == pf.VERSION_CARTE
+    assert _image_deposee(banc, "en")[0].startswith(f"{SITE}/fiches/cartes/marque-en.png?v=")
 
 
-def test_un_titre_reecrit_change_l_adresse_de_la_carte(banc, tmp_path):
+def test_un_titre_reecrit_garde_l_adresse_de_la_carte(banc, tmp_path):
     deposer(banc, [item()], tmp_path / "pages.json")
     avant = _image_deposee(banc)[0]
     deposer(banc, [item(titre="Harvey Jones préside Nvidia")], tmp_path / "pages.json")
-    apres = _image_deposee(banc)[0]
-    assert avant != apres and avant.split("?")[0] == apres.split("?")[0]
-    assert "cartes/110kh65-fr.png" in banc.envois[-1]
+    assert _image_deposee(banc)[0] == avant
 
 
 def test_une_marque_changee_change_l_adresse_de_la_carte(banc, tmp_path):
-    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="a")
+    deposer(banc, [item()], tmp_path / "pages.json")
     avant = _image_deposee(banc)[0]
-    deposer(banc, [item()], tmp_path / "pages.json", empreinte_marque="b")
-    assert _image_deposee(banc)[0] != avant
-
-
-def test_une_carte_inchangee_garde_son_adresse(banc, tmp_path):
-    deposer(banc, [item()], tmp_path / "a.json")
-    deposer(banc, [item(descriptif="Harvey Jones préside le conseil. Colette Kress dirige.")], tmp_path / "b.json")
-    assert banc.envois[0]["fr/110kh65.head"] != banc.envois[1]["fr/110kh65.head"]
-    assert _image_deposee(banc)[0] == _meta(banc.envois[0]["fr/110kh65.head"].decode(), "og:image")
+    banc.marque = "b"
+    deposer(banc, [item()], tmp_path / "pages.json")
+    assert _image_deposee(banc)[0] != avant and _image_deposee(banc)[0].split("?")[0] == avant.split("?")[0]

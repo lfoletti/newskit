@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.33] - 2026-11-13
+
+### Modifié
+
+- La fiche d’une suite garde son angle. Sa rédaction reçoit le fait neuf (« developpement »). Son titre et la première phrase de son résumé le nomment dans les deux langues. Sinon la fiche est refusée et réécrite avec ce reproche. Le billet garde son titre et son chapeau tant que sa fiche n’est pas tenue.
+
 ## [0.1.32] - 2026-11-13
 
 ### Modifié

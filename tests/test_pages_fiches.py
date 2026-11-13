@@ -145,6 +145,17 @@ def test_l_en_tete_dit_l_article_de_presse_en_donnees_structurees():
     )
 
 
+# LinkedIn : « No author found » (le mainteneur, 13.11.2026). Le média signe la synthèse, comme il l'édite ;
+# l'auteur de l'article d'origine reste cité comme source, sans qu'on lui attribue la fiche.
+def test_le_media_signe_la_fiche():
+    for langue in ("fr", "en"):
+        t = pf.tete(item(auteur="Sasha Rogelberg"), langue, SITE)
+        assert _meta(t, "author") == "exemple.news"
+        d = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', t, re.S).group(1))
+        assert d["author"] == {"@type": "Organization", "name": "exemple.news", "url": SITE + "/"} == d["publisher"]
+        assert "Rogelberg" not in json.dumps(d) and "Rogelberg" not in (_meta(t, "author") or "")
+
+
 def test_les_donnees_structurees_ne_ferment_pas_le_script():
     t = pf.tete(item(titre="Un </script><b>piège"), "fr", SITE)
     assert "</script><b>" not in t

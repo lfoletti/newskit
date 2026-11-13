@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.38] - 2026-11-13
+
+### Ajouté
+
+- La page d’une fiche dit son auteur : le média qui la publie, dans `<meta name="author">` et dans les données structurées (`author`, comme `publisher`). LinkedIn signalait « No author found ». L’auteur de l’article d’origine reste cité comme source ; la synthèse ne lui est pas attribuée.
+
 ## [0.1.37] - 2026-11-13
 
 ### Corrigé

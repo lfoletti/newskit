@@ -184,6 +184,8 @@ Tout vient de la source : aucun nom, aucun nombre, aucun fait qu'elle ne dit pas
   plusieurs valeurs d'un champ sont séparées par un point-virgule.
 Un élément se comprend seul, sans le titre. L'opinion de l'auteur reste attribuée. Pas de formule générale.
 Un billet qui porte « a_corriger » a déjà eu une fiche refusée pour ces raisons : écris-en une autre qui les évite.
+Un billet qui porte « developpement » est la suite d'une nouvelle déjà parue : ce fait neuf est son angle. titre et
+titre_en le disent, la première phrase de resume et de resume_en aussi ; l'événement d'avant vient ensuite, en contexte.
 Les règles de la lettre d'information :
 {regles}Arbre des catégories :
 {arbre}
@@ -321,6 +323,15 @@ def _reproches(v: dict) -> list[str]:
     ]
 
 
+def angle_perdu(b: dict, f: dict) -> list[str]:
+    """La fiche d'une suite donne son titre et son chapeau au billet (_reporter) : dans les deux langues, ils nomment le
+    fait neuf (fil.angle_tenu ; mainteneur, 13.11.2026). Sinon, un reproche : la fiche est refusée, le billet garde les
+    siens."""
+    if all(fil.angle_tenu(b, x["titre"], x["resume"]) for x in (f, f["en"])):
+        return []
+    return [f"le titre et la première phrase ne disent pas le fait neuf : {b.get('developpement') or ''}"]
+
+
 def _reporter(b: dict, f: dict) -> None:
     """La fiche tenue, qui a lu l'article entier, donne au billet son titre et son chapeau : le fil et la lettre les lisent là."""
     b["avant_fiche"] = {"titre": b["titre"], "descriptif": b["descriptif"]}
@@ -359,6 +370,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
                         "titre": b["titre"],
                         "source": corps[n],
                         **({"a_corriger": b["fiche"]["reproches"]} if (b.get("fiche") or {}).get("reproches") else {}),
+                        **({"developpement": b["developpement"]} if b.get("suite_de") and b.get("neuf") else {}),
                     },
                     ensure_ascii=False,
                 )
@@ -399,9 +411,9 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
         fr, en = verdicts.get(2 * k), verdicts.get(2 * k + 1)
         if fr is None or en is None:
             continue  # sans verdict : reste à écrire
-        reproches = _reproches(fr) + [
-            f"absent de la source : {a}" for a in en["absents"]
-        ]  # le relecteur juge la clarté en français
+        reproches = (
+            _reproches(fr) + [f"absent de la source : {a}" for a in en["absents"]] + angle_perdu(lot[n][0], pretes[n])
+        )  # le relecteur juge la clarté en français
         if reproches:
             lot[n][0]["fiche"] = refus(lot[n][0], reproches)
         else:

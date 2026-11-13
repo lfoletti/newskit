@@ -1352,14 +1352,9 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             echecs.append(f"{src.nom} : {str(e)[:100]}")
             continue
         manifeste[it["lien"]] = {"file": nom, "title": it_titre, "date": date, "complet": complet, "words": mots}
-        if origine:  # l'agrégat reste la clé du manifeste : il n'est pas relu ; son article compte pour l'éclaireur
+        if origine:  # l'agrégat reste la clé du manifeste : il n'est pas relu. Son article ne compte pas pour
+            # l'éclaireur : un agrégateur cite surtout la presse généraliste (mainteneur, 13.11.2026).
             manifeste[it["lien"]]["origine"] = origine["lien"]
-            from newskit import eclaireur  # noqa: PLC0415
-
-            try:
-                eclaireur.noter_trouvaille(origine["lien"], getattr(src, "graphe", ""), aujourdhui)
-            except Exception as e:  # noqa: BLE001 — la fiche est écrite ; la mémoire des domaines attendra
-                print(f"  mémoire des domaines : {type(e).__name__} pour {origine['lien'][:70]}", file=sys.stderr)
         compte["neuves"] += 1
         compte["partielles"] += 0 if complet else 1
 

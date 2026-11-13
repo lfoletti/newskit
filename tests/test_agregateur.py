@@ -172,17 +172,16 @@ def test_le_registre_admet_l_agregateur():
         assert fiche.OPTIONNELS[champ] is str
 
 
-def test_le_domaine_d_origine_compte_comme_une_trouvaille(monkeypatch, tmp_path):
-    monkeypatch.setattr(eclaireur, "MEMOIRE", tmp_path / "_sources.json")
+def test_un_domaine_trouve_deux_fois_est_etudie(monkeypatch):
     etudies = []
     monkeypatch.setattr(depots, "etudier_source", lambda d, m, j: etudies.append(d))
     monkeypatch.setattr(depots, "deja_declaree", lambda d: None)
-    eclaireur.noter_trouvaille("https://www.wnp.pl/a", "ai-governance", "2026-11-13")
-    m = eclaireur.lire_memoire()
+    m = {"domaines": {}}
+    eclaireur.compter_domaine(m, "wnp.pl", "ai-governance", "2026-11-13")
     assert m["domaines"]["wnp.pl"]["depots"] == 1 and m["domaines"]["wnp.pl"]["graphes"] == ["ai-governance"]
     assert etudies == []
-    eclaireur.noter_trouvaille("https://wnp.pl/b", "ai-governance", "2026-11-13")
-    assert eclaireur.lire_memoire()["domaines"]["wnp.pl"]["depots"] == 2 and etudies == ["wnp.pl"]
+    eclaireur.compter_domaine(m, "wnp.pl", "ai-governance", "2026-11-13")
+    assert m["domaines"]["wnp.pl"]["depots"] == 2 and etudies == ["wnp.pl"]
 
 
 def test_la_collecte_d_un_agregateur_ecrit_l_article_d_origine(monkeypatch, tmp_path):
@@ -219,8 +218,6 @@ def test_la_collecte_d_un_agregateur_ecrit_l_article_d_origine(monkeypatch, tmp_
 
     monkeypatch.setattr(rss, "corps_de_page", corps_de_page)
     monkeypatch.setattr(rss, "_robots_exclut_ia", lambda u: False)
-    trouvees = []
-    monkeypatch.setattr(eclaireur, "noter_trouvaille", lambda u, g, j: trouvees.append((u, g)))
     c = rss.traiter_source(src, 10, [])
     assert c["neuves"] == 1
     m = json.loads(src.manifeste.read_text(encoding="utf-8"))
@@ -234,7 +231,6 @@ def test_la_collecte_d_un_agregateur_ecrit_l_article_d_origine(monkeypatch, tmp_
         AGREGAT,
     )
     assert champs["classification"].startswith("AI principles: Safety") and "AI generated" not in corps
-    assert trouvees == [(wnp, "ai-governance")]
 
 
 def test_sans_source_lisible_la_page_de_l_agregateur_reste(monkeypatch, tmp_path):
@@ -280,37 +276,3 @@ def test_la_page_garde_son_html_seulement_sur_demande(monkeypatch):
     monkeypatch.setattr(rss, "agent_robot", lambda: "robot-de-test")  # la CI n'a pas d'adresse de contact
     assert "html" not in rss.corps_de_page("https://oecd.ai/x")[3]
     assert rss.corps_de_page("https://oecd.ai/x", garder_html=True)[3]["html"] == page.decode()
-
-
-def test_une_memoire_des_domaines_en_panne_n_empeche_pas_la_fiche(monkeypatch, tmp_path, capsys):
-    wnp = "https://www.wnp.pl/rynki/rafael-pocisk,1118987.html"
-    src = SimpleNamespace(
-        cle="oecd_aim",
-        nom="OCDE.AI",
-        plateforme="Plan de site",
-        chemin=tmp_path / "aim",
-        manifeste=tmp_path / "aim" / "_manifest.json",
-        session=None,
-        mots_cles=[],
-        exclure="",
-        doublons_de=[],
-        plan="https://oecd.ai/sitemap.xml",
-        flux="",
-        graphe="ai-governance",
-        propres={"agregateur": True, "classification_motif": MOTIF},
-    )
-    monkeypatch.setattr(
-        rss,
-        "entrees_plan_quotidien",
-        lambda s, l: [{"lien": AGREGAT, "titre": "", "corps": "", "complet": False, "date": "", "auteur": ""}],
-    )
-    pages = {AGREGAT: (300, MD, False, {"titre": "Super Ice"}), wnp: (400, TEXTE, False, {})}
-    monkeypatch.setattr(rss, "corps_de_page", lambda url, *a, **k: pages.get(url, (0, "", False, {})))
-    monkeypatch.setattr(rss, "_robots_exclut_ia", lambda u: False)
-
-    def panne(*a):
-        raise OSError("disque plein")
-
-    monkeypatch.setattr(eclaireur, "noter_trouvaille", panne)
-    assert rss.traiter_source(src, 10, [])["neuves"] == 1
-    assert "mémoire des domaines : OSError" in capsys.readouterr().err

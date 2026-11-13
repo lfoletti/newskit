@@ -197,6 +197,7 @@ def etudier_source(domaine: str, m: dict, aujourdhui: str) -> dict:
                 "mots": (r or {}).get("mots", 0),
                 "flux": (r or {}).get("adresse") or "",
                 "yaml": ps.bloc_yaml(domaine, r) if v == "OUI" else "",
+                "textes": (r or {}).get("textes") or [],  # la mesure de spécialisation, faite par graphe
             }
         except Exception as e:  # noqa: BLE001 — l'étude est un confort, la fiche compte d'abord
             d["etude"] = {"verdict": "?", "note": f"prospection impossible : {str(e)[:80]}"}

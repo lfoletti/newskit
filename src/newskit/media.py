@@ -90,6 +90,7 @@ CHAMPS = {
     "diffusion",
     "lettre_aux_abonnes",
     "lecture_audio",
+    "pages_fiches",
     "registre_des_graphes",
     "reglages",
 } | BLOCS
@@ -109,6 +110,18 @@ LECTURE_AUDIO = {"modele", "voix", "vitesse", "sigles", "pauses"}
 VITESSE = (0.8, 1.2)
 PAUSES = {"titre", "chapeau", "paragraphe"}
 PAUSE_MAX = 3
+
+
+PAGES_FICHES = {"marque"}
+
+
+def _valider_pages_fiches(v, nom: str) -> None:
+    """Les pages des fiches (pages_fiches.py) : la marque des cartes d'aperçu, chemin relatif au dossier du média."""
+    if not isinstance(v, dict) or set(v) != PAGES_FICHES:
+        raise ConfigMediaInvalide(f"{nom} : pages_fiches : {sorted(PAGES_FICHES)} attendus")
+    for k, x in v.items():
+        if not isinstance(x, str) or not x or x.startswith("/") or ".." in x.split("/"):
+            raise ConfigMediaInvalide(f"{nom} : pages_fiches.{k} : un chemin relatif au dossier du média, lu {x!r}")
 
 
 def _valider_lecture_audio(v, nom: str) -> None:
@@ -185,6 +198,8 @@ def charger(chemin: Path = FICHIER) -> dict:
         raise ConfigMediaInvalide(f"{chemin.name} : lettre_aux_abonnes : true ou false, lu {d['lettre_aux_abonnes']!r}")
     if "lecture_audio" in d:
         _valider_lecture_audio(d["lecture_audio"], chemin.name)
+    if "pages_fiches" in d:
+        _valider_pages_fiches(d["pages_fiches"], chemin.name)
     r = d.get("registre_des_graphes")
     if r is not None and (not isinstance(r, str) or not r.strip()):
         raise ConfigMediaInvalide(f"{chemin.name} : registre_des_graphes : un chemin de fichier, lu {r!r}")

@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.50] - 2026-11-14
+
+### Modifié
+
+- Un passage en place qui effacerait trop se fait en reconstruction complète. Avant de cloner le cerveau, le puits compte sans serveur (`puits_cortexdb --compter`) ce qu’un passage en place remplacerait, ajouterait et retirerait, par le même chemin que le versement. Au-delà de `EFFACEMENTS_MAX` (300) appels d’effacement, un par document remplacé et deux par document retiré, le cerveau se reconstruit en entier et le bilan en donne la raison. Un en place forcé (`--en-place`) ne compte pas. CortexDB lit tout le graphe à chaque `delete_document_graph` et `knowledge_delete` : sur un graphe de 396 000 nœuds et 1 043 819 arêtes, 4,0 s et 6,0 s par appel, plus d’une heure d’effacements, contre 32 minutes pour la reconstruction complète. Sur ce graphe, le comptage prend 18 s ; il a trouvé 1 477 effacements.
+
 ## [0.1.49] - 2026-11-14
 
 ### Retiré

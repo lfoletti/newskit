@@ -365,6 +365,20 @@ def fait_present(f: str, s: str) -> bool:
     return False
 
 
+# Des mots anglais ordinaires, jamais des noms : une phrase qui en garde un hors citation ne se lit pas sans l'original
+# (Palantir, 14.11.2026 : « Un listing d'octobre 2026 décrit Palantir comme le maker de Maven […] »).
+ANGLAIS = re.compile(
+    r"(?<![-\w])(listing|maker|makers|reportedly|allegedly|according|however|whereas|meanwhile|announced|said|says|"
+    r"released|launched)(?![-\w])"
+)
+CITATIONS = re.compile(r"«[^»]*»|\"[^\"]*\"|“[^”]*”")
+
+
+def illisible(phrase: str) -> list[str]:
+    """Les mots anglais ordinaires de la phrase, hors citation (vide : la phrase se lit)."""
+    return [f"anglais : {m}" for m in dict.fromkeys(ANGLAIS.findall(CITATIONS.sub(" ", phrase)))]
+
+
 def verifier(phrase: str, sources: str) -> list[str]:
     """Les faits de la phrase introuvables dans `sources` (vide : la phrase tient)."""
     s = ig._plier(sources).replace(",", ".")
@@ -622,6 +636,31 @@ def journal_rejets(graphe: str) -> Path:
     return d / f"{graphe}.jsonl"
 
 
+def consigne_notions(libelle: str) -> str:
+    """La consigne de rédaction des synthèses de notions, sans les preuves."""
+    return (
+        f"Domaine : « {libelle} ». Pour chaque notion ci-dessous, écris sa synthèse en français : 2 à 6 "
+        "phrases courtes et denses — ce que c'est, comment ça marche, ce qui la distingue, et les faits précis "
+        "(versions, chiffres, dates, qui affirme quoi). N'emploie QUE ses preuves [E…] : rien de ta mémoire. "
+        "Chaque phrase liste les preuves qui la fondent ; recopie à l'identique les noms, chiffres et versions : les noms "
+        "d'institutions, de textes, de pays et les sigles s'écrivent comme dans la preuve (SME, FDPIC, Council of "
+        "Europe, GDPR), sans les traduire. "
+        "Moins de phrases plutôt qu'une phrase incertaine. Une preuve marquée (moindre autorité) vient d'une "
+        "source au ton promotionnel : n'en reprends ni les superlatifs ni les généralisations ; un fait qu'elle "
+        "seule porte s'écrit comme rapporté par elle (« selon … »), jamais comme acquis. "
+        "Chaque preuve est datée entre parenthèses ; un texte de référence y porte son statut. La synthèse porte "
+        "d'abord sur l'état actuel de la notion, ses faits récents et son voisinage. Quand les preuves s'étalent "
+        "dans le temps ET que la notion a changé (texte remplacé, délai reporté, obligation ajoutée ou retirée, "
+        "chiffre révisé), ajoute en complément, en une phrase au plus, l'évolution datée en disant lequel des "
+        "états est en vigueur ; une version REMPLACÉE se cite au passé (« la version du 12.07.2024 prévoyait… »), "
+        "jamais comme le droit actuel. Quand rien n'a changé, n'ajoute pas de chronologie. "
+        "Une preuve qui décrit seulement un document (une page de liste, un sommaire, l'annonce d'un épisode ou d'un "
+        "événement) ne fonde aucun fait sur la notion : n'en tire pas de phrase. Un mot anglais ordinaire se traduit "
+        "(« listing », « maker », « reportedly ») ; seuls les noms, les sigles et les titres restent tels quels. "
+        "Chaque phrase se lit sans l'original.\n\n"
+    )
+
+
 def rediger_notions(graphe: str, G, ids: list[str], modele: str, ecrire=None) -> dict:
     """Rédige les synthèses de `ids` par lots parallèles. `ecrire(resultat_partiel, repondues)` est appelé au fil de
     l'eau (toutes les ECRITURE_S secondes) et à la fin : ce qui est rédigé est écrit, rien ne se perd si le processus
@@ -655,21 +694,7 @@ def rediger_notions(graphe: str, G, ids: list[str], modele: str, ecrire=None) ->
                 )
             )
         return (
-            f"Domaine : « {decl['libelle']} ». Pour chaque notion ci-dessous, écris sa synthèse en français : 2 à 6 "
-            "phrases courtes et denses — ce que c'est, comment ça marche, ce qui la distingue, et les faits précis "
-            "(versions, chiffres, dates, qui affirme quoi). N'emploie QUE ses preuves [E…] : rien de ta mémoire. "
-            "Chaque phrase liste les preuves qui la fondent ; recopie à l'identique les noms, chiffres et versions : les noms "
-            "d'institutions, de textes, de pays et les sigles s'écrivent comme dans la preuve (SME, FDPIC, Council of "
-            "Europe, GDPR), sans les traduire. "
-            "Moins de phrases plutôt qu'une phrase incertaine. Une preuve marquée (moindre autorité) vient d'une "
-            "source au ton promotionnel : n'en reprends ni les superlatifs ni les généralisations ; un fait qu'elle "
-            "seule porte s'écrit comme rapporté par elle (« selon … »), jamais comme acquis. "
-            "Chaque preuve est datée entre parenthèses ; un texte de référence y porte son statut. La synthèse porte "
-            "d'abord sur l'état actuel de la notion, ses faits récents et son voisinage. Quand les preuves s'étalent "
-            "dans le temps ET que la notion a changé (texte remplacé, délai reporté, obligation ajoutée ou retirée, "
-            "chiffre révisé), ajoute en complément, en une phrase au plus, l'évolution datée en disant lequel des "
-            "états est en vigueur ; une version REMPLACÉE se cite au passé (« la version du 12.07.2024 prévoyait… »), "
-            "jamais comme le droit actuel. Quand rien n'a changé, n'ajoute pas de chronologie.\n\n"
+            consigne_notions(decl["libelle"])
             + "\n\n".join(blocs)
             + '\n\nRéponds en JSON : {"notions": [{"id": "<id>", "phrases": [{"texte": "…", "preuves": ["E1", …]}]}]}.'
         )
@@ -714,7 +739,11 @@ def rediger_notions(graphe: str, G, ids: list[str], modele: str, ecrire=None) ->
                     ]
                     total += 1
                     texte = " ".join(str(ph.get("texte") or "").split())
-                    manque = verifier(texte, matiere_de(G, n, [pr[i] for i in refs])) if refs else ["(aucune preuve)"]
+                    manque = (
+                        verifier(texte, matiere_de(G, n, [pr[i] for i in refs])) + illisible(texte)
+                        if refs
+                        else ["(aucune preuve)"]
+                    )
                     if not texte or manque:
                         rejets += 1
                         retirees.append({"texte": texte, "preuves": [i + 1 for i in refs], "manque": manque})

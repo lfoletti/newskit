@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.47] - 2026-11-14
+
+### Ajouté
+
+- Une source « Page de liste » ou « Plan de site » peut dire où sa date est écrite dans l’adresse (`date_adresse`, expression rationnelle aux groupes nommés `a`, `m`, `j` ; une année à deux chiffres est de ce siècle). Cette date passe devant une date lue dans le texte. Le Japan AISI publie sous `/activity_news/261030/` sans méta de date : la fiche du 30 octobre était datée du 26, date d’un document d’OpenAI cité dans le texte. Le registre refuse un motif illisible ou sans les trois groupes.
+
 ## [0.1.44] - 2026-11-13
 
 ### Ajouté

@@ -49,6 +49,10 @@ EN_PLACE_DES = (
     0,
 )  # D6 : delete_document_graph + knowledge_delete ne laissent rien (liliang-cn/cortexdb#122, #123)
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
+# Part de l'ancien cerveau à reprendre (remplacés et retirés) au-delà de laquelle le passage reconstruit en entier : en
+# place, chaque document repris est supprimé puis reversé un par un. Le 14.11.2026, 19 750 sur 19 752 : le passage en
+# place dépassait 6 h chaque nuit et le cerveau servi n'a plus changé pendant une semaine.
+SEUIL_COMPLET = 0.25
 
 
 def version_binaire(binaire: Path = None) -> tuple[int, ...]:
@@ -75,6 +79,29 @@ def mode_du_passage(
     if raison and force == "en_place":
         raise SystemExit(f"  en place impossible : {raison}")
     return ("complet", raison) if raison else ("en_place", "")
+
+
+def part_a_reprendre(compte: dict) -> float:
+    """Part de l'ancien cerveau qu'un passage en place supprime puis reverse (un ajout coûte autant dans les deux modes)."""
+    reprendre = compte.get("remplaces", 0) + compte.get("retires", 0)
+    total = reprendre + compte.get("inchanges", 0)
+    return reprendre / total if total else 0
+
+
+def mode_apres_compte(mode: str, raison: str, compte: dict, force: str | None = None) -> tuple[str, str]:
+    """Un en place non forcé dont la part à reprendre passe SEUIL_COMPLET devient une reconstruction complète."""
+    if mode != "en_place" or force == "en_place" or part_a_reprendre(compte) <= SEUIL_COMPLET:
+        return mode, raison
+    reprendre = compte.get("remplaces", 0) + compte.get("retires", 0)
+    return "complet", f"{reprendre} versements sur {reprendre + compte.get('inchanges', 0)} à reprendre"
+
+
+def compter_versements(graphe: str, options: list[str]) -> dict:
+    """Le compte d'un passage en place (puits_cortexdb --compter) : empreintes seules, sans serveur ni écriture."""
+    r = lancer_client([str(PYTHON_CLIENT), str(CODE / "puits_cortexdb.py"), "--graphe", graphe, "--compter", *options])
+    if r.returncode:
+        raise RuntimeError(f"compte : {(r.stdout + r.stderr)[-800:]}")
+    return json.loads(r.stdout.strip().splitlines()[-1])
 
 
 def cloner(source: Path, dest: Path) -> None:
@@ -534,22 +561,27 @@ def construire(
         if force == "en_place":
             raise SystemExit("  en place impossible : la couche 1 a changé")
         mode, raison = "complet", "la couche 1 a changé"
+    t0 = time.time()
+    options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
+    if "--vues" in options:
+        ecrire_vues(graphe, Path(options[options.index("--vues") + 1]))
+    if mode == "en_place":
+        # Compté avant tout clone : la décision ne coûte ni place ni écriture.
+        mode, raison = mode_apres_compte(
+            mode, raison, compter_versements(graphe, [*options, "--empreintes-avant", str(p_emp)]), force
+        )
     print(
         f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}",
         file=sys.stderr,
     )
-    t0 = time.time()
     effacer(neuf)
     if mode == "en_place":
         cloner(cible, neuf)
-    options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
     options += [
         "--empreintes-apres",
         str(neuf_emp),
         *(["--empreintes-avant", str(p_emp)] if mode == "en_place" else []),
     ]
-    if "--vues" in options:
-        ecrire_vues(graphe, Path(options[options.index("--vues") + 1]))
 
     def verser_dans(s: Serveur):
         args = [

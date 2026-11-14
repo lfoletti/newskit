@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.45] - 2026-11-14
+
+### Ajouté
+
+- Le versement en place bascule en reconstruction complète quand trop de documents changent. Avant de cloner l’ancien cerveau, `cerveau_cortexdb` compte les versements (`puits_cortexdb --compter` : empreintes seules, sans serveur ni écriture) ; si la part de l’ancien cerveau à reprendre (remplacés et retirés) passe `SEUIL_COMPLET` (0,25), il reconstruit en entier et le bilan en dit la raison. `--en-place` garde l’en place. Le 14.11.2026, un changement du code de versement avait changé 19 750 empreintes sur 19 752 : le passage en place dépassait 6 heures chaque nuit et le cerveau servi n’a plus changé pendant une semaine.
+
 ## [0.1.44] - 2026-11-13
 
 ### Ajouté

@@ -53,7 +53,7 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 
 # L'interpréteur des étapes est celui qui lance la routine : c'est lui que
-# l'agent launchd désigne, et c'est là que graphify est installé. Un chemin
+# l'agent launchd désigne, et c'est là que le moteur est installé. Un chemin
 # codé en dur vers une autre machine a fait échouer la première reprise.
 PYTHON = os.environ.get("SE_PYTHON", sys.executable)
 RAPPORT = RACINE / "ROUTINE.md"
@@ -291,7 +291,7 @@ def lancer(
             return False, ""
     t0 = time.time()
     try:
-        # PYTHONHASHSEED=0 : la détection de communautés de graphify varie
+        # PYTHONHASHSEED=0 : la détection de communautés variait (graphify)
         # d'un processus à l'autre sans cela (128 communautés, puis 141, sur
         # un graphe identique). Fixé ici plutôt que dans l'agent launchd, pour
         # qu'un lancement à la main donne la même carte.

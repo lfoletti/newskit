@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.49] - 2026-11-14
+
+### Retiré
+
+- La dépendance à graphify (`graphifyy`). La structure des titres (`structure_titres`), la validation des extractions et la composition avec sa déduplication (`composition`), les communautés de la carte (`communautes`) vivent dans le paquet, reprises de graphify 0.9.20 (licence MIT, notice gardée en tête de chaque module) sur les seuls chemins que les graphes empruntent. Sur les neuf graphes composables du registre, les quatre sorties (`structure.json`, `graphe.json`, `graphe_stats.md`, `carte.md`) sont identiques octet pour octet à celles de graphify (348 588 nœuds, 746 893 liens) ; les 9 017 communautés aussi ; la validation rend les mêmes erreurs sur 39 719 extractions, dont 6 634 invalides. `rapidfuzz` devient une dépendance directe. La structure des titres se calcule sans cache. Le dossier `graphify-out/` garde son nom.
+
 ## [0.1.48] - 2026-11-14
 
 ### Corrigé

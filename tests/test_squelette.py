@@ -14,10 +14,18 @@ from newskit import extraire_squelette as sq
 
 
 def test_normalize_id_est_idempotent_et_reproduit_graphify():
-    from graphify.ids import normalize_id
-
-    for s in ("Hello World", "é_à--x", "  Déjà vu!  ", "a__b"):
-        assert sq.normalize_id(s) == normalize_id(s)
+    # Valeurs de graphify.ids.normalize_id (graphify 0.9.20), figées au départ de graphify (0.1.49) : les identifiants
+    # sont des clés persistantes.
+    attendus = {
+        "Hello World": "hello_world",
+        "é_à--x": "é_à_x",
+        "  Déjà vu!  ": "déjà_vu",
+        "a__b": "a_b",
+        "Straße ﬁ ①": "strasse_fi_1",
+        "ＡＩ　Act": "ai_act",
+    }
+    for s, attendu in attendus.items():
+        assert sq.normalize_id(s) == attendu
         assert sq.normalize_id(sq.normalize_id(s)) == sq.normalize_id(s)
 
 

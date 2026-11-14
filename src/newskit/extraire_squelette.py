@@ -5,7 +5,7 @@ Aucun appel de modèle de langage, aucune dépendance hors bibliothèque standar
 Le corpus livre déjà ses arêtes (frontmatter, liens sortants, manifestes) ; ce
 script les récolte telles quelles, avec la provenance exacte de chacune.
 
-Sortie : graphe/squelette.json, au format d'extraction de graphify
+Sortie : graphe/squelette.json, au format d'extraction (celui de graphify, voir composition)
     {"nodes": [{id, label, file_type, source_file, ...}],
      "edges": [{source, target, relation, confidence, source_file, ...}]}
 
@@ -17,7 +17,7 @@ Usage :
     python3 -m newskit.extraire_squelette            # écrit graphe/squelette.json
     python3 -m newskit.extraire_squelette --graphe <graphe>   # un autre graphe du registre, sous graphe/<nom>/
     python3 -m newskit.extraire_squelette --stats    # relevé chiffré, sans écriture
-    python3 -m newskit.extraire_squelette --valider  # valide via graphify si disponible
+    python3 -m newskit.extraire_squelette --valider  # valide le schéma de l'extraction
 """
 
 from __future__ import annotations
@@ -121,14 +121,14 @@ SEUIL_REPETITION_PROMO = 50
 
 SUFFIXES_TITRE = {"phd", "ph.d", "ph.d.", "dr", "dr.", "md", "m.d.", "prof", "prof.", "msc", "mba"}
 
-# --- Identifiants : réplique exacte de graphify.ids.normalize_id -----------
+# --- Identifiants : la forme canonique des nœuds (commun.normaliser_identifiant) -----------
 
 
 normalize_id = normaliser_identifiant
 
 
 def make_id(*parts: str) -> str:
-    """Identifiant canonique, identique à celui que produit graphify."""
+    """Identifiant canonique, le même que celui de la structure des titres (structure_titres.make_id)."""
     return normalize_id("_".join(p.strip("_.") for p in parts if p))
 
 
@@ -323,7 +323,7 @@ def construire_index(fiches: dict[Path, dict]) -> dict[str, str]:
 # --- Triplets du who-is-who ------------------------------------------------
 
 RE_TRIPLET = re.compile(r"^-\s*(.+?)\s*->\s*(.+?)\s*->\s*(.+?)\s*(?:\[([A-C](?:/[A-C])?)\])?\s*$")
-# Traduction honnête de la certitude vers le vocabulaire de graphify. On retient
+# Traduction honnête de la certitude vers le vocabulaire des extractions. On retient
 # toujours le niveau le plus faible mentionné : A/B donne INFERRED, jamais
 # EXTRACTED. Aucun triplet n'est promu au-delà de ce que sa source permet.
 CERTITUDE = {"A": "EXTRACTED", "B": "INFERRED", "C": "AMBIGUOUS"}
@@ -409,8 +409,8 @@ def charger_corpus(
 ) -> dict[Path, dict]:
     """Lit toutes les fiches et donne à chacune son identité de nœud.
 
-    L'identité est le chemin relatif sans extension, exactement ce que graphify
-    emploie pour ses nœuds de document : les deux couches désignent la même
+    L'identité est le chemin relatif sans extension, exactement ce que la structure
+    des titres emploie pour ses nœuds de document : les deux couches désignent la même
     fiche par le même identifiant et fusionnent au lieu de se dupliquer. Une
     fiche arXiv, elle, prend l'identifiant du papier qu'elle décrit, pour que
     le nœud de la fiche et le nœud cité par le corpus ne fassent qu'un.
@@ -687,7 +687,7 @@ def construire(graphe: str | None = None) -> tuple[dict, dict, list[str]]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--stats", action="store_true", help="relevé chiffré, sans écriture")
-    ap.add_argument("--valider", action="store_true", help="valide via graphify si disponible")
+    ap.add_argument("--valider", action="store_true", help="valide le schéma de l'extraction")
     ap.add_argument("--graphe", help="nom d'un graphe du registre (défaut : le principal)")
     args = ap.parse_args()
 
@@ -708,13 +708,10 @@ def main() -> int:
             print(f"    … et {len(avertissements) - 15} de plus")
 
     if args.valider:
-        try:
-            from graphify.validate import validate_extraction
-        except ImportError:
-            print("\n  graphify introuvable ; validation ignorée.", file=sys.stderr)
-            return 1
-        erreurs = validate_extraction(extraction)
-        print(f"\n  validation graphify : {len(erreurs)} erreur(s)")
+        from newskit.composition import valider_extraction  # noqa: PLC0415
+
+        erreurs = valider_extraction(extraction)
+        print(f"\n  validation du schéma : {len(erreurs)} erreur(s)")
         for e in erreurs[:10]:
             print(f"    - {e}")
         if erreurs:

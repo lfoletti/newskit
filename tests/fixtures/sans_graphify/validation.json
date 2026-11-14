@@ -1,0 +1,182 @@
+[
+ {
+  "extraction": {
+   "nodes": [
+    {
+     "id": "a",
+     "label": "A",
+     "file_type": "concept",
+     "source_file": "sources/a.md"
+    },
+    {
+     "id": "b",
+     "label": "B",
+     "file_type": "concept",
+     "source_file": "sources/a.md"
+    }
+   ],
+   "edges": [
+    {
+     "source": "a",
+     "target": "b",
+     "relation": "conceptually_related_to",
+     "confidence": "INFERRED",
+     "source_file": "sources/a.md"
+    }
+   ]
+  },
+  "erreurs": []
+ },
+ {
+  "extraction": "pas un objet",
+  "erreurs": [
+   "Extraction must be a JSON object"
+  ]
+ },
+ {
+  "extraction": {},
+  "erreurs": [
+   "Missing required key 'nodes'",
+   "Missing required key 'edges'"
+  ]
+ },
+ {
+  "extraction": {
+   "nodes": "x",
+   "edges": "y"
+  },
+  "erreurs": [
+   "'nodes' must be a list",
+   "'edges' must be a list"
+  ]
+ },
+ {
+  "extraction": {
+   "nodes": [],
+   "links": [
+    {
+     "source": "a",
+     "target": "b",
+     "relation": "conceptually_related_to",
+     "confidence": "INFERRED",
+     "source_file": "sources/a.md"
+    }
+   ]
+  },
+  "erreurs": []
+ },
+ {
+  "extraction": {
+   "nodes": [
+    {
+     "id": "a",
+     "label": "A",
+     "file_type": "concept",
+     "source_file": "sources/a.md"
+    }
+   ],
+   "links": [
+    {
+     "source": "a",
+     "target": "zz",
+     "relation": "conceptually_related_to",
+     "confidence": "INFERRED",
+     "source_file": "sources/a.md"
+    }
+   ]
+  },
+  "erreurs": [
+   "Edge 0 target 'zz' does not match any node id"
+  ]
+ },
+ {
+  "extraction": {
+   "nodes": [
+    "pas un objet",
+    {
+     "label": "sans id"
+    },
+    {
+     "id": [
+      "liste"
+     ],
+     "label": "l",
+     "file_type": "concept",
+     "source_file": "s"
+    },
+    {
+     "id": "a",
+     "label": "A",
+     "file_type": "bizarre",
+     "source_file": "sources/a.md"
+    },
+    {
+     "id": "b",
+     "label": "B",
+     "file_type": "concept",
+     "source_file": "sources/a.md"
+    }
+   ],
+   "edges": [
+    "pas un objet",
+    {
+     "source": "a"
+    },
+    {
+     "source": "a",
+     "target": "b",
+     "relation": "conceptually_related_to",
+     "confidence": "PEUT-ETRE",
+     "source_file": "sources/a.md"
+    },
+    {
+     "source": "a",
+     "target": "inconnu",
+     "relation": "conceptually_related_to",
+     "confidence": "INFERRED",
+     "source_file": "sources/a.md"
+    },
+    {
+     "source": [
+      "liste"
+     ],
+     "target": "b",
+     "relation": "r",
+     "confidence": "EXTRACTED",
+     "source_file": "s"
+    }
+   ]
+  },
+  "erreurs": [
+   "Node 0 must be an object",
+   "Node 1 (id='?') missing required field 'id'",
+   "Node 1 (id='?') missing required field 'source_file'",
+   "Node 1 (id='?') missing required field 'file_type'",
+   "Node 2 has non-hashable id ['liste'] - id must be a string",
+   "Node 3 (id='a') has invalid file_type 'bizarre' - must be one of ['code', 'concept', 'document', 'image', 'paper', 'rationale']",
+   "Edge 0 must be an object",
+   "Edge 1 missing required field 'confidence'",
+   "Edge 1 missing required field 'relation'",
+   "Edge 1 missing required field 'source_file'",
+   "Edge 1 missing required field 'target'",
+   "Edge 2 has invalid confidence 'PEUT-ETRE' - must be one of ['AMBIGUOUS', 'EXTRACTED', 'INFERRED']",
+   "Edge 3 target 'inconnu' does not match any node id",
+   "Edge 4 source ['liste'] is non-hashable - must be a string"
+  ]
+ },
+ {
+  "extraction": {
+   "nodes": [],
+   "edges": [
+    {
+     "source": "x",
+     "target": "y",
+     "relation": "conceptually_related_to",
+     "confidence": "INFERRED",
+     "source_file": "sources/a.md"
+    }
+   ]
+  },
+  "erreurs": []
+ }
+]

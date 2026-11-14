@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Compose les couches du graphe en un seul graphe interrogeable.
 
-Trois entrées, une sortie. La composition passe par `graphify.build.build`,
-qui déduplique nœuds et arêtes, ce qui permet aux couches de désigner la même
-fiche par le même identifiant et de fusionner au lieu de se dupliquer.
+Trois entrées, une sortie. La composition passe par `composition.composer`
+(reprise de `graphify.build.build` jusqu'à la version 0.1.48), qui déduplique
+nœuds et arêtes, ce qui permet aux couches de désigner la même fiche par le
+même identifiant et de fusionner au lieu de se dupliquer.
 
 Entrées :
     graphe/squelette.json                     couche 1, déterministe
@@ -31,8 +32,8 @@ from pathlib import Path
 
 from networkx.readwrite import json_graph
 
-from graphify.build import build, validate_extraction  # noqa: E402
 from newskit.commun import archiver_gz, normaliser_etiquette  # noqa: E402
+from newskit.composition import composer, valider_extraction  # noqa: E402
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 
@@ -40,8 +41,8 @@ SQUELETTE = RACINE / "graphe" / "squelette.json"
 AST = RACINE / "graphify-out" / ".graphify_ast.json"
 # Les lots sémantiques sont des artefacts coûteux : treize exécutions de
 # sous-agents. Leur domicile durable est `graphe/couche2/`, qui nous appartient.
-# `graphify-out/` reste lu parce qu'une extraction fraîche y écrit d'abord, mais
-# graphify peut réécrire ce dossier, donc rien d'irremplaçable n'y séjourne.
+# `graphify-out/` reste lu parce qu'une extraction fraîche y écrit d'abord (le nom
+# vient de graphify) ; rien d'irremplaçable n'y séjourne.
 LOTS_DURABLES = str(RACINE / "graphe" / "couche2" / "chunk_*.json")
 LOTS_FRAIS = str(RACINE / "graphify-out" / ".graphify_chunk_*.json")
 SORTIE = RACINE / "graphe" / "graphe.json"
@@ -96,7 +97,7 @@ def fondre_doublons_de_fiche(
     Pourquoi. Le squelette décrit chaque fiche avec son titre et son typage ; la
     passe AST et les lots sémantiques la redécrivent au passage, avec une
     étiquette parfois moins bonne et sans notre typage. La déduplication de
-    graphify tranche alors par ressemblance d'étiquette, et conserve
+    la composition tranche alors par ressemblance d'étiquette, et conserve
     arbitrairement l'un ou l'autre : vingt-neuf fiches perdaient ainsi leur
     typage, et une sur trois son titre.
 
@@ -290,7 +291,7 @@ def _charger(chemin: Path, nom: str, avertissements: list[str]) -> dict | None:
     d.setdefault("nodes", [])
     d.setdefault("edges", [])
     d.setdefault("hyperedges", [])
-    erreurs = validate_extraction(d)
+    erreurs = valider_extraction(d)
     if erreurs:
         avertissements.append(f"{nom} : {len(erreurs)} erreur(s) de schéma, ex. {erreurs[0][:90]}")
     return d
@@ -440,7 +441,7 @@ def main() -> int:
         f"    {fondus_total} nœud(s) de fiche fondus dans le squelette au total, {boucles_total} boucle(s) écartée(s)"
     )
 
-    G = build(extractions, root=str(RACINE))
+    G = composer(extractions, racine=str(RACINE))
     if retenues is not None:
         n, a = partage_graphe.retirer_fiches(G, partage_graphe.exclues(G, retenues, RACINE), RACINE)
         r = partage_graphe.retirer_restes_de_page(G)

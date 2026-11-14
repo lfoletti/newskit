@@ -1,0 +1,634 @@
+{
+ "graphify": "0.9.20",
+ "textes": {
+  "sources/a/fiche-un.md": "---\ntitle: Fiche un\n---\n# Titre **gras**\n\nTexte [deux](./fiche_deux.md) et [encore](fiche_deux.md#plus) [x](fiche_deux.md?y=1).\n## Section\n### Sous-section\n## Section\n[[fiche_deux]] [[fiche_deux|alias]] [[absente#ancre]] ![image](img.md) [web](https://ex.org/a.md)\n[ancre](#local) [courriel](mailto:a@b.c) [vide]() [code](script.py) [texte](notes.txt)\n[ref]: ../b/autre.md\n   [ref2]: <../b/autre.md>\n```\n# pas un titre\n[pas](un_lien.md)\n```\n#### Après le bloc\n#sans espace\n# Section\n[soi](fiche-un.md) [abs](/ailleurs/doc.md) [protocole](//cdn/x.md) [data](data:x.md) [tel](tel:1.md)\n",
+  "sources/a/fiche_deux.md": "# Deux\n## Fin\n###### Six\n####### Sept\n",
+  "sources/b/autre.md": "Pas de titre, un lien [retour](../a/fiche-un.md) [n](../m/n.md)\n",
+  "sources/c/d-e.md": "# Même\n",
+  "sources/c/d_e.md": "# Même\n",
+  "sources/x/y_z.md": "# T\n",
+  "sources/x_y/z.md": "# T\n",
+  "sources/vide.md": "",
+  "sources/m.md": "# n\n",
+  "sources/m/n.md": "Lien [vers m](../m.md)\n",
+  "sources/k.md": "# md md\n",
+  "sources/k/md.md": "# Fin\n"
+ },
+ "octets": {
+  "sources/a/brut.md": "IyBDYWbpIP8KIyMgU3VpdGUK"
+ },
+ "dossiers": [
+  "sources/dossier.md"
+ ],
+ "liens": {
+  "sources/c/lien.md": "dehors/lien.md",
+  "sources/zz/fiche.md": "racine/sources/a/fiche_deux.md"
+ },
+ "dehors": {
+  "dehors/lien.md": "# Même\n"
+ },
+ "attendu": {
+  "nodes": [
+   {
+    "id": "sources_a_brut",
+    "label": "brut.md",
+    "file_type": "document",
+    "source_file": "sources/a/brut.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_brut_caf",
+    "label": "Caf� �",
+    "file_type": "document",
+    "source_file": "sources/a/brut.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_brut_suite",
+    "label": "Suite",
+    "file_type": "document",
+    "source_file": "sources/a/brut.md",
+    "source_location": "L2",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un",
+    "label": "fiche-un.md",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_titre_gras",
+    "label": "Titre **gras**",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L4",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_section",
+    "label": "Section",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L7",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_sous_section",
+    "label": "Sous-section",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L8",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_section_9",
+    "label": "Section",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L9",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_après_le_bloc",
+    "label": "Après le bloc",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L18",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_a_fiche_un_section_20",
+    "label": "Section",
+    "file_type": "document",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L20",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche",
+    "label": "fiche_deux.md",
+    "file_type": "document",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_deux",
+    "label": "Deux",
+    "file_type": "document",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_fin",
+    "label": "Fin",
+    "file_type": "document",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L2",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_six",
+    "label": "Six",
+    "file_type": "document",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L3",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_b_autre",
+    "label": "autre.md",
+    "file_type": "document",
+    "source_file": "sources/b/autre.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_d_e_md_sources_c_d_e_673352",
+    "label": "d-e.md",
+    "file_type": "document",
+    "source_file": "sources/c/d-e.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_d_e_md_sources_c_d_e_même_673352",
+    "label": "Même",
+    "file_type": "document",
+    "source_file": "sources/c/d-e.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_d_e_md_sources_c_d_e_42200d",
+    "label": "d_e.md",
+    "file_type": "document",
+    "source_file": "sources/c/d_e.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_d_e_md_sources_c_d_e_même_42200d",
+    "label": "Même",
+    "file_type": "document",
+    "source_file": "sources/c/d_e.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_lien",
+    "label": "lien.md",
+    "file_type": "document",
+    "source_file": "sources/c/lien.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_c_lien_même",
+    "label": "Même",
+    "file_type": "document",
+    "source_file": "sources/c/lien.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_k_md_md_sources_k_md",
+    "label": "md.md",
+    "file_type": "document",
+    "source_file": "sources/k/md.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_k_md_fin",
+    "label": "Fin",
+    "file_type": "document",
+    "source_file": "sources/k/md.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_k",
+    "label": "k.md",
+    "file_type": "document",
+    "source_file": "sources/k.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_k_md_sources_k_md",
+    "label": "md md",
+    "file_type": "document",
+    "source_file": "sources/k.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_m_n_md_sources_m_n",
+    "label": "n.md",
+    "file_type": "document",
+    "source_file": "sources/m/n.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_m",
+    "label": "m.md",
+    "file_type": "document",
+    "source_file": "sources/m.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_m_md_sources_m_n",
+    "label": "n",
+    "file_type": "document",
+    "source_file": "sources/m.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_vide",
+    "label": "vide.md",
+    "file_type": "document",
+    "source_file": "sources/vide.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_x_y_z_md_sources_x_y_z_ed959d",
+    "label": "y_z.md",
+    "file_type": "document",
+    "source_file": "sources/x/y_z.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_x_y_z_md_sources_x_y_z_t_ed959d",
+    "label": "T",
+    "file_type": "document",
+    "source_file": "sources/x/y_z.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_x_y_z_md_sources_x_y_z_c6d270",
+    "label": "z.md",
+    "file_type": "document",
+    "source_file": "sources/x_y/z.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_x_y_z_md_sources_x_y_z_t_c6d270",
+    "label": "T",
+    "file_type": "document",
+    "source_file": "sources/x_y/z.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche",
+    "label": "fiche.md",
+    "file_type": "document",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_deux",
+    "label": "Deux",
+    "file_type": "document",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L1",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_fin",
+    "label": "Fin",
+    "file_type": "document",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L2",
+    "_origin": "ast"
+   },
+   {
+    "id": "sources_zz_fiche_six",
+    "label": "Six",
+    "file_type": "document",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L3",
+    "_origin": "ast"
+   }
+  ],
+  "edges": [
+   {
+    "source": "sources_a_brut",
+    "target": "sources_a_brut_caf",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/brut.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_brut_caf",
+    "target": "sources_a_brut_suite",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/brut.md",
+    "source_location": "L2",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "sources_a_fiche_un_titre_gras",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L4",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "sources_zz_fiche",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L6",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un_titre_gras",
+    "target": "sources_a_fiche_un_section",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L7",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un_section",
+    "target": "sources_a_fiche_un_sous_section",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L8",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un_titre_gras",
+    "target": "sources_a_fiche_un_section_9",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L9",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "{RACINE_ID}_sources_a_absente_md",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L10",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "{RACINE_ID}_sources_a_notes_txt",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L11",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "sources_b_autre",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L12",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un_section_9",
+    "target": "sources_a_fiche_un_après_le_bloc",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L18",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "sources_a_fiche_un_section_20",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L20",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_a_fiche_un",
+    "target": "ailleurs_doc_md",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche-un.md",
+    "source_location": "L21",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche",
+    "target": "sources_zz_fiche_deux",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche_deux",
+    "target": "sources_zz_fiche_fin",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L2",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche_fin",
+    "target": "sources_zz_fiche_six",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/a/fiche_deux.md",
+    "source_location": "L3",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_b_autre",
+    "target": "sources_a_fiche_un",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/b/autre.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_b_autre",
+    "target": "sources_m_n",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/b/autre.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_c_d_e_md_sources_c_d_e_673352",
+    "target": "sources_c_d_e_md_sources_c_d_e_même_673352",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/c/d-e.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_c_d_e_md_sources_c_d_e_42200d",
+    "target": "sources_c_d_e_md_sources_c_d_e_même_42200d",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/c/d_e.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_c_lien",
+    "target": "sources_c_lien_même",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/c/lien.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_k_md_md_sources_k_md",
+    "target": "sources_k_md_fin",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/k/md.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_k",
+    "target": "sources_k_md_sources_k_md",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/k.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_m_n_md_sources_m_n",
+    "target": "sources_m",
+    "relation": "references",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/m/n.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_m",
+    "target": "sources_m_md_sources_m_n",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/m.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_x_y_z_md_sources_x_y_z_ed959d",
+    "target": "sources_x_y_z_md_sources_x_y_z_t_ed959d",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/x/y_z.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_x_y_z_md_sources_x_y_z_c6d270",
+    "target": "sources_x_y_z_md_sources_x_y_z_t_c6d270",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/x_y/z.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche",
+    "target": "sources_zz_fiche_deux",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L1",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche_deux",
+    "target": "sources_zz_fiche_fin",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L2",
+    "weight": 1.0,
+    "_origin": "ast"
+   },
+   {
+    "source": "sources_zz_fiche_fin",
+    "target": "sources_zz_fiche_six",
+    "relation": "contains",
+    "confidence": "EXTRACTED",
+    "source_file": "sources/zz/fiche.md",
+    "source_location": "L3",
+    "weight": 1.0,
+    "_origin": "ast"
+   }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+ }
+}

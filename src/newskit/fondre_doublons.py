@@ -9,7 +9,7 @@ Data Protection Board et CEPD trois ; 621 paires de nœuds d'au moins 5 arêtes 
 Comment :
   1. candidats, sans appel : paires de libellés de concepts que l'encodeur multilingue local rapproche (cosinus ≥
      SEUIL), plus la règle du sigle (« European Data Protection Board (EDPB) » ↔ « EDPB » ↔ « European Data Protection
-     Board » quand les initiales concordent) ;
+     Board » quand les initiales concordent) et celle du pluriel (« Deepfake » ↔ « Deepfakes », 14.11.2026) ;
   2. confirmation par lots par un petit modèle (Sonnet), avec pour chaque nœud quelques voisins en contexte : même
      notion EXACTEMENT (traduction, sigle, orthographe) → alias ; parent, variante, sous-cas, document → non ;
   3. mémoire dans graphe/<nom>/alias.json : `alias` (identifiant secondaire → canonique), `refuses` (paires tranchées
@@ -253,6 +253,22 @@ def initiales(l: str) -> str:
     return "".join(m[0] for m in re.findall(r"[A-Za-z][A-Za-z0-9-]*", l) if m[0].isupper() or len(m) > 3).lower()
 
 
+def singulier(l: str) -> str:
+    """Le libellé en minuscules, chaque mot au singulier anglais. Un sigle en capitales reste tel quel (« LPDS » n'est
+    pas le pluriel de « LPD ») ; « SMEs » devient « sme »."""
+    mots = []
+    for w in re.findall(r"[A-Za-z0-9]+", l or ""):
+        lw = w.lower()
+        if w.isupper() or any(c.isdigit() for c in w) or len(lw) <= 3 or lw.endswith(("ss", "us", "is")):
+            pass
+        elif lw.endswith("ies") and len(lw) > 4:
+            lw = lw[:-3] + "y"
+        elif lw.endswith("s"):
+            lw = lw[:-1]
+        mots.append(lw)
+    return " ".join(mots)
+
+
 def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, str]]:
     """(id_a, id_b, score, raison) des paires à trancher, hors paires déjà tranchées."""
     concepts = [n for n in d["nodes"] if str(n.get("id", "")).startswith("concept_")]
@@ -296,7 +312,18 @@ def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, s
                 k = cle(ids[i], ids[j])
                 if k not in tranchees and k not in out:
                     out[k] = (ids[i], ids[j], 1.0, "traduction")
-    # 3. l'encodeur
+    # 3. le pluriel (14.11.2026) : « Deepfake » et « Deepfakes » restaient sous le seuil de l'encodeur (0,913)
+    par_singulier: dict[str, list[int]] = collections.defaultdict(list)
+    for i, l in enumerate(labels):
+        if ids[i] not in memo["alias"]:
+            par_singulier[singulier(l)].append(i)
+    for groupe in par_singulier.values():
+        for x, i in enumerate(groupe):
+            for j in groupe[x + 1 :]:
+                k = cle(ids[i], ids[j])
+                if k not in tranchees and k not in out:
+                    out[k] = (ids[i], ids[j], 1.0, "pluriel")
+    # 4. l'encodeur
     try:
         import numpy as np  # noqa: PLC0415
         from newskit import synthese as s  # noqa: PLC0415

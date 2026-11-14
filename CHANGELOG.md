@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.46] - 2026-11-14
+
+### Ajouté
+
+- Le singulier et le pluriel d’une notion sont candidats à la fusion (`fondre_doublons.singulier`, règle « pluriel » de `candidats`) : deux libellés égaux une fois chaque mot mis au singulier anglais, sans appel ; le modèle tranche ensuite comme pour les autres règles. Un sigle en capitales ou un mot à chiffre reste tel quel (« LPD » et « LPDS » ne se rapprochent pas). L’encodeur rapprochait « Deepfake » et « Deepfakes » à 0,913, sous le seuil de 0,93 : la paire n’était jamais proposée.
+
 ## [0.1.44] - 2026-11-13
 
 ### Ajouté

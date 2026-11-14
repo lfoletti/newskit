@@ -199,11 +199,21 @@ PROPRES = {
     # page (mainteneur, 13.11.2026).
     "Plan de site": (
         {"plan", "chemins"},
-        {"site", "mots_cles", "exclure", "entetes", "jours", "agregateur", "classification_motif"},
+        {"site", "mots_cles", "exclure", "entetes", "jours", "agregateur", "classification_motif", "date_adresse"},
     ),
     "Page de liste": (
         {"liste", "chemins"},
-        {"site", "mots_cles", "exclure", "entetes", "lien_motif", "lien_modele", "titre_motif", "corps_motif"},
+        {
+            "site",
+            "mots_cles",
+            "exclure",
+            "entetes",
+            "lien_motif",
+            "lien_modele",
+            "titre_motif",
+            "corps_motif",
+            "date_adresse",
+        },
     ),  # lien_motif et lien_modele : articles ouverts par un script (06.11.2026) ; titre_motif : le titre sur la page de l'article   # exclure : regex sur adresse et titre ; entetes : « navigateur » après un audit /sap
     "Revue": ({"issn"}, {"depuis", "mots_cles"}),
     "arXiv": (set(), set()),
@@ -518,6 +528,16 @@ def sites_de_l_edition() -> list[str]:
     return list(dict.fromkeys(s for s in (str(b or "").strip().rstrip("/") for b in bruts) if s))
 
 
+def valider_date_adresse(motif, ou: str) -> None:
+    """`date_adresse` (14.11.2026) : une expression rationnelle sur l'adresse, aux groupes nommés a, m et j."""
+    try:
+        groupes = set(re.compile(str(motif)).groupindex)
+    except re.error as e:
+        raise ConfigInvalide(f"{ou} : date_adresse illisible ({e})") from e
+    if not {"a", "m", "j"} <= groupes:
+        raise ConfigInvalide(f"{ou} : date_adresse doit nommer les groupes a, m et j (année, mois, jour)")
+
+
 def charger(chemin: Path | None = None) -> dict:
     global _cache
     if _cache is not None and chemin is None:
@@ -580,6 +600,8 @@ def _valider(d: dict, p: Path) -> dict:
             raise ConfigInvalide(f"{ou} : nature « {s['nature']} » hors {sorted(NATURES)}")
         if s["abonnement"] not in ABONNEMENTS:
             raise ConfigInvalide(f"{ou} : abonnement « {s['abonnement']} » hors {sorted(ABONNEMENTS)}")
+        if "date_adresse" in s:
+            valider_date_adresse(s["date_adresse"], ou)
         masque = valider_masque(s["masque"], ou) if "masque" in s else []
         muette = valider_muette(s["muette"], ou) if "muette" in s else {}
         if cle in vues_cles:

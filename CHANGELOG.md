@@ -2,6 +2,16 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.45] - 2026-11-14
+
+### Modifié
+
+- La traduction française d’un libellé donne à un nom propre ou à un sigle sa forme française établie (« United Nations » → « Nations unies », « UN » → « ONU ») ; sans forme établie, il reste tel quel. Une recherche en français trouvait une notion sous son seul nom anglais.
+
+### Ajouté
+
+- `python3 -m newskit.francais --revoir-noms N` retraduit les N libellés gardés tels quels les plus reliés (`gardes_tels_quels`, `revoir`). L’ancienne traduction reste dans la table jusqu’à ce que la nouvelle la remplace : un passage interrompu ne laisse aucun libellé sans français.
+
 ## [0.1.44] - 2026-11-13
 
 ### Ajouté

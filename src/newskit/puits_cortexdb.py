@@ -17,6 +17,7 @@ serveur ; le client gRPC ne s'importe qu'en elle (venv du pilote : cache/pilote_
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import re
@@ -653,7 +654,6 @@ def verser(client, v: dict, vus: dict[str, str] | None = None) -> dict:
 
 def _sortie(commande, G, **args) -> str:
     """Ce qu'une commande d'interroger_graphe imprime : la réponse de kg-mcp, mot pour mot."""
-    import contextlib  # noqa: PLC0415
     import io  # noqa: PLC0415
 
     f = io.StringIO()
@@ -852,10 +852,11 @@ class EnPlace:
     """Le versement en place (B15, mainteneur, 2 novembre 2026) : avec les empreintes du cerveau précédent, un versement
     inchangé ne s'écrit pas, un versement changé remplace l'ancien (`delete_document_graph` puis versement), un document
     absent du passage est retiré (`delete_document_graph` puis `knowledge_delete`). Demande CortexDB v2.143.0 au moins
-    (D6). Sans empreintes précédentes, tout se verse, comme dans un cerveau neuf."""
+    (D6). Sans empreintes précédentes, tout se verse, comme dans un cerveau neuf. `compter` classe les versements sans
+    rien écrire ni appeler le serveur : le passage décide sur ce compte s'il reconstruit en entier (14.11.2026)."""
 
-    def __init__(self, client, avant: dict[str, str] | None, bilan: dict):
-        self.client, self.avant, self.bilan, self.apres = client, avant, bilan, {}
+    def __init__(self, client, avant: dict[str, str] | None, bilan: dict, compter: bool = False):
+        self.client, self.avant, self.bilan, self.apres, self.compter = client, avant, bilan, {}, compter
         for k in ("inchanges", "remplaces", "ajoutes", "retires"):
             bilan.setdefault(k, 0)
 
@@ -874,14 +875,18 @@ class EnPlace:
             self.bilan["inchanges"] += 1
             return None
         if self.avant is not None and ident in self.avant:
-            self.appel("delete_document_graph", document_id=ident)
+            if not self.compter:
+                self.appel("delete_document_graph", document_id=ident)
             self.bilan["remplaces"] += 1
         else:
             self.bilan["ajoutes"] += 1
-        return verser(self.client, v, vus)
+        return None if self.compter else verser(self.client, v, vus)
 
     def retirer_absents(self) -> None:
         for ident in sorted(set(self.avant or {}) - set(self.apres)):
+            if self.compter:
+                self.bilan["retires"] += 1
+                continue
             self.appel("delete_document_graph", document_id=ident)
             self.appel("knowledge_delete", knowledge_id=ident)
             self.bilan["retires"] += 1
@@ -889,12 +894,11 @@ class EnPlace:
 
 def main() -> int:
     from newskit import config_sources as cfg  # noqa: PLC0415
-    from cortexdb_client import CortexClient  # noqa: PLC0415
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graphe", required=True)
     ap.add_argument("--adresse", default="127.0.0.1:47899")
-    ap.add_argument("--jeton", required=True)
+    ap.add_argument("--jeton", help="requis sauf avec --compter")
     ap.add_argument("--limite", type=int, default=0, help="n'en verser que N (essai)")
     ap.add_argument("--pyramide", action="store_true", help="verser aussi les synthèses (synthese/notions.json)")
     ap.add_argument("--couche1", action="store_true", help="verser aussi le squelette et la structure des titres (K0)")
@@ -906,7 +910,16 @@ def main() -> int:
     )
     ap.add_argument("--empreintes-avant", type=Path, help="empreintes du cerveau précédent : versement en place (B15)")
     ap.add_argument("--empreintes-apres", type=Path, help="où écrire les empreintes de ce passage")
+    ap.add_argument(
+        "--compter",
+        action="store_true",
+        help="avec --empreintes-avant : classer les versements (inchangés, remplacés, ajoutés, retirés) sans serveur",
+    )
     args = ap.parse_args()
+    if args.compter and not args.empreintes_avant:
+        ap.error("--compter demande --empreintes-avant")
+    if not args.compter and not args.jeton:
+        ap.error("--jeton est requis pour verser")
     if args.empreintes_avant and args.limite:
         ap.error("--empreintes-avant et --limite : un versement en place partiel retirerait le reste")
     base = cfg.chemins_du_graphe(args.graphe)["base"]
@@ -943,9 +956,15 @@ def main() -> int:
     relayee = relayeur(droits)
     t0 = time.time()
     vus: dict[str, str] = {}
-    with CortexClient.connect(args.adresse, token=args.jeton) as client:
+    if args.compter:
+        connexion = contextlib.nullcontext(None)
+    else:
+        from cortexdb_client import CortexClient  # noqa: PLC0415
+
+        connexion = CortexClient.connect(args.adresse, token=args.jeton)
+    with connexion as client:
         avant = json.loads(args.empreintes_avant.read_text(encoding="utf-8")) if args.empreintes_avant else None
-        ep = EnPlace(client, avant, bilan)
+        ep = EnPlace(client, avant, bilan, compter=args.compter)
 
         def versement(v: dict) -> dict:
             return ep.verser(v, vus) or {}
@@ -1010,7 +1029,7 @@ def main() -> int:
             bilan["vues"] = len(vues)
         if not args.limite:
             ep.retirer_absents()
-            if args.empreintes_apres:
+            if args.empreintes_apres and not args.compter:
                 args.empreintes_apres.write_text(json.dumps(ep.apres, ensure_ascii=False), encoding="utf-8")
     if args.couche1 and not args.limite:  # une couche 1 sans document : sa fiche n'est pas au cerveau
         bilan["couche1_sans_document"] = sum(len(x["relations"]) for x in couche1.values())

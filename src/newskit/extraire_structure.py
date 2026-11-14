@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Structure des titres des fiches denses : la passe déterministe de graphify.
+"""Structure des titres des fiches denses : la passe déterministe, sans modèle.
 
 Le graphe composé lit trois entrées : le squelette (couche 1), les lots
 sémantiques (couche 2, `graphe/couche2/`) et la structure des titres, que
-graphify produit sans modèle dans `graphify-out/.graphify_ast.json`. Les deux
+`structure_titres` produit sans modèle dans `graphify-out/.graphify_ast.json`
+(le nom vient de graphify, qui faisait ce travail jusqu'à la version 0.1.48 ; les
+données existantes gardent ce chemin). Les deux
 premières sont versionnées ou rejouées par la routine ; la troisième ne l'était
 pas, et ne se rejouait qu'à la main. Le 27.09.2026, sur un clone neuf, le
 graphe s'est composé sans elle : 1 500 nœuds `document` et autant d'arêtes
@@ -11,8 +13,8 @@ graphe s'est composé sans elle : 1 500 nœuds `document` et autant d'arêtes
 
 Ce script la rejoue, sur les fiches des dossiers `dense` du registre — le
 périmètre de la couche 2, donc le même que celui de la structure d'origine.
-C'est déterministe et cela tient en quelques secondes grâce au cache de
-graphify (`cache/`, hors dépôt). La routine l'appelle avant de composer.
+C'est déterministe et cela tient en quelques secondes, sans cache. La routine
+l'appelle avant de composer.
 
 Usage :
     python3 -m newskit.extraire_structure
@@ -30,10 +32,12 @@ from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code 
 SORTIE = RACINE / "graphify-out" / ".graphify_ast.json"
 
 from newskit import config_sources as cfg  # noqa: E402
+from newskit import structure_titres  # noqa: E402
 
-# graphify retire de ses identifiants le préfixe de la racine courante ; un identifiant qui commence encore par le premier
-# dossier d'un chemin absolu (`users_…` sur ce Mac) vient d'une autre racine : le 23.10.2026, le cache gardait celle
-# d'avant le renommage du dépôt, et 19 828 nœuds sur 20 137 d'un graphe de conformité ne se recollaient plus à leurs fiches.
+# L'extraction retire de ses identifiants le préfixe de la racine courante ; un identifiant qui commence encore par le
+# premier dossier d'un chemin absolu (`users_…` sur ce Mac) vient d'une autre racine : le 23.10.2026, le cache de
+# graphify gardait celle d'avant le renommage du dépôt, et 19 828 nœuds sur 20 137 d'un graphe de conformité ne se
+# recollaient plus à leurs fiches. Sans cache, la garde reste : un titre vide de lettres garde son préfixe absolu.
 PREFIXE_ABSOLU = RACINE.parts[1].lower() + "_"
 PART_ABSOLUE_MAX = 0.05
 
@@ -60,18 +64,13 @@ def main() -> int:
     graphe = sys.argv[sys.argv.index("--graphe") + 1] if "--graphe" in sys.argv else None
     if graphe:
         SORTIE = cfg.chemins_du_graphe(graphe)["structure"]
-    try:
-        from graphify.extract import extract
-    except ImportError as e:
-        print(f"  graphify introuvable dans {sys.executable} : {e}", file=sys.stderr)
-        return 1
     fichiers = sorted(
         p for d in cfg.dossiers_denses(graphe) for p in (RACINE / d).rglob("*.md") if not p.name.startswith("_")
     )
     if not fichiers:
         print("  aucune fiche dense : le registre ne déclare aucun dossier `dense`", file=sys.stderr)
         return 1
-    resultat = extract(fichiers, cache_root=RACINE)
+    resultat = structure_titres.extraire(fichiers, RACINE)
     if not resultat.get("nodes"):
         # Un résultat vide n'est pas une structure : c'est une extraction qui
         # n'a pas eu lieu, et l'écrire ferait composer un graphe amputé en silence.
@@ -80,7 +79,7 @@ def main() -> int:
     if not structure_acceptable(resultat):
         print(
             f"  {identifiants_absolus(resultat)} identifiants sur {len(resultat['nodes'])} portent un chemin absolu "
-            f"({PREFIXE_ABSOLU}…) : le cache de graphify vient d'une autre racine ; rien n'est écrit",
+            f"({PREFIXE_ABSOLU}…) : ils viennent d'une autre racine ; rien n'est écrit",
             file=sys.stderr,
         )
         return 1

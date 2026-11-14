@@ -189,9 +189,10 @@ def normaliser_cle(s: str) -> str:
 
 
 def normaliser_identifiant(s: str) -> str:
-    """Forme canonique d'un identifiant de nœud. Réplique exacte de
-    `graphify.ids.normalize_id`, pour que nos nœuds et ceux de graphify
-    fusionnent au lieu de se dupliquer. Idempotente."""
+    """Forme canonique d'un identifiant de nœud, celle de `graphify.ids.normalize_id`
+    (graphify 0.9.20) : les identifiants sont des clés persistantes (numéros, alias,
+    chapeaux, traductions, cerveaux) et ne changent pas avec le départ de graphify
+    (0.1.49). Idempotente."""
     s = unicodedata.normalize("NFKC", s)
     s = re.sub(r"[^\w]+", "_", s, flags=re.UNICODE)
     s = re.sub(r"_+", "_", s)

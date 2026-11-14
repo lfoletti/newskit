@@ -145,7 +145,7 @@ Chaque appel au modèle passe par votre abonnement et compte dans ses limites d'
 
 Newskit s'appuie sur :
 
-- **[graphify](https://github.com/Graphify-Labs/graphify)**, installé avec le paquet. Lit la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés.
+- **[networkx](https://networkx.org)** et **[rapidfuzz](https://github.com/rapidfuzz/RapidFuzz)**, installés avec le paquet. Newskit lit lui-même la structure des documents, valide chaque extraction contre le schéma, compose le graphe et le découpe en communautés, avec du code repris de [graphify](https://github.com/Graphify-Labs/graphify) (MIT).
 - **[trafilatura](https://trafilatura.readthedocs.io)**, installé avec le paquet. Extraction du texte principal des pages web.
 - **[pytest](https://pytest.org)**, installé avec le paquet : `newskit test` tourne dessus.
 

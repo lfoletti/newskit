@@ -31,7 +31,7 @@ dependencies = [
     "pypdf>=4.0",
     "trafilatura>=1.12",
     "lxml>=5.0",
-    "graphifyy>=0.9",
+    "rapidfuzz>=3.0",           # la déduplication de la composition (Jaro, Jaro-Winkler), reprise de graphify
     "Pillow>=10.1",             # la carte d'aperçu d'une fiche (pages_fiches), polices variables
     "pytest>=8.0",              # l'essai du moteur : un passage ne part pas sans lui (newskit test)
 ]

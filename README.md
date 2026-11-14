@@ -145,7 +145,7 @@ Every model call goes through your subscription and counts against its usage lim
 
 Newskit relies on:
 
-- **[graphify](https://github.com/Graphify-Labs/graphify)**, installed with the package. Reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities.
+- **[networkx](https://networkx.org)** and **[rapidfuzz](https://github.com/rapidfuzz/RapidFuzz)**, installed with the package. Newskit reads the structure of the documents, validates each extraction against the schema, builds the graph and splits it into communities itself, with code adapted from [graphify](https://github.com/Graphify-Labs/graphify) (MIT).
 - **[trafilatura](https://trafilatura.readthedocs.io)**, installed with the package. Main text extraction from web pages.
 - **[pytest](https://pytest.org)**, installed with the package: `newskit test` runs on it.
 

@@ -11,8 +11,9 @@ corpus, et les rapprochements que la couche conceptuelle a établis. Elle se lit
 en deux minutes et se charge intégralement. C'est elle qui rend le graphe
 utilisable comme une mémoire plutôt que comme une base à requêter à l'aveugle.
 
-Une note sur la reproductibilité. La détection de communautés de graphify est
-déterministe à l'intérieur d'un processus, mais pas d'un processus à l'autre :
+Une note sur la reproductibilité. La détection de communautés (`communautes`,
+reprise de graphify jusqu'à la version 0.1.48) était déterministe à l'intérieur
+d'un processus, mais pas d'un processus à l'autre :
 elle dépend quelque part de l'ordre d'itération d'un ensemble, donc de la
 randomisation du hachage des chaînes. Sur un graphe strictement identique, deux
 régénérations donnaient deux découpages différents — 128 communautés puis 141 —
@@ -89,16 +90,11 @@ def communautes(G, combien: int) -> list[tuple[str, list[str], float]]:
     H.remove_nodes_from([n for n in list(H) if H.degree(n) == 0])
     if H.number_of_nodes() < 4:
         return []
-    try:
-        from graphify.cluster import cluster, label_communities_by_hub, score_all
+    from newskit import communautes as cm  # noqa: PLC0415
 
-        comms = cluster(H)
-        etiquettes = label_communities_by_hub(H, comms)
-        scores = score_all(H, comms)
-    except Exception:  # repli sans graphify
-        comms = {i: list(c) for i, c in enumerate(nx.community.greedy_modularity_communities(H))}
-        etiquettes = {i: _label(H, max(c, key=lambda n: H.degree(n))) for i, c in comms.items()}
-        scores = {i: 0.0 for i in comms}
+    comms = cm.decouper(H)
+    etiquettes = cm.etiqueter(H, comms)
+    scores = cm.cohesions(H, comms)
     sortie = []
     for i, membres in comms.items():
         if len(membres) < 3:

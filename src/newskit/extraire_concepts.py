@@ -10,7 +10,7 @@ la seule tâche manuelle qui revenait à coup sûr (27.09.2026).
 Ce script fait le retard, fiche par fiche. Il compare les empreintes des
 fiches denses à celles de la dernière extraction (`graphe/couche2/empreintes.json`),
 demande à Claude — par `claude -p`, l'abonnement, pas une clé d'API — un
-fragment de graphe au schéma de graphify pour chaque fiche en retard, le
+fragment de graphe au schéma des extractions pour chaque fiche en retard, le
 contrôle, l'écrit dans `graphe/couche2/fiches/<identifiant>.json` (un lot par
 fiche, remplacé si la fiche change) et met l'empreinte à jour **pour cette
 fiche seulement**. Une fiche dont l'extraction échoue reste en retard, donc
@@ -19,8 +19,8 @@ signalée la semaine suivante ; rien n'est marqué fait qui ne l'est pas.
 Les conventions sont celles des douze lots : concepts en `concept_<slug>`,
 sans préfixe de fichier, pour qu'un concept vu dans deux fiches soit un seul
 nœud ; la fiche elle-même sous son identifiant de squelette, pour que la
-composition la fonde dans la couche 1 ; relations et niveaux de confiance de
-graphify ; le raisonnement (pourquoi) en attribut `rationale` du concept.
+composition la fonde dans la couche 1 ; relations et niveaux de confiance du
+schéma ; le raisonnement (pourquoi) en attribut `rationale` du concept.
 
 Usage :
     python3 -m newskit.extraire_concepts            # les fiches en retard, au plus PLAFOND
@@ -398,7 +398,7 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
             else:
                 ecartes.append(f"rationale de {nid} sans extrait attesté : {str(n.get('evidence') or '')[:80]}")
         noeuds.setdefault(nid, noeud)
-    # La fiche elle-même, comme dans les douze lots : le validateur de graphify
+    # La fiche elle-même, comme dans les douze lots : le validateur du schéma
     # exige que chaque extrémité d'arête soit un nœud du lot, et la composition
     # fond ce nœud dans celui du squelette (« sur une fiche, le squelette fait foi »).
     fiche_noeud = {
@@ -461,11 +461,9 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
 
 
 def valider(ext: dict) -> list[str]:
-    try:
-        from graphify.validate import validate_extraction
-    except ImportError:
-        return []
-    return [str(e) for e in validate_extraction(ext)]
+    from newskit.composition import valider_extraction  # noqa: PLC0415
+
+    return [str(e) for e in valider_extraction(ext)]
 
 
 def main() -> int:

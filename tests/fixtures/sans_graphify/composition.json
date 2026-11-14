@@ -1,0 +1,1769 @@
+{
+ "racine": "/racine/essai",
+ "cas": {
+  "deduplication": {
+   "extractions": [
+    {
+     "nodes": [
+      {
+       "id": "c_alpha_beta_c1",
+       "label": "Alpha Beta",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_alpha_beta_long",
+       "label": "alpha-beta",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "s_gamma_1",
+       "label": "Gamma Delta",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "s_gamma_2",
+       "label": "Gamma Delta",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "code_parse_1",
+       "label": "parse configuration file",
+       "file_type": "code",
+       "source_file": "src/a.py"
+      },
+      {
+       "id": "code_parse_2",
+       "label": "parse configuration file",
+       "file_type": "code",
+       "source_file": "src/a.py"
+      },
+      {
+       "id": "c_constitutional_classifier_systems",
+       "label": "Constitutional classifier systems",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_constitutional_classifiers_systems",
+       "label": "Constitutional classifiers systems",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_gpai_model_obligations",
+       "label": "General purpose AI model obligations",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_gpai_models_obligations",
+       "label": "General purpose AI models obligations",
+       "file_type": "concept",
+       "source_file": "sources/b.md"
+      },
+      {
+       "id": "c_gpt4x",
+       "label": "modelgpt4",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_gpt5x",
+       "label": "modelgpt5",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_cranel",
+       "label": "cranelqx",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_cranelr",
+       "label": "cranelqxr",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_abc_1",
+       "label": "abcdefghijk",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_abc_2",
+       "label": "abcdefghikj",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_active_session",
+       "label": "getActiveSessionHandler",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_active_sessions",
+       "label": "getActiveSessionHandlers",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_art5",
+       "label": "Article 5 prohibited practices list under the act",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_art6",
+       "label": "Article 6 prohibited practices list under the act",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "d_intro_overview_a",
+       "label": "Introduction and overview of the regulation",
+       "file_type": "document",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "d_intro_overview_b",
+       "label": "Introduction and overviews of the regulation",
+       "file_type": "document",
+       "source_file": "sources/b.md"
+      },
+      {
+       "id": "c_court_1",
+       "label": "abcdef ghij",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_court_2",
+       "label": "abcdefg hij",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_aaaa",
+       "label": "aaaa bbbb aaaa",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_aaab",
+       "label": "aaaa bbbb aaab",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_sans_label_xyzw",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_label_nul",
+       "label": null,
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "c_label_nombre",
+       "label": 4242,
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "",
+       "label": "vide",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "sources_b_entite",
+       "label": "Entité longue",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "sources_b_entite",
+       "label": "Entité",
+       "file_type": "concept",
+       "source_file": "sources/b.md"
+      },
+      {
+       "id": "autre_x",
+       "label": "Long label x",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "autre_x",
+       "label": "Label x",
+       "file_type": "concept",
+       "source_file": "sources/c.md"
+      },
+      {
+       "id": "sans_fichier",
+       "label": "Sans",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "sans_fichier",
+       "label": "Sans fichier",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "sources_c",
+       "label": "Fiche c",
+       "file_type": "document",
+       "source_file": "sources/c.md"
+      },
+      {
+       "id": "sources_c",
+       "label": "Fiche c bis",
+       "file_type": "document",
+       "source_file": "sources/c.md"
+      }
+     ],
+     "edges": [
+      {
+       "source": "c_alpha_beta_long",
+       "target": "c_constitutional_classifiers_systems",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "c_constitutional_classifier_systems",
+       "target": "c_constitutional_classifiers_systems",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "from": "c_abc_2",
+       "to": "c_art5",
+       "relation": "uses",
+       "confidence": "EXTRACTED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "target": "c_art5",
+       "relation": "uses",
+       "confidence": "EXTRACTED"
+      },
+      {
+       "source": "c_gpai_models_obligations",
+       "target": "c_art6",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": 2
+      },
+      {
+       "source": "sources_b_entite",
+       "target": "autre_x",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      }
+     ],
+     "hyperedges": []
+    }
+   ],
+   "attendu": {
+    "directed": false,
+    "multigraph": false,
+    "graph": {},
+    "nodes": [
+     {
+      "label": "alpha-beta",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_alpha_beta_long"
+     },
+     {
+      "label": "Gamma Delta",
+      "file_type": "concept",
+      "source_file": "",
+      "id": "s_gamma_1"
+     },
+     {
+      "label": "Gamma Delta",
+      "file_type": "concept",
+      "source_file": "",
+      "id": "s_gamma_2"
+     },
+     {
+      "label": "parse configuration file",
+      "file_type": "code",
+      "source_file": "src/a.py",
+      "id": "code_parse_1"
+     },
+     {
+      "label": "parse configuration file",
+      "file_type": "code",
+      "source_file": "src/a.py",
+      "id": "code_parse_2"
+     },
+     {
+      "label": "Constitutional classifier systems",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_constitutional_classifier_systems"
+     },
+     {
+      "label": "General purpose AI model obligations",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_gpai_model_obligations"
+     },
+     {
+      "label": "modelgpt4",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_gpt4x"
+     },
+     {
+      "label": "modelgpt5",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_gpt5x"
+     },
+     {
+      "label": "cranelqx",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_cranel"
+     },
+     {
+      "label": "cranelqxr",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_cranelr"
+     },
+     {
+      "label": "abcdefghijk",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_abc_1"
+     },
+     {
+      "label": "abcdefghikj",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_abc_2"
+     },
+     {
+      "label": "getActiveSessionHandler",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_active_session"
+     },
+     {
+      "label": "getActiveSessionHandlers",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_active_sessions"
+     },
+     {
+      "label": "Article 5 prohibited practices list under the act",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_art5"
+     },
+     {
+      "label": "Article 6 prohibited practices list under the act",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_art6"
+     },
+     {
+      "label": "Introduction and overview of the regulation",
+      "file_type": "document",
+      "source_file": "sources/a.md",
+      "id": "d_intro_overview_a"
+     },
+     {
+      "label": "Introduction and overviews of the regulation",
+      "file_type": "document",
+      "source_file": "sources/b.md",
+      "id": "d_intro_overview_b"
+     },
+     {
+      "label": "abcdef ghij",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_court_1"
+     },
+     {
+      "label": "aaaa bbbb aaaa",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_aaaa"
+     },
+     {
+      "label": "aaaa bbbb aaab",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_aaab"
+     },
+     {
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_sans_label_xyzw"
+     },
+     {
+      "label": null,
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_label_nul"
+     },
+     {
+      "label": 4242,
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "c_label_nombre"
+     },
+     {
+      "label": "Entité",
+      "file_type": "concept",
+      "source_file": "sources/b.md",
+      "id": "sources_b_entite"
+     },
+     {
+      "label": "Label x",
+      "file_type": "concept",
+      "source_file": "sources/c.md",
+      "id": "autre_x"
+     },
+     {
+      "label": "Sans",
+      "file_type": "concept",
+      "source_file": "",
+      "id": "sans_fichier"
+     },
+     {
+      "label": "Fiche c",
+      "file_type": "document",
+      "source_file": "sources/c.md",
+      "id": "sources_c"
+     }
+    ],
+    "links": [
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "c_alpha_beta_long",
+      "_tgt": "c_constitutional_classifier_systems",
+      "source": "c_alpha_beta_long",
+      "target": "c_constitutional_classifier_systems"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 2.0,
+      "_src": "c_gpai_model_obligations",
+      "_tgt": "c_art6",
+      "source": "c_gpai_model_obligations",
+      "target": "c_art6"
+     },
+     {
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "source_file": "sources/a.md",
+      "_src": "c_abc_2",
+      "_tgt": "c_art5",
+      "source": "c_abc_2",
+      "target": "c_art5"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_b_entite",
+      "_tgt": "autre_x",
+      "source": "sources_b_entite",
+      "target": "autre_x"
+     }
+    ]
+   }
+  },
+  "sans_fusion": {
+   "extractions": [
+    {
+     "nodes": [
+      {
+       "id": "x1",
+       "label": "Un premier",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "x2",
+       "label": "Un second différent",
+       "file_type": "concept",
+       "source_file": "sources/a.md"
+      }
+     ],
+     "edges": [
+      {
+       "source": "x1",
+       "target": "x1",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "from": "x1",
+       "to": "x2",
+       "relation": "uses",
+       "confidence": "EXTRACTED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "x1",
+       "relation": "uses"
+      },
+      {
+       "source": [
+        "liste"
+       ],
+       "target": "x2",
+       "relation": "uses",
+       "confidence": "EXTRACTED",
+       "source_file": "sources/a.md"
+      }
+     ],
+     "hyperedges": [
+      {
+       "id": "h_non_hachable",
+       "members": [
+        [
+         "l"
+        ],
+        [
+         "l"
+        ],
+        "x1",
+        "x1"
+       ]
+      }
+     ]
+    }
+   ],
+   "attendu": {
+    "directed": false,
+    "multigraph": false,
+    "graph": {
+     "hyperedges": [
+      {
+       "id": "h_non_hachable",
+       "nodes": [
+        "x1"
+       ]
+      }
+     ]
+    },
+    "nodes": [
+     {
+      "label": "Un premier",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "x1"
+     },
+     {
+      "label": "Un second différent",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "x2"
+     }
+    ],
+    "links": [
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "x1",
+      "_tgt": "x1",
+      "source": "x1",
+      "target": "x1"
+     },
+     {
+      "from": "x1",
+      "to": "x2",
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "source_file": "sources/a.md",
+      "_src": "x1",
+      "_tgt": "x2",
+      "source": "x1",
+      "target": "x2"
+     }
+    ]
+   }
+  },
+  "construction": {
+   "extractions": [
+    {
+     "nodes": [
+      {
+       "id": "ft_none",
+       "label": "ft none",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "ft_vide",
+       "label": "ft vide",
+       "file_type": "",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "ft_markdown",
+       "label": "ft markdown",
+       "file_type": "markdown",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "ft_inconnu",
+       "label": "ft inconnu",
+       "file_type": "bizarre",
+       "source_file": "sources/a.md"
+      },
+      {
+       "id": "ancien_champ",
+       "label": "ancien champ",
+       "file_type": "concept",
+       "source": "sources/a.md"
+      },
+      {
+       "id": "doc_entite_ancienne",
+       "label": "entité ancienne",
+       "file_type": "concept",
+       "source_file": "sources/x/doc.md"
+      },
+      {
+       "id": "x_doc_autre_entite",
+       "label": "autre entité",
+       "file_type": "concept",
+       "source_file": "sources/x/doc.md"
+      },
+      {
+       "id": "doc",
+       "label": "doc lui-même",
+       "file_type": "concept",
+       "source_file": "sources/x/doc.md"
+      },
+      {
+       "id": "sources_x_doc_deja",
+       "label": "déjà canonique",
+       "file_type": "concept",
+       "source_file": "sources/x/doc.md"
+      },
+      {
+       "id": "hors_racine",
+       "label": "hors racine",
+       "file_type": "concept",
+       "source_file": "/ailleurs/doc.md"
+      },
+      {
+       "id": "racine_elle_meme",
+       "label": "racine elle-même",
+       "file_type": "concept",
+       "source_file": "/racine/essai"
+      },
+      {
+       "id": "sans_source",
+       "label": "sans source",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "ast_de_doc",
+       "label": "ast",
+       "file_type": "concept",
+       "source_file": "sources/x/doc.md",
+       "_origin": "ast"
+      },
+      {
+       "id": "zzz",
+       "label": "point",
+       "file_type": "concept",
+       "source_file": "."
+      },
+      {
+       "id": "sources_truc",
+       "label": "tige vide",
+       "file_type": "concept",
+       "source_file": "sources/___.md"
+      },
+      {
+       "id": "sans_extension",
+       "label": "sans extension",
+       "file_type": "code",
+       "source_file": "src/Makefile",
+       "_origin": "ast"
+      },
+      {
+       "id": "fiche_t",
+       "label": "fiche t",
+       "file_type": "document",
+       "source_file": "sources/t.md"
+      },
+      {
+       "id": "fiche_t_doc",
+       "label": "fiche t doc",
+       "file_type": "document",
+       "source_file": "sources/t.md"
+      },
+      {
+       "id": "fiche_u_doc",
+       "label": "fiche u doc",
+       "file_type": "document",
+       "source_file": "sources/u.md"
+      },
+      {
+       "id": "fiche_u",
+       "label": "fiche u",
+       "file_type": "document",
+       "source_file": "sources/v.md"
+      },
+      {
+       "id": "fiche_w_doc",
+       "label": "fiche w doc",
+       "file_type": "document",
+       "source_file": "sources/w.md"
+      },
+      {
+       "id": "fiche_w",
+       "label": "fiche w",
+       "file_type": "concept",
+       "source_file": "sources/w.md"
+      },
+      {
+       "id": "sources_g_intro",
+       "label": "Intro",
+       "file_type": "document",
+       "source_file": "sources/g.md",
+       "source_location": "L3",
+       "_origin": "ast"
+      },
+      {
+       "id": "g_intro_fantome",
+       "label": "Intro",
+       "file_type": "document",
+       "source_file": "sources/autre/g.md"
+      },
+      {
+       "id": "sources_h_one_titre",
+       "label": "Titre",
+       "file_type": "document",
+       "source_file": "sources/h1/one.md",
+       "source_location": "L1",
+       "_origin": "ast"
+      },
+      {
+       "id": "sources_h2_one_titre",
+       "label": "Titre",
+       "file_type": "document",
+       "source_file": "sources/h2/one.md",
+       "source_location": "L1",
+       "_origin": "ast"
+      },
+      {
+       "id": "titre_fantome",
+       "label": "Titre",
+       "file_type": "document",
+       "source_file": "sources/one.md"
+      },
+      {
+       "id": "loc_a",
+       "label": "Situé",
+       "file_type": "concept",
+       "source_file": "sources/k/loc.md",
+       "source_location": "L2"
+      },
+      {
+       "id": "loc_b",
+       "label": "Situé",
+       "file_type": "concept",
+       "source_file": "sources/k/loc.md",
+       "source_location": "L9"
+      },
+      {
+       "id": "loc_c",
+       "label": "Situé",
+       "file_type": "concept",
+       "source_file": "sources/m/loc.md",
+       "source_location": "L4"
+      },
+      {
+       "id": "loc_d",
+       "label": "Situé autre",
+       "file_type": "concept",
+       "source_file": "sources/k/loc.md",
+       "source_location": "L5"
+      },
+      {
+       "id": "loc_e",
+       "label": "Situé autre",
+       "file_type": "concept",
+       "source_file": "sources/k/loc.md"
+      },
+      {
+       "id": "sans_rien",
+       "label": "",
+       "file_type": "concept",
+       "source_file": ""
+      },
+      {
+       "id": "chemin_windows",
+       "label": "chemin windows",
+       "file_type": "concept",
+       "source_file": "sources\\win\\doc.md"
+      },
+      {
+       "id": "chemin_absolu",
+       "label": "chemin absolu",
+       "file_type": "concept",
+       "source_file": "/racine/essai/sources/abs.md"
+      },
+      {
+       "id": "sources_y_fich_titre",
+       "label": "titre de fich",
+       "file_type": "document",
+       "source_file": "sources/y/fich.md",
+       "_origin": "ast"
+      },
+      {
+       "id": "sources_y_fich",
+       "label": "fich.md",
+       "file_type": "document",
+       "source_file": "sources/y/fich.md",
+       "_origin": "ast"
+      },
+      {
+       "id": "sources_z_fich",
+       "label": "fich.md",
+       "file_type": "document",
+       "source_file": "sources/z/fich.md",
+       "_origin": "ast"
+      },
+      {
+       "id": "sources_q_r",
+       "label": "r.md",
+       "file_type": "document",
+       "source_file": "sources/q/r.md",
+       "_origin": "ast"
+      },
+      {
+       "id": "py_mod",
+       "label": "py mod",
+       "file_type": "code",
+       "source_file": "src/m.py",
+       "_origin": "ast"
+      },
+      {
+       "id": "js_mod",
+       "label": "js mod",
+       "file_type": "code",
+       "source_file": "src/m.js",
+       "_origin": "ast"
+      },
+      {
+       "id": "ts_mod",
+       "label": "ts mod",
+       "file_type": "code",
+       "source_file": "src/m.ts",
+       "_origin": "ast"
+      },
+      {
+       "id": "rb_mod",
+       "label": "rb mod",
+       "file_type": "code",
+       "source_file": "src/m.rb",
+       "_origin": "ast"
+      }
+     ],
+     "edges": [
+      {
+       "source": "ft_none",
+       "target": "ft_vide",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_vide",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_markdown",
+       "target": "ft_vide",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_markdown",
+       "target": "ft_vide",
+       "relation": "uses",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_markdown",
+       "target": "ft_inconnu",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": null
+      },
+      {
+       "source": "ft_markdown",
+       "target": "ancien_champ",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": "abc"
+      },
+      {
+       "source": "ft_inconnu",
+       "target": "ancien_champ",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": NaN
+      },
+      {
+       "source": "doc_entite_ancienne",
+       "target": "x_doc_autre_entite",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": -1,
+       "confidence_score": "0.5"
+      },
+      {
+       "source": "doc",
+       "target": "sources_x_doc_deja",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md",
+       "weight": "2.5"
+      },
+      {
+       "source": "FT-Markdown",
+       "target": "Ft None",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "g_intro_fantome",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "y_fich_titre",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "fich",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "q_r",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_none",
+       "target": "inconnu_total",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "ft_none",
+       "target": "ft_markdown",
+       "relation": "rel",
+       "confidence": "EXTRACTED"
+      },
+      {
+       "source": "sans_source",
+       "target": "sans_rien",
+       "relation": "rel",
+       "confidence": "EXTRACTED",
+       "source_file": ""
+      },
+      {
+       "source": "ft_none",
+       "target": "chemin_absolu",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "/racine/essai/sources/abs.md",
+       "target_file": "/abs/x"
+      },
+      {
+       "source": "ft_none",
+       "target": "chemin_windows",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "/hors/de/la/racine.md"
+      },
+      {
+       "from": "fiche_t",
+       "to": "fiche_u",
+       "relation": "references",
+       "confidence": "EXTRACTED",
+       "source_file": "sources/t.md"
+      },
+      {
+       "source": "fiche_t",
+       "target": "fiche_t_doc",
+       "relation": "references",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "fiche_t",
+       "target": "fiche_t",
+       "relation": "references",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "fiche_w",
+       "target": "fiche_w_doc",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "py_mod",
+       "target": "js_mod",
+       "relation": "imports",
+       "confidence": "INFERRED",
+       "source_file": "src/m.py"
+      },
+      {
+       "source": "js_mod",
+       "target": "ts_mod",
+       "relation": "imports",
+       "confidence": "INFERRED",
+       "source_file": "src/m.js"
+      },
+      {
+       "source": "py_mod",
+       "target": "ft_none",
+       "relation": "references",
+       "confidence": "INFERRED",
+       "source_file": "src/m.py"
+      },
+      {
+       "source": "py_mod",
+       "target": "rb_mod",
+       "relation": "calls",
+       "confidence": "INFERRED",
+       "source_file": "src/m.py"
+      },
+      {
+       "source": "py_mod",
+       "target": "ts_mod",
+       "relation": "calls",
+       "confidence": "EXTRACTED",
+       "source_file": "src/m.py"
+      },
+      {
+       "source": "py_mod",
+       "target": "sans_extension",
+       "relation": "calls",
+       "confidence": "INFERRED",
+       "source_file": "src/m.py"
+      },
+      {
+       "source": "loc_a",
+       "target": "loc_b",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "loc_c",
+       "target": "loc_d",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "loc_e",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      },
+      {
+       "source": "sans_rien",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      }
+     ],
+     "hyperedges": [
+      {
+       "id": "h_membres",
+       "members": [
+        "ft_none",
+        "ft_vide",
+        "ft_none"
+       ],
+       "source_file": "/racine/essai/sources/a.md"
+      },
+      {
+       "id": "h_ids",
+       "node_ids": [
+        "FT-Markdown",
+        "inconnu"
+       ],
+       "relation": "groupe"
+      },
+      {
+       "id": "h_vide",
+       "nodes": [
+        "inconnu1",
+        "inconnu2"
+       ]
+      },
+      {
+       "id": "h_canon",
+       "nodes": [
+        "ft_none",
+        "doc_entite_ancienne",
+        "fiche_t"
+       ],
+       "members": [
+        "x"
+       ]
+      },
+      {
+       "id": "h_tels_quels",
+       "nodes": [
+        "ft_none",
+        "ft_vide"
+       ]
+      },
+      {
+       "id": "h_sans_liste",
+       "nodes": "pas une liste",
+       "members": "non plus"
+      },
+      {
+       "id": "h_numerique",
+       "nodes": [
+        7,
+        "ft_vide"
+       ]
+      },
+      "pas un objet"
+     ]
+    },
+    {
+     "nodes": [
+      {
+       "id": "apres",
+       "label": "après",
+       "file_type": "concept",
+       "source_file": "sources/b.md"
+      }
+     ],
+     "edges": [
+      {
+       "source": "apres",
+       "target": "ft_none",
+       "relation": "conceptually_related_to",
+       "confidence": "INFERRED",
+       "source_file": "sources/a.md"
+      }
+     ],
+     "hyperedges": [
+      {
+       "id": "h_second",
+       "nodes": [
+        "apres",
+        "ft_none"
+       ],
+       "source_file": "sources/b.md"
+      }
+     ]
+    }
+   ],
+   "attendu": {
+    "directed": false,
+    "multigraph": false,
+    "graph": {
+     "hyperedges": [
+      {
+       "id": "h_membres",
+       "source_file": "sources/a.md",
+       "nodes": [
+        "ft_none",
+        "ft_vide"
+       ]
+      },
+      {
+       "id": "h_ids",
+       "relation": "groupe",
+       "nodes": [
+        "ft_markdown"
+       ]
+      },
+      {
+       "id": "h_canon",
+       "nodes": [
+        "ft_none",
+        "sources_x_doc_entite_ancienne",
+        "fiche_t_doc"
+       ]
+      },
+      {
+       "id": "h_tels_quels",
+       "nodes": [
+        "ft_none",
+        "ft_vide"
+       ]
+      },
+      {
+       "id": "h_sans_liste",
+       "nodes": "pas une liste"
+      },
+      {
+       "id": "h_numerique",
+       "nodes": [
+        "ft_vide"
+       ]
+      },
+      "pas un objet",
+      {
+       "id": "h_second",
+       "nodes": [
+        "apres",
+        "ft_none"
+       ],
+       "source_file": "sources/b.md"
+      }
+     ]
+    },
+    "nodes": [
+     {
+      "label": "ft none",
+      "source_file": "sources/a.md",
+      "file_type": "concept",
+      "id": "ft_none"
+     },
+     {
+      "label": "ft vide",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "ft_vide"
+     },
+     {
+      "label": "ft markdown",
+      "file_type": "document",
+      "source_file": "sources/a.md",
+      "id": "ft_markdown"
+     },
+     {
+      "label": "ft inconnu",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "ft_inconnu"
+     },
+     {
+      "label": "ancien champ",
+      "file_type": "concept",
+      "source_file": "sources/a.md",
+      "id": "ancien_champ"
+     },
+     {
+      "label": "entité ancienne",
+      "file_type": "concept",
+      "source_file": "sources/x/doc.md",
+      "id": "sources_x_doc_entite_ancienne"
+     },
+     {
+      "label": "autre entité",
+      "file_type": "concept",
+      "source_file": "sources/x/doc.md",
+      "id": "sources_x_doc_autre_entite"
+     },
+     {
+      "label": "doc lui-même",
+      "file_type": "concept",
+      "source_file": "sources/x/doc.md",
+      "id": "sources_x_doc"
+     },
+     {
+      "label": "déjà canonique",
+      "file_type": "concept",
+      "source_file": "sources/x/doc.md",
+      "id": "sources_x_doc_deja"
+     },
+     {
+      "label": "hors racine",
+      "file_type": "concept",
+      "source_file": "/ailleurs/doc.md",
+      "id": "hors_racine"
+     },
+     {
+      "label": "racine elle-même",
+      "file_type": "concept",
+      "source_file": ".",
+      "id": "racine_elle_meme"
+     },
+     {
+      "label": "sans source",
+      "file_type": "concept",
+      "source_file": "",
+      "id": "sans_source"
+     },
+     {
+      "label": "ast",
+      "file_type": "concept",
+      "source_file": "sources/x/doc.md",
+      "_origin": "ast",
+      "id": "ast_de_doc"
+     },
+     {
+      "label": "point",
+      "file_type": "concept",
+      "source_file": ".",
+      "id": "zzz"
+     },
+     {
+      "label": "tige vide",
+      "file_type": "concept",
+      "source_file": "sources/___.md",
+      "id": "sources_truc"
+     },
+     {
+      "label": "sans extension",
+      "file_type": "code",
+      "source_file": "src/Makefile",
+      "_origin": "ast",
+      "id": "sans_extension"
+     },
+     {
+      "label": "fiche t doc",
+      "file_type": "document",
+      "source_file": "sources/t.md",
+      "id": "fiche_t_doc"
+     },
+     {
+      "label": "fiche u doc",
+      "file_type": "document",
+      "source_file": "sources/u.md",
+      "id": "fiche_u_doc"
+     },
+     {
+      "label": "fiche u",
+      "file_type": "document",
+      "source_file": "sources/v.md",
+      "id": "fiche_u"
+     },
+     {
+      "label": "fiche w doc",
+      "file_type": "document",
+      "source_file": "sources/w.md",
+      "id": "fiche_w_doc"
+     },
+     {
+      "label": "fiche w",
+      "file_type": "concept",
+      "source_file": "sources/w.md",
+      "id": "fiche_w"
+     },
+     {
+      "label": "Intro",
+      "file_type": "document",
+      "source_file": "sources/g.md",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "sources_g_intro"
+     },
+     {
+      "label": "Titre",
+      "file_type": "document",
+      "source_file": "sources/h1/one.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sources_h_one_titre"
+     },
+     {
+      "label": "Titre",
+      "file_type": "document",
+      "source_file": "sources/h2/one.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sources_h2_one_titre"
+     },
+     {
+      "label": "Titre",
+      "file_type": "document",
+      "source_file": "sources/one.md",
+      "id": "titre_fantome"
+     },
+     {
+      "label": "Situé",
+      "file_type": "concept",
+      "source_file": "sources/k/loc.md",
+      "source_location": "L2",
+      "id": "sources_k_loc_a"
+     },
+     {
+      "label": "Situé",
+      "file_type": "concept",
+      "source_file": "sources/m/loc.md",
+      "source_location": "L4",
+      "id": "sources_m_loc_c"
+     },
+     {
+      "label": "Situé autre",
+      "file_type": "concept",
+      "source_file": "sources/k/loc.md",
+      "source_location": "L5",
+      "id": "sources_k_loc_d"
+     },
+     {
+      "label": "",
+      "file_type": "concept",
+      "source_file": "",
+      "id": "sans_rien"
+     },
+     {
+      "label": "chemin windows",
+      "file_type": "concept",
+      "source_file": "sources/win/doc.md",
+      "id": "chemin_windows"
+     },
+     {
+      "label": "chemin absolu",
+      "file_type": "concept",
+      "source_file": "sources/abs.md",
+      "id": "chemin_absolu"
+     },
+     {
+      "label": "titre de fich",
+      "file_type": "document",
+      "source_file": "sources/y/fich.md",
+      "_origin": "ast",
+      "id": "sources_y_fich_titre"
+     },
+     {
+      "label": "fich.md",
+      "file_type": "document",
+      "source_file": "sources/y/fich.md",
+      "_origin": "ast",
+      "id": "sources_y_fich"
+     },
+     {
+      "label": "fich.md",
+      "file_type": "document",
+      "source_file": "sources/z/fich.md",
+      "_origin": "ast",
+      "id": "sources_z_fich"
+     },
+     {
+      "label": "r.md",
+      "file_type": "document",
+      "source_file": "sources/q/r.md",
+      "_origin": "ast",
+      "id": "sources_q_r"
+     },
+     {
+      "label": "py mod",
+      "file_type": "code",
+      "source_file": "src/m.py",
+      "_origin": "ast",
+      "id": "py_mod"
+     },
+     {
+      "label": "js mod",
+      "file_type": "code",
+      "source_file": "src/m.js",
+      "_origin": "ast",
+      "id": "js_mod"
+     },
+     {
+      "label": "ts mod",
+      "file_type": "code",
+      "source_file": "src/m.ts",
+      "_origin": "ast",
+      "id": "ts_mod"
+     },
+     {
+      "label": "rb mod",
+      "file_type": "code",
+      "source_file": "src/m.rb",
+      "_origin": "ast",
+      "id": "rb_mod"
+     },
+     {
+      "label": "après",
+      "file_type": "concept",
+      "source_file": "sources/b.md",
+      "id": "apres"
+     }
+    ],
+    "links": [
+     {
+      "relation": "rel",
+      "confidence": "EXTRACTED",
+      "source_file": "sources/a.md",
+      "_src": "ft_none",
+      "_tgt": "ft_markdown",
+      "source": "ft_none",
+      "target": "ft_markdown"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "apres",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "apres"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/abs.md",
+      "_src": "ft_none",
+      "_tgt": "chemin_absolu",
+      "source": "ft_none",
+      "target": "chemin_absolu"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "/hors/de/la/racine.md",
+      "_src": "ft_none",
+      "_tgt": "chemin_windows",
+      "source": "ft_none",
+      "target": "chemin_windows"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "ft_none",
+      "_tgt": "ft_vide",
+      "source": "ft_none",
+      "target": "ft_vide"
+     },
+     {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "source_file": "src/m.py",
+      "_src": "py_mod",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "py_mod"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_q_r",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "sources_q_r"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sans_rien",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "sans_rien"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_g_intro",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "sources_g_intro"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_k_loc_d",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "sources_k_loc_d"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_y_fich_titre",
+      "_tgt": "ft_none",
+      "source": "ft_none",
+      "target": "sources_y_fich_titre"
+     },
+     {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "ft_markdown",
+      "_tgt": "ft_vide",
+      "source": "ft_vide",
+      "target": "ft_markdown"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 1.0,
+      "_src": "ft_markdown",
+      "_tgt": "ancien_champ",
+      "source": "ft_markdown",
+      "target": "ancien_champ"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 1.0,
+      "_src": "ft_markdown",
+      "_tgt": "ft_inconnu",
+      "source": "ft_markdown",
+      "target": "ft_inconnu"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 1.0,
+      "_src": "ft_inconnu",
+      "_tgt": "ancien_champ",
+      "source": "ft_inconnu",
+      "target": "ancien_champ"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 1.0,
+      "confidence_score": 0.5,
+      "_src": "sources_x_doc_entite_ancienne",
+      "_tgt": "sources_x_doc_autre_entite",
+      "source": "sources_x_doc_entite_ancienne",
+      "target": "sources_x_doc_autre_entite"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "weight": 2.5,
+      "_src": "sources_x_doc",
+      "_tgt": "sources_x_doc_deja",
+      "source": "sources_x_doc",
+      "target": "sources_x_doc_deja"
+     },
+     {
+      "relation": "rel",
+      "confidence": "EXTRACTED",
+      "source_file": "",
+      "_src": "sans_source",
+      "_tgt": "sans_rien",
+      "source": "sans_source",
+      "target": "sans_rien"
+     },
+     {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "source_file": "src/m.py",
+      "_src": "py_mod",
+      "_tgt": "sans_extension",
+      "source": "sans_extension",
+      "target": "py_mod"
+     },
+     {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "sources/t.md",
+      "_src": "fiche_t_doc",
+      "_tgt": "fiche_u",
+      "source": "fiche_t_doc",
+      "target": "fiche_u"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "fiche_w",
+      "_tgt": "fiche_w_doc",
+      "source": "fiche_w_doc",
+      "target": "fiche_w"
+     },
+     {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "source_file": "sources/a.md",
+      "_src": "sources_m_loc_c",
+      "_tgt": "sources_k_loc_d",
+      "source": "sources_m_loc_c",
+      "target": "sources_k_loc_d"
+     },
+     {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/m.py",
+      "_src": "py_mod",
+      "_tgt": "ts_mod",
+      "source": "py_mod",
+      "target": "ts_mod"
+     },
+     {
+      "relation": "imports",
+      "confidence": "INFERRED",
+      "source_file": "src/m.js",
+      "_src": "js_mod",
+      "_tgt": "ts_mod",
+      "source": "js_mod",
+      "target": "ts_mod"
+     }
+    ]
+   }
+  }
+ }
+}

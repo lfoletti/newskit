@@ -838,7 +838,7 @@ def titres_de(cle_source: str) -> set[str]:
     fois le même texte sous deux URL. Quarante des cent cinquante billets du
     site de Sebastian Raschka sont déjà dans Ahead of AI. Les collecter
     doublerait le texte au corpus et, pire, créerait deux nœuds de même
-    étiquette que la déduplication de graphify fusionnerait à sa façon — c'est
+    étiquette que la déduplication de la composition fusionnerait à sa façon — c'est
     ainsi que vingt-neuf fiches avaient été perdues.
 
     Le rapprochement est déclaré au registre, source par source, plutôt que

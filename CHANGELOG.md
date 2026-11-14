@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.48] - 2026-11-14
+
+### Corrigé
+
+- Une phrase de synthèse se lit sans l’original. La consigne des notions écarte une preuve qui décrit seulement un document (une page de liste, un sommaire, l’annonce d’un épisode) et demande de traduire un mot anglais ordinaire ; seuls les noms, les sigles et les titres restent tels quels. Le contrôle retire une phrase qui garde hors citation un mot anglais ordinaire (`synthese.illisible` : « listing », « maker », « reportedly »…) ; un mot composé (« de-listing ») reste. Sur Palantir, une phrase disait : « Un listing d’octobre 2026 décrit Palantir comme le maker de Maven ». Sur les 33 971 phrases du graphe de la gouvernance, une seule tomberait.
+
 ## [0.1.44] - 2026-11-13
 
 ### Ajouté

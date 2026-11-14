@@ -48,6 +48,11 @@ EN_PLACE_DES = (
     143,
     0,
 )  # D6 : delete_document_graph + knowledge_delete ne laissent rien (liliang-cn/cortexdb#122, #123)
+# Au-delà, un passage en place coûte plus qu'une reconstruction (mainteneur, 14.11.2026). Un remplacement est un appel à
+# delete_document_graph, un retrait deux (avec knowledge_delete) ; CortexDB lit tout le graphe à chacun. Un graphe de
+# gouvernance (396 000 nœuds, 1 043 819 arêtes), 14.11.2026 : 4,0 s par delete_document_graph (972 appels),
+# 6,0 s par knowledge_delete, contre 32 minutes pour sa reconstruction complète du matin.
+EFFACEMENTS_MAX = 300
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
 
 
@@ -75,6 +80,15 @@ def mode_du_passage(
     if raison and force == "en_place":
         raise SystemExit(f"  en place impossible : {raison}")
     return ("complet", raison) if raison else ("en_place", "")
+
+
+def mode_selon_effacements(mode: str, raison: str, compte: dict | None, force: str | None) -> tuple[str, str]:
+    """Le mode après le compte d'un passage en place : reconstruction complète au-delà de EFFACEMENTS_MAX appels
+    d'effacement, sauf en place forcé."""
+    if mode != "en_place" or force == "en_place":
+        return mode, raison
+    n = compte.get("remplaces", 0) + 2 * compte.get("retires", 0)
+    return ("complet", f"{n} effacements en place > {EFFACEMENTS_MAX}") if n > EFFACEMENTS_MAX else (mode, raison)
 
 
 def cloner(source: Path, dest: Path) -> None:
@@ -534,36 +548,31 @@ def construire(
         if force == "en_place":
             raise SystemExit("  en place impossible : la couche 1 a changé")
         mode, raison = "complet", "la couche 1 a changé"
+    t0 = time.time()
+    options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
+    if "--vues" in options:
+        ecrire_vues(graphe, Path(options[options.index("--vues") + 1]))
+    puits = [str(PYTHON_CLIENT), str(CODE / "puits_cortexdb.py"), "--graphe", graphe]
+    if mode == "en_place" and force != "en_place":
+        r = lancer_client([*puits, *options, "--empreintes-avant", str(p_emp), "--compter"])
+        if r.returncode:
+            raise RuntimeError(f"comptage : {(r.stdout + r.stderr)[-800:]}")
+        mode, raison = mode_selon_effacements(mode, raison, json.loads(r.stdout.strip().splitlines()[-1]), force)
     print(
         f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}",
         file=sys.stderr,
     )
-    t0 = time.time()
     effacer(neuf)
     if mode == "en_place":
         cloner(cible, neuf)
-    options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
     options += [
         "--empreintes-apres",
         str(neuf_emp),
         *(["--empreintes-avant", str(p_emp)] if mode == "en_place" else []),
     ]
-    if "--vues" in options:
-        ecrire_vues(graphe, Path(options[options.index("--vues") + 1]))
 
     def verser_dans(s: Serveur):
-        args = [
-            str(PYTHON_CLIENT),
-            str(CODE / "puits_cortexdb.py"),
-            "--graphe",
-            graphe,
-            "--adresse",
-            s.adresse,
-            "--jeton",
-            s.jeton,
-            *options,
-        ]
-        return lancer_client(args)
+        return lancer_client([*puits, "--adresse", s.adresse, "--jeton", s.jeton, *options])
 
     if mode == "en_place":
         # En place, l'encodeur sert dès le versement : sans lui, CortexDB remplit un document neuf de vecteurs lexicaux

@@ -370,9 +370,16 @@ def date_de_publication(html: str) -> str:
     return pub.pop() if len(pub) == 1 else ""
 
 
-def date_de_l_adresse(url: str) -> str:
+def date_de_l_adresse(url: str, motif: str = "") -> str:
     """La date écrite dans l'adresse d'une page (/2026/10/28/, /2026-10-28-f853 des incidents de l'OCDE.AI,
-    /20261102-…, /04042023-… du PFPDT), sinon ""."""
+    /20261102-…, /04042023-… du PFPDT), sinon "". `motif` : celui de la source (`date_adresse`), avec les groupes a, m
+    et j ; une année à deux chiffres est de ce siècle (Japan AISI, /activity_news/261030/, 14.11.2026)."""
+    m = re.search(motif, url) if motif else None
+    if m:
+        a, mo, j = m.group("a"), int(m.group("m")), int(m.group("j"))
+        a = "20" + a if len(a) == 2 else a
+        if 1 <= mo <= 12 and 1 <= j <= 31:
+            return f"{a}-{mo:02d}-{j:02d}"
     m = re.search(r"/((?:19|20)\d\d)[/-](\d\d)[/-](\d\d)(?=[/-]|\b)", url) or re.search(
         r"/((?:19|20)\d\d)(\d\d)(\d\d)(?=\D)", url
     )
@@ -385,22 +392,24 @@ def date_de_l_adresse(url: str) -> str:
     return ""
 
 
-def date_de_l_entree(date_du_flux: str, meta: dict, url: str) -> str:
+def date_de_l_entree(date_du_flux: str, meta: dict, url: str, motif: str = "") -> str:
     """La date d'une entrée lue sur sa page : celle du flux, puis la méta de publication de la page, puis l'adresse,
     puis une date lue dans le texte (meta_de_page) ; sinon "". Les incidents de l'OCDE.AI, sans méta, étaient datés du
     jour de leur collecte (03.11.2026) ; leur adresse porte la date de l'incident."""
-    return (date_du_flux or meta.get("date_publication") or date_de_l_adresse(url) or meta.get("date") or "")[:10]
+    return (date_du_flux or meta.get("date_publication") or date_de_l_adresse(url, motif) or meta.get("date") or "")[
+        :10
+    ]
 
 
-def date_de_plan(meta: dict, url: str) -> tuple[str, str]:
+def date_de_plan(meta: dict, url: str, motif: str = "") -> tuple[str, str]:
     """(date, origine) d'une fiche de plan de site : la date de publication de la page (ses métadonnées), sinon celle
     de l'adresse, sinon ("", "inconnue"). Jamais le <lastmod> du plan, une date « modifié le » ni une date du texte :
     Zivver (Algoritmeregister) était daté du jour de collecte, SafeGPT de « Laatst gewijzigd op 1 november 2026 »
     (mainteneur, 03.11.2026)."""
     if meta.get("date_publication"):
         return meta["date_publication"][:10], "méta de publication"
-    if date_de_l_adresse(url):
-        return date_de_l_adresse(url), "adresse"
+    if date_de_l_adresse(url, motif):
+        return date_de_l_adresse(url, motif), "adresse"
     return "", "inconnue"
 
 
@@ -1212,6 +1221,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             )
     mots_cles = list(getattr(src, "mots_cles", []) or [])
     agregateur = bool(getattr(src, "propres", {}).get("agregateur"))
+    motif_date = str(getattr(src, "propres", {}).get("date_adresse") or "")  # où la source écrit sa date (14.11.2026)
     # `exclure` : expression régulière, sans égard à la casse, sur l'adresse et le titre. Pour les
     # flux qui mêlent au sujet des ordres du jour, des pages de service ou une seconde langue
     # (03.10.2026 : LINC publie chaque article en anglais puis en français).
@@ -1258,9 +1268,9 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             time.sleep(PAUSE_PAGE)
             it["titre"] = it["titre"] or meta.get("titre", "")
             if mode == "plan":
-                it["date"], it["origine_date"] = date_de_plan(meta, it["lien"])
+                it["date"], it["origine_date"] = date_de_plan(meta, it["lien"], motif_date)
             else:
-                it["date"] = date_de_l_entree(it["date"], meta, it["lien"])
+                it["date"] = date_de_l_entree(it["date"], meta, it["lien"], motif_date)
             it["auteur"] = it["auteur"] or meta.get("auteur", "")
             if archive_depuis and it["date"] and it["date"] < archive_depuis:
                 compte["hors_fenetre"] += 1
@@ -1297,7 +1307,7 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
             compte["publicites"] = compte.get("publicites", 0) + 1
             continue
         aujourdhui = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-        date = it["date"] or date_de_l_adresse(it["lien"]) or ("" if mode == "plan" else aujourdhui)
+        date = it["date"] or date_de_l_adresse(it["lien"], motif_date) or ("" if mode == "plan" else aujourdhui)
         # Une date à venir est celle d'un événement annoncé, pas de la publication (CGarchitect, 07.10.2026 : un salon
         # du 16 octobre) : on prend le jour de la collecte, comme l'éclaireur.
         if date[:10] > aujourdhui:

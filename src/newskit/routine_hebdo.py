@@ -280,6 +280,17 @@ def rubriques_du_graphe(j: Journal, g: str, etiquette: str = "") -> bool:
     return True
 
 
+def tendances(j: Journal, g: str, etiquette: str = "") -> bool:
+    """Après la composition : les tendances d'un graphe qui les déclare (`tendances: {jours, max}`, tendances.py), lues
+    du graphe composé, sans appel au modèle. Rend vrai si l'étape a été lancée."""
+    from newskit import tendances as td  # noqa: PLC0415
+
+    if td.declaration(cfg.graphe_declare(g).get("tendances")) is None:
+        return False
+    lancer(j, f"tendances{etiquette}", ["scripts/tendances.py", "--graphe", g], garder=1)
+    return True
+
+
 def lancer(
     j: Journal,
     libelle: str,
@@ -1711,6 +1722,7 @@ def main() -> int:
         for ligne_c in sortie_c.splitlines():  # un alias sans cible se relit : il est dit au rapport (06.11.2026)
             if "alias sans cible" in ligne_c:
                 j.signal(f"composition{etiquette} : {ligne_c.strip()}")
+        tendances(j, g, etiquette)
         # Le passe-partout de chaque source (paragraphes répétés d'une fiche à l'autre), recalculé sur le corpus du jour et
         # sauté par toute lecture des fiches : passages, preuves, index (porteur, 10.10.2026). Sans appel, quelques secondes.
         lancer(j, f"passe-partout{etiquette}", ["scripts/passe_partout.py", "--graphe", g], garder=1)

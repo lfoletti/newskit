@@ -757,6 +757,7 @@ def _valider(d: dict, p: Path) -> dict:
             "depots",
             "partage",
             "rubriques",
+            "tendances",
             "fraicheur_lettre_jours",
             "fraicheur_min_rubrique",
             "lettre_nom",
@@ -855,6 +856,13 @@ def _valider(d: dict, p: Path) -> dict:
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.rubriques : {e}") from e
             if du_graphe is None:
                 lire_rubriques(v["rubriques"], f"{p.name} : graphes.{nom}.rubriques")
+        if v.get("tendances") is not None:
+            from newskit import tendances as td  # noqa: PLC0415
+
+            try:
+                td.declaration(v["tendances"])
+            except ValueError as e:
+                raise ConfigInvalide(f"{p.name} : graphes.{nom}.tendances : {e}") from e
     for nom, v in graphes_decl.items():
         for g in v.get("inclut") or []:
             if (graphes_decl.get(g) or {}).get("inclut"):

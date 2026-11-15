@@ -8,6 +8,8 @@ En place (B15, mainteneur, 2 novembre 2026), dès CortexDB v2.143.0 et quand le 
 versements changés, ajoutés ou retirés (puits_cortexdb.EnPlace), l'encodeur n'encode que les morceaux neufs, et le clone
 remplace l'ancien par renommage ; il se compacte quand ses pages libres passent COMPACTER. Sinon, reconstruction
 complète, et le bilan dit pourquoi (`mode`). `--complet` force la reconstruction ; `--en-place` la refuse (arrêt).
+Une reconstruction complète demande PLACE_COMPLETE fois l'ancien cerveau en place libre : sans elle, le passage se fait
+en place s'il le peut, sinon il s'arrête avant d'écrire et l'ancien cerveau reste.
 
 La reconstruction complète date de CortexDB v2.136.0, qui ne mettait pas un document à jour (morceaux en trop,
 vecteurs laissés par `delete_document_graph`, corrigés en v2.137.0) ; elle sert de banc au versement en place, et :
@@ -27,6 +29,7 @@ import argparse
 import json
 import os
 import secrets
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -54,6 +57,9 @@ EN_PLACE_DES = (
 # 6,0 s par knowledge_delete, contre 32 minutes pour sa reconstruction complète du matin.
 EFFACEMENTS_MAX = 300
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
+# Une reconstruction complète garde l'ancien cerveau jusqu'à la publication et écrit le neuf à côté, puis sa copie
+# compacte. Un graphe de gouvernance, 15.11.2026 : ancien 4,0 Go, neuf à 4,2 Go et pas fini quand le disque s'est rempli.
+PLACE_COMPLETE = 2  # place libre demandée, en multiple de l'ancien cerveau et de son journal
 
 
 def version_binaire(binaire: Path = None) -> tuple[int, ...]:
@@ -89,6 +95,28 @@ def mode_selon_effacements(mode: str, raison: str, compte: dict | None, force: s
         return mode, raison
     n = compte.get("remplaces", 0) + 2 * compte.get("retires", 0)
     return ("complet", f"{n} effacements en place > {EFFACEMENTS_MAX}") if n > EFFACEMENTS_MAX else (mode, raison)
+
+
+def place_libre(dossier: Path) -> int:
+    return shutil.disk_usage(dossier).free
+
+
+def mode_selon_place(mode: str, raison: str, possible: str, cible: Path, libre: int) -> tuple[str, str]:
+    """Une reconstruction complète sans la place de PLACE_COMPLETE fois l'ancien cerveau ne commence pas : le passage
+    se fait en place quand il le peut (`possible`, le mode avant le compte des effacements), sinon il s'arrête avant
+    d'écrire et l'ancien cerveau reste. Sans ancien cerveau, il ne demande rien."""
+    if mode != "complet":
+        return mode, raison
+    ancien = sum(p.stat().st_size for p in (cible, Path(f"{cible}-wal")) if p.exists())
+    besoin = PLACE_COMPLETE * ancien
+    if libre >= besoin:
+        return mode, raison
+    manque = f"{libre / 1e9:.1f} Go libres pour {besoin / 1e9:.1f} Go"
+    if possible == "en_place":
+        return "en_place", f"reconstruction complète ({raison}) sans la place : {manque}"
+    raise SystemExit(
+        f"  place insuffisante pour une reconstruction complète ({raison}) : {manque} ; l'ancien cerveau est gardé"
+    )
 
 
 def cloner(source: Path, dest: Path) -> None:
@@ -548,6 +576,7 @@ def construire(
         if force == "en_place":
             raise SystemExit("  en place impossible : la couche 1 a changé")
         mode, raison = "complet", "la couche 1 a changé"
+    possible = mode  # en place, ou complet sans recours
     t0 = time.time()
     options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
     if "--vues" in options:
@@ -558,6 +587,7 @@ def construire(
         if r.returncode:
             raise RuntimeError(f"comptage : {(r.stdout + r.stderr)[-800:]}")
         mode, raison = mode_selon_effacements(mode, raison, json.loads(r.stdout.strip().splitlines()[-1]), force)
+    mode, raison = mode_selon_place(mode, raison, possible, cible, place_libre(DOSSIER))
     print(
         f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}",
         file=sys.stderr,

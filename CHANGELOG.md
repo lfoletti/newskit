@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.52] - 2026-11-15
+
+### Corrigé
+
+- Une reconstruction complète du cerveau ne commence plus sans la place qu’elle demande. Elle garde l’ancien cerveau jusqu’à la publication et écrit le neuf à côté : le 15.11.2026, sur un graphe de gouvernance, le neuf faisait 4,2 Go, l’ancien 4,0 ; le versement n’était pas fini quand le disque s’est rempli. Avant de commencer, l’étape compare la place libre à `PLACE_COMPLETE` (2) fois l’ancien cerveau et son journal. Sans cette place, le passage se fait en place s’il le peut (plus lent mais complet) et le bilan dit pourquoi ; sinon (couche 1 changée, reconstruction demandée), il s’arrête avant d’écrire et l’ancien cerveau reste en service.
+
 ## [0.1.51] - 2026-11-15
 
 ### Corrigé

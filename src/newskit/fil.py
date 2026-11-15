@@ -217,6 +217,15 @@ RUBRIQUES_EN = {
 }
 
 
+def rubrique_anglaise(nom: str | None, graphe: str | None = None) -> str | None:
+    """Le nom anglais d'une rubrique : la table du moteur, sinon celui des rubriques tirées du graphe
+    (rubriques_du_graphe.py), sinon le nom tel quel."""
+    if not nom or nom in RUBRIQUES_EN:
+        return RUBRIQUES_EN.get(nom or "", nom)
+    en = {r["nom"]: r.get("en") for r in cfg.rubriques(graphe)} if graphe else {}
+    return en.get(nom) or nom
+
+
 def rss(F: dict, site: str, langue: str = "fr", graphe: str | None = None) -> str:
     """Le fil en flux RSS 2.0, un article par billet, du plus récent au plus ancien (mainteneur, 03.11.2026 : « possibilité
     de s'abonner au flux RSS »). La date de l'article : celle de son entrée au fil, à l'heure de Zurich. En anglais
@@ -240,7 +249,7 @@ def rss(F: dict, site: str, langue: str = "fr", graphe: str | None = None) -> st
                 "titre": en["titre"],
                 "descriptif": en["texte"],
                 "definition": None,
-                "rubrique": RUBRIQUES_EN.get(b.get("rubrique") or "", b.get("rubrique")),
+                "rubrique": rubrique_anglaise(b.get("rubrique"), graphe),
             }
         if len(items) == RSS_MAX:
             break

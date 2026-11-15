@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.53] - 2026-11-15
+
+### Ajouté
+
+- Les rubriques d’un graphe tirées de ses sujets. Un graphe qui déclare `rubriques: {du_graphe: true, max: 7}` ne tient plus de table de rubriques à la main : ses sujets déclarés, que les thèmes émergents font bouger, sont regroupés en `max` rubriques au plus (7 sans `max`, 12 au plus) par un appel au modèle, avec un nom français, un nom anglais et un vocabulaire par rubrique. Le regroupement se garde avec l’empreinte des sujets et de la borne dans `rubriques.json` du graphe : il se refait seulement quand un sujet entre ou sort, ou quand la borne change, à l’étape des thèmes de la routine (`newskit rubriques_du_graphe --graphe <g>` à la main). Une réponse hors contrat (trop de rubriques, un sujet rangé deux fois ou oublié, un nom vide, en double ou de plus de 24 caractères) laisse les rubriques d’avant. Le fil, le flux et la lettre en anglais prennent le nom anglais calculé. Une table déclarée (`{fichier, ordre}`) se lit comme avant.
+
 ## [0.1.52] - 2026-11-15
 
 ### Corrigé

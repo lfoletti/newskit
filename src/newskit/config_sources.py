@@ -452,8 +452,18 @@ def lire_rubriques(decl: dict, ou: str = "rubriques") -> list[dict]:
 
 
 def rubriques(graphe: str) -> list[dict]:
-    """Les rubriques déclarées d'un graphe, ou [] s'il n'en a pas (il garde alors son classement d'avant)."""
+    """Les rubriques d'un graphe : sa table déclarée (`{fichier, ordre}`), ou celles que le moteur tire de ses sujets
+    (`{du_graphe: true, max}`, rubriques_du_graphe.py ; [] tant qu'elles ne sont pas calculées) ; [] s'il n'en déclare
+    pas (il garde alors son classement d'avant)."""
+    from newskit import rubriques_du_graphe as rdg  # noqa: PLC0415
+
     decl = graphe_declare(graphe).get("rubriques")
+    try:
+        du_graphe = rdg.declaration(decl)
+    except ValueError as e:
+        raise ConfigInvalide(f"graphes.{graphe}.rubriques : {e}") from e
+    if du_graphe is not None:
+        return rdg.lire(chemins_du_graphe(graphe)["base"] / rdg.FICHIER)
     return lire_rubriques(decl, f"graphes.{graphe}.rubriques") if decl else []
 
 
@@ -837,7 +847,14 @@ def _valider(d: dict, p: Path) -> dict:
         ):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.fraicheur_min_rubrique : un entier positif ou nul")
         if v.get("rubriques") is not None:
-            lire_rubriques(v["rubriques"], f"{p.name} : graphes.{nom}.rubriques")
+            from newskit import rubriques_du_graphe as rdg  # noqa: PLC0415
+
+            try:
+                du_graphe = rdg.declaration(v["rubriques"])
+            except ValueError as e:
+                raise ConfigInvalide(f"{p.name} : graphes.{nom}.rubriques : {e}") from e
+            if du_graphe is None:
+                lire_rubriques(v["rubriques"], f"{p.name} : graphes.{nom}.rubriques")
     for nom, v in graphes_decl.items():
         for g in v.get("inclut") or []:
             if (graphes_decl.get(g) or {}).get("inclut"):

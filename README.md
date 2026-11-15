@@ -115,6 +115,7 @@ graphes:
   potagers-urbains:
     libelle: Potagers urbains   # label
     domaine: "urban gardening: allotments, soil, seed exchange"   # the domain, in English, for extraction
+    # rubriques: {du_graphe: true, max: 7}   # feed sections drawn from the graph's subjects, 7 at most
 ```
 
 `newskit media` shows what was read; an unknown field is refused and named. The roles: `extraction` (reading a note and drawing its concepts), `analyse` (judging a whole graph), `redaction` (summaries and newsletter), `lecture` (deciding whether two labels are the same concept), `traduction` (translation), `questions` (training questions for the local encoder).

@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.55] - 2026-11-15
+
+### Corrigé
+
+- Une longue réponse réussie n’est plus prise pour un refus d’usage. La règle qui reconnaît une limite lisait « rate limit », « quota » ou « overloaded » dans le texte rendu par le modèle : une lecture de plusieurs milliers de mots sur ces sujets était comptée comme un refus ; trois de suite arrêtaient les boucles trois heures (6 lectures sur 78 le 15.11.2026). Un message de plus de 1 500 caractères n’est plus un refus ; un appel que l’API n’a pas reçu en reste un, quelle que soit sa longueur.
+
 ## [0.1.54] - 2026-11-15
 
 ### Ajouté

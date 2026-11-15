@@ -59,6 +59,10 @@ RE_LIMITE = re.compile(
     r"quota|too many requests|resets? at|overloaded",
     re.I,
 )
+# Un refus d'usage est un message court. Une réponse réussie de plusieurs milliers de mots qui dit « rate limit »,
+# « quota » ou « overloaded » parle de son sujet : le 15.11.2026, 6 lectures de papiers sur 78 ont été comptées comme
+# des limites, et trois de suite arrêtent les boucles trois heures.
+REFUS_MAX = 1500  # caractères
 
 # La sentinelle de jetons (CHANTIER_GENERIQUE.md, étape 1) : quand la médiane du contexte d'entrée (entrée, cache écrit,
 # cache lu, pesés à leur prix : voir contexte()) des appels réussis d'un poste dans ce processus, après SENTINELLE_APPELS appels, dépasse SENTINELLE_FACTEUR
@@ -103,17 +107,23 @@ def lire_enveloppe(stdout: str | None) -> dict:
     return {}
 
 
+def _dit_une_limite(message: str) -> bool:
+    """Le message est court et parle d'une limite. Une réponse longue qui emploie ces mots traite du sujet."""
+    return bool(message) and len(message) <= REFUS_MAX and bool(RE_LIMITE.search(message))
+
+
 def est_une_limite(env: dict, texte: str = "", code: int | None = None) -> bool:
     """Une limite d'usage : l'API n'a pas été appelée (`duration_api_ms` à 0) sur un appel non abouti, ou le message le dit.
-    Un refus du modèle (`stop_reason: refusal` avec une durée d'API non nulle) n'est pas une limite."""
+    Un refus du modèle (`stop_reason: refusal` avec une durée d'API non nulle) n'est pas une limite, ni un message de plus
+    de REFUS_MAX caractères."""
     if env:
         if env.get("subtype") == "error_max_budget_usd":
             return False  # coupé par son propre plafond (--max-budget-usd) : un plafond, pas une limite (03.11.2026)
         if env.get("duration_api_ms") == 0 and (code not in (0, None) or env.get("is_error")):
             return True
-        if RE_LIMITE.search(str(env.get("result") or "")):
+        if _dit_une_limite(str(env.get("result") or "")):
             return True
-    return bool(texte and RE_LIMITE.search(texte))
+    return _dit_une_limite(texte)
 
 
 def _poser_marque(note: str) -> None:

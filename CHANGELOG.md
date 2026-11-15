@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.54] - 2026-11-15
+
+### Ajouté
+
+- Les tendances d’un graphe, pour l’accueil d’un média. Un graphe qui déclare `tendances: {jours: 30, max: 8, hors: [...]}` garde dans `tendances.json` les notions que plusieurs sources indépendantes ont attestées pendant la fenêtre, lues du graphe composé sans appel au modèle (`newskit tendances --graphe <g>` à la main, à chaque passage de la routine après la composition). Un papier compte pour une source, un dossier d’articles pour une seule : cent billets d’un même blog repris d’un coup ne font pas une tendance. Une notion entre avec deux sources au moins, dans l’ordre du nombre de sources, puis de fiches. Un libellé qui est aussi celui d’un auteur, d’une entité ou d’une publication du graphe est écarté ; le média écarte les autres noms sous `hors`.
+
 ## [0.1.53] - 2026-11-15
 
 ### Ajouté

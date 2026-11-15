@@ -116,6 +116,7 @@ graphes:
     libelle: Potagers urbains   # le libellé
     domaine: "urban gardening: allotments, soil, seed exchange"   # le domaine, en anglais, pour l'extraction
     # rubriques: {du_graphe: true, max: 7}   # les rubriques du fil tirées des sujets du graphe, 7 au plus
+    # tendances: {jours: 30, max: 8}         # les notions attestées par 2 sources indépendantes ou plus en 30 jours
 ```
 
 `newskit media` dit ce qui est lu ; un champ inconnu est refusé et nommé. Les rôles : `extraction` (lire une fiche et en tirer les notions), `analyse` (juger un graphe entier), `redaction` (synthèses et lettre), `lecture` (trancher si deux libellés sont la même notion), `traduction`, `questions` (questions d'entraînement de l'encodeur local).

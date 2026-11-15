@@ -651,6 +651,12 @@ def construire(extraction: dict, racine: str | None) -> nx.Graph:
             deja = G[src][tgt]
             if deja.get("relation") == attrs.get("relation") and deja.get("_src") == tgt and deja.get("_tgt") == src:
                 continue  # même relation en sens inverse : la première direction reste (graphify #1061)
+            # D'un producteur à l'autre, la dernière écrite remplace la précédente sans garder ses champs : graphify les
+            # fusionnait, et une arête du modèle posée sur une arête de structure gardait `_origin` et passait pour
+            # déterministe (15.11.2026). Entre deux arêtes du même producteur, la fusion reste : une copie sans
+            # citation garde celle de la première. Vider sur place garde la place de l'arête, donc l'ordre du graphe.
+            if deja.get("_origin") != attrs.get("_origin"):
+                deja.clear()
         G.add_edge(src, tgt, **attrs)
 
     gardees = []

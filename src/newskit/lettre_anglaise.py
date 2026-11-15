@@ -77,7 +77,7 @@ def ecrire(L: dict) -> dict | None:
         for y in x.get("liees") or []:
             y["titre"] = (y.get("source") or {}).get("titre") or y.get("titre")
         garde.add(id(x))
-    rub = lambda g: fil.RUBRIQUES_EN.get(g, g)  # noqa: E731
+    rub = lambda g: fil.rubrique_anglaise(g, graphe)  # noqa: E731
     E["faits"] = [
         {**f, **({"rubrique": rub(f["rubrique"])} if f.get("rubrique") else {})}
         for f in E.get("faits") or []

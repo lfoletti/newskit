@@ -266,6 +266,20 @@ def script_du_moteur(args: list[str]) -> list[str]:
     return list(args)
 
 
+def rubriques_du_graphe(j: Journal, g: str, etiquette: str = "") -> bool:
+    """Après les thèmes émergents, qui font entrer des sujets : les rubriques d'un graphe qui les tire de ses sujets
+    (`rubriques: {du_graphe: true}`, rubriques_du_graphe.py). Un appel au modèle seulement quand les sujets ont changé.
+    Rend vrai si l'étape a été lancée."""
+    from newskit import rubriques_du_graphe as rdg  # noqa: PLC0415
+
+    if rdg.declaration(cfg.graphe_declare(g).get("rubriques")) is None:
+        return False
+    lancer(
+        j, f"rubriques du graphe{etiquette}", ["scripts/rubriques_du_graphe.py", "--graphe", g], garder=1, modele=True
+    )
+    return True
+
+
 def lancer(
     j: Journal,
     libelle: str,
@@ -1749,6 +1763,7 @@ def main() -> int:
                         garder=2,
                         modele=True,
                     )
+        rubriques_du_graphe(j, g, etiquette)
         if p_themes.exists():
             pass
             from newskit import themes_emergents as te  # noqa: PLC0415

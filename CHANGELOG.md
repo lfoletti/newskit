@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.56] - 2026-11-15
+
+### Ajouté
+
+- Un graphe nomme son cerveau de Thalamus. Un graphe qui déclare `cerveau: <nom>` sous `graphes:` est servi sous ce nom, qu’il soit ou non le graphe du site ; sans déclaration, le nom reste `cerveau_du_site` pour le graphe du site et `<média>/<graphe>` pour les autres. Le nom suit la règle des autres cerveaux (minuscules, chiffres et « -/ », 63 caractères au plus) : un autre nom arrête la lecture de `config.yaml`.
+
 ## [0.1.55] - 2026-11-15
 
 ### Corrigé

@@ -93,3 +93,33 @@ def test_la_carte_servie_dit_ou_signaler(monkeypatch):
 
     _edition(monkeypatch, cerveau_lacunes="api-lacunes")
     assert "`th_add` dans le cerveau `api-lacunes`." in puits_cortexdb.carte_pour_thalamus("# Carte\n")
+
+
+def test_un_graphe_declare_son_cerveau(monkeypatch):
+    """« il doit être enregistré dans thalamus » (Lauro, 15.11.2026, kg-engineering) : un graphe qui n'est pas celui
+    du site nomme son cerveau sous `graphes.<g>.cerveau` ; ce nom l'emporte aussi sur `cerveau_du_site`."""
+    _edition(monkeypatch, cerveau_du_site="api-site")
+    graphes = {"miel": {"cerveau": "api-miel"}, "ruches": {"cerveau": "api-ruches"}, "cire": {}}
+    monkeypatch.setattr(cfg, "charger", lambda: {"graphes": graphes})
+    assert cfg.cerveau_thalamus("miel") == "api-miel"
+    assert cfg.cerveau_thalamus("ruches") == "api-ruches"
+    assert cfg.cerveau_thalamus("cire") == "apiculture/cire"
+    assert cfg.cerveau_thalamus("propolis") == "apiculture/propolis"  # un graphe hors du registre
+
+
+def test_le_cerveau_declare_d_un_graphe_est_accepte(tmp_path):
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump({"version": 1, "media": {"nom": "apiculture"}, "graphes": {"miel": {"cerveau": "api-miel"}}}),
+        encoding="utf-8",
+    )
+    assert media.charger(tmp_path / "config.yaml")["graphes"]["miel"]["cerveau"] == "api-miel"
+
+
+@pytest.mark.parametrize("v", ["Api", "api miel", "api;x", "-api", "a" * 70, 3, ""])
+def test_un_cerveau_de_graphe_hors_des_caracteres_admis_est_refuse(tmp_path, v):
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump({"version": 1, "media": {"nom": "apiculture"}, "graphes": {"miel": {"cerveau": v}}}),
+        encoding="utf-8",
+    )
+    with pytest.raises(media.ConfigMediaInvalide, match=r"graphes\.miel\.cerveau :"):
+        media.charger(tmp_path / "config.yaml")

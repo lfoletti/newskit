@@ -516,8 +516,11 @@ def graphe_du_site() -> str:
 
 
 def cerveau_thalamus(graphe: str) -> str:
-    """Le cerveau de Thalamus d'un graphe : `cerveau_du_site` du bloc `edition:` pour le graphe du site s'il est
-    déclaré, sinon « <nom de l'édition>/<graphe> » (07.11.2026)."""
+    """Le cerveau de Thalamus d'un graphe : `graphes.<g>.cerveau` s'il est déclaré (15.11.2026), puis
+    `cerveau_du_site` du bloc `edition:` pour le graphe du site, sinon « <nom de l'édition>/<graphe> » (07.11.2026)."""
+    declare = ((charger().get("graphes") or {}).get(graphe) or {}).get("cerveau")
+    if declare:
+        return str(declare)
     e = edition()
     if e.get("cerveau_du_site") and graphe == graphe_du_site():
         return e["cerveau_du_site"]

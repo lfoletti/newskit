@@ -203,6 +203,15 @@ def charger(chemin: Path = FICHIER) -> dict:
         _valider_lecture_audio(d["lecture_audio"], chemin.name)
     if "pages_fiches" in d:
         _valider_pages_fiches(d["pages_fiches"], chemin.name)
+    for g, v in (d.get("graphes") or {}).items() if isinstance(d.get("graphes"), dict) else ():
+        if (
+            isinstance(v, dict)
+            and "cerveau" in v
+            and not (isinstance(v["cerveau"], str) and CERVEAU.match(v["cerveau"]))
+        ):
+            raise ConfigMediaInvalide(
+                f"{chemin.name} : graphes.{g}.cerveau : minuscules, chiffres et « -/ », lu {v['cerveau']!r}"
+            )
     r = d.get("registre_des_graphes")
     if r is not None and (not isinstance(r, str) or not r.strip()):
         raise ConfigMediaInvalide(f"{chemin.name} : registre_des_graphes : un chemin de fichier, lu {r!r}")

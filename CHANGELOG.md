@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.51] - 2026-11-15
+
+### Corrigé
+
+- Une arête du modèle posée sur une arête de structure ne passe plus pour déterministe. Sur une même paire de nœuds, graphify et la composition reprise de lui en 0.1.49 ajoutaient les champs de la seconde arête à la première : l’arête gardait `_origin` (`ast` ou `squelette`) et gagnait la citation (`evidence`) et le contributeur du modèle ; le puits la versait comme arête déterministe, sans sa citation. D’un producteur à l’autre, la dernière écrite remplace désormais la précédente ; entre deux arêtes du même producteur, la fusion reste, pour qu’une copie sans citation garde celle de la première. Sur les extractions du graphe de la gouvernance du 14.11.2026 (298 425 arêtes), 107 arêtes changent, toutes passées d’un producteur à l’autre ; les 29 arêtes mixtes disparaissent ; l’ensemble et l’ordre des arêtes sont identiques.
+
 ## [0.1.50] - 2026-11-14
 
 ### Modifié

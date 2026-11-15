@@ -223,3 +223,75 @@ def test_les_vues_s_ecrivent_avant_le_comptage_qui_les_lit(poste, tmp_path, monk
     with pytest.raises(Arret):
         cc.construire("g")
     assert ordre == [("vues", vues), ("client", True), ("client", False)]
+
+
+# Une reconstruction complète garde l'ancien cerveau jusqu'à la publication et écrit le neuf à côté. Le 15.11.2026, la
+# passe du matin d'un graphe de gouvernance (1 096 effacements, donc reconstruction complète) a rempli le disque : le neuf
+# faisait 4,2 Go, l'ancien 4,0, le versement n'était pas fini. Elle se mesure donc d'abord à la place libre.
+
+
+@pytest.mark.parametrize(
+    "mode, possible, ancien, libre, attendu",
+    [
+        ("complet", "en_place", 100, 200, ("complet", "r")),  # assez : exactement PLACE_COMPLETE fois l'ancien
+        ("complet", "en_place", 100, 199, "en_place"),  # trop peu, en place possible : en place
+        ("complet", "complet", 100, 199, SystemExit),  # trop peu, en place impossible : arrêt, l'ancien reste
+        ("en_place", "en_place", 100, 0, ("en_place", "r")),  # un passage en place ne se mesure pas
+        ("complet", "complet", None, 0, ("complet", "r")),  # aucun ancien cerveau : rien à comparer
+    ],
+)
+def test_le_mode_selon_la_place(tmp_path, mode, possible, ancien, libre, attendu):
+    assert cc.PLACE_COMPLETE == 2
+    cible = tmp_path / "g.db"
+    if ancien is not None:
+        cible.write_bytes(b"x" * ancien)
+    if attendu is SystemExit:
+        with pytest.raises(SystemExit, match="l'ancien cerveau est gardé"):
+            cc.mode_selon_place(mode, "r", possible, cible, libre)
+    elif attendu == "en_place":
+        m, raison = cc.mode_selon_place(mode, "r", possible, cible, libre)
+        assert m == "en_place" and "reconstruction complète" in raison and "r" in raison
+    else:
+        assert cc.mode_selon_place(mode, "r", possible, cible, libre) == attendu
+
+
+def test_la_place_de_l_ancien_cerveau_compte_son_journal(tmp_path):
+    cible = tmp_path / "g.db"
+    cible.write_bytes(b"x" * 100)
+    (tmp_path / "g.db-wal").write_bytes(b"x" * 50)
+    assert cc.mode_selon_place("complet", "r", "en_place", cible, 299)[0] == "en_place"
+
+
+def test_trop_d_effacements_sans_place_passe_en_place(poste, monkeypatch):
+    (poste.neuf.parent / "g.db").write_bytes(b"x" * 100)
+    monkeypatch.setattr(cc, "place_libre", lambda d: 150)
+    poste.compte = {"remplaces": cc.EFFACEMENTS_MAX + 1, "retires": 0, "ajoutes": 0, "inchanges": 7}
+    with pytest.raises(Arret):
+        cc.construire("g")
+    _, verse = poste.appels
+    assert "--empreintes-avant" in verse and poste.clones
+
+
+def test_trop_d_effacements_avec_place_reconstruit(poste, monkeypatch):
+    (poste.neuf.parent / "g.db").write_bytes(b"x" * 100)
+    monkeypatch.setattr(cc, "place_libre", lambda d: 200)
+    poste.compte = {"remplaces": cc.EFFACEMENTS_MAX + 1, "retires": 0, "ajoutes": 0, "inchanges": 7}
+    with pytest.raises(Arret):
+        cc.construire("g")
+    _, verse = poste.appels
+    assert "--empreintes-avant" not in verse and not poste.clones
+
+
+def test_une_reconstruction_imposee_sans_place_s_arrete_avant_d_ecrire(poste, monkeypatch):
+    (poste.neuf.parent / "g.db").write_bytes(b"x" * 100)
+    (poste.neuf.parent / "g.json").write_text(json.dumps({"couche1": True}), encoding="utf-8")  # la couche 1 a changé
+    monkeypatch.setattr(cc, "place_libre", lambda d: 150)
+    with pytest.raises(SystemExit, match="l'ancien cerveau est gardé"):
+        cc.construire("g")
+    assert not poste.appels and not poste.clones and not poste.neuf.exists()
+
+
+def test_la_place_libre_est_celle_du_dossier_des_cerveaux(tmp_path):
+    import shutil
+
+    assert cc.place_libre(tmp_path) == shutil.disk_usage(tmp_path).free

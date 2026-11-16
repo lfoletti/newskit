@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.57] - 2026-11-16
+
+### Modifié
+
+- Un passage en place efface jusqu’à 3 000 documents avec CortexDB v2.154.0 ou plus, contre 300 avant. Cette version trouve ce qu’un document a mis dans le graphe par des index de provenance (liliang-cn/cortexdb#190) : une suppression ne lit plus tout le graphe. Sur une copie d’un graphe de 400 000 nœuds, un `delete_document_graph` prend 0,04 à 0,19 s, contre 0,9 à 1,2 s en v2.147.0. Avec un binaire plus ancien, le plafond reste à 300.
+
 ## [0.1.56] - 2026-11-15
 
 ### Ajouté

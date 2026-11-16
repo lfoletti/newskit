@@ -295,3 +295,28 @@ def test_la_place_libre_est_celle_du_dossier_des_cerveaux(tmp_path):
     import shutil
 
     assert cc.place_libre(tmp_path) == shutil.disk_usage(tmp_path).free
+
+
+# CortexDB v2.154.0 (liliang-cn/cortexdb#190) trouve ce qu'un document a mis dans le graphe par des index de provenance :
+# une suppression ne lit plus tout le graphe. Copie du graphe de gouvernance, 16.11.2026 : 0,04 à 0,19 s par
+# delete_document_graph, contre 0,9 à 1,2 s en v2.147.0. Le plafond suit le binaire qui versera.
+@pytest.mark.parametrize(
+    "version, effacements, attendu",
+    [
+        ((2, 153, 9), 301, ("complet", "301 effacements en place > 300")),
+        ((2, 154, 0), 301, ("en_place", "")),
+        ((2, 154, 6), 3000, ("en_place", "")),
+        ((2, 154, 0), 3001, ("complet", "3001 effacements en place > 3000")),
+    ],
+)
+def test_le_plafond_suit_les_index_de_provenance(version, effacements, attendu):
+    assert cc.mode_selon_effacements("en_place", "", {"remplaces": effacements}, None, version) == attendu
+
+
+def test_construire_donne_la_version_du_binaire_au_plafond(poste, monkeypatch):
+    monkeypatch.setattr(cc, "version_binaire", lambda *a: (2, 154, 6))
+    poste.compte = {"remplaces": 301, "retires": 0, "ajoutes": 0, "inchanges": 7}
+    with pytest.raises(Arret):
+        cc.construire("g")
+    _, verse = poste.appels
+    assert "--empreintes-avant" in verse and poste.clones

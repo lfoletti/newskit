@@ -56,6 +56,12 @@ EN_PLACE_DES = (
 # gouvernance (396 000 nœuds, 1 043 819 arêtes), 14.11.2026 : 4,0 s par delete_document_graph (972 appels),
 # 6,0 s par knowledge_delete, contre 32 minutes pour sa reconstruction complète du matin.
 EFFACEMENTS_MAX = 300
+# CortexDB v2.154.0 (liliang-cn/cortexdb#190) trouve ce qu'un document a mis dans le graphe par des index de provenance :
+# une suppression ne lit plus tout le graphe. Copie du même graphe, 16.11.2026 : 0,04 à 0,19 s par delete_document_graph,
+# contre 0,9 à 1,2 s en v2.147.0. 3000 effacements au pire mesuré font ≈ 570 s, contre 1632 s pour sa reconstruction
+# complète du 16.11.2026.
+INDEX_PROVENANCE_DES = (2, 154, 0)
+EFFACEMENTS_MAX_INDEXES = 3000
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
 # Une reconstruction complète garde l'ancien cerveau jusqu'à la publication et écrit le neuf à côté, puis sa copie
 # compacte. Un graphe de gouvernance, 15.11.2026 : ancien 4,0 Go, neuf à 4,2 Go et pas fini quand le disque s'est rempli.
@@ -88,13 +94,21 @@ def mode_du_passage(
     return ("complet", raison) if raison else ("en_place", "")
 
 
-def mode_selon_effacements(mode: str, raison: str, compte: dict | None, force: str | None) -> tuple[str, str]:
-    """Le mode après le compte d'un passage en place : reconstruction complète au-delà de EFFACEMENTS_MAX appels
-    d'effacement, sauf en place forcé."""
+def plafond_effacements(version: tuple[int, ...]) -> int:
+    """Le nombre d'appels d'effacement au-delà duquel un passage en place coûte plus qu'une reconstruction, selon le
+    binaire qui versera."""
+    return EFFACEMENTS_MAX_INDEXES if version >= INDEX_PROVENANCE_DES else EFFACEMENTS_MAX
+
+
+def mode_selon_effacements(
+    mode: str, raison: str, compte: dict | None, force: str | None, version: tuple[int, ...] = ()
+) -> tuple[str, str]:
+    """Le mode après le compte d'un passage en place : reconstruction complète au-delà du plafond d'appels
+    d'effacement du binaire (`plafond_effacements`), sauf en place forcé."""
     if mode != "en_place" or force == "en_place":
         return mode, raison
-    n = compte.get("remplaces", 0) + 2 * compte.get("retires", 0)
-    return ("complet", f"{n} effacements en place > {EFFACEMENTS_MAX}") if n > EFFACEMENTS_MAX else (mode, raison)
+    n, plafond = compte.get("remplaces", 0) + 2 * compte.get("retires", 0), plafond_effacements(version)
+    return ("complet", f"{n} effacements en place > {plafond}") if n > plafond else (mode, raison)
 
 
 def place_libre(dossier: Path) -> int:
@@ -571,7 +585,8 @@ def construire(
     journal, p_bilan = DOSSIER / f"{graphe}.log", DOSSIER / f"{graphe}.json"
     precedent = json.loads(p_bilan.read_text(encoding="utf-8")) if p_bilan.exists() else {}
     p_emp, neuf_emp = DOSSIER / f"{graphe}.empreintes.json", DOSSIER / f"{graphe}.neuf.empreintes.json"
-    mode, raison = mode_du_passage(cible, p_emp, version_binaire(), force)
+    version = version_binaire()
+    mode, raison = mode_du_passage(cible, p_emp, version, force)
     if mode == "en_place" and precedent.get("couche1", False) != bool(couche1 or engage_couche1(graphe)):
         if force == "en_place":
             raise SystemExit("  en place impossible : la couche 1 a changé")
@@ -586,7 +601,9 @@ def construire(
         r = lancer_client([*puits, *options, "--empreintes-avant", str(p_emp), "--compter"])
         if r.returncode:
             raise RuntimeError(f"comptage : {(r.stdout + r.stderr)[-800:]}")
-        mode, raison = mode_selon_effacements(mode, raison, json.loads(r.stdout.strip().splitlines()[-1]), force)
+        mode, raison = mode_selon_effacements(
+            mode, raison, json.loads(r.stdout.strip().splitlines()[-1]), force, version
+        )
     mode, raison = mode_selon_place(mode, raison, possible, cible, place_libre(DOSSIER))
     print(
         f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}",

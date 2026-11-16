@@ -21,7 +21,7 @@ jobs:
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME, paquet $v"; exit 1; }
       - name: roue et archive des sources
         run: pip install build && python -m build --outdir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: paquet
           path: dist/

@@ -27,7 +27,7 @@ jobs:
           sed -i "s/^__version__ = .*/__version__ = \"$v\"/" $f
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - run: pip install build && python -m build --outdir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: paquet
           path: dist/

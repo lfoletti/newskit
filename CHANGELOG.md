@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.59] - 2026-11-16
+
+### Ajouté
+
+- Une boîte aux lettres peut nommer dans `mot_de_passe_env` la variable qui porte son mot de passe. Le moteur la lit dans l’environnement, puis dans `~/.secrets/newskit.env`, avant le trousseau macOS. Une routine sur un serveur Linux, sans trousseau, relève ainsi les lettres reçues par courriel. Le registre porte le nom de la variable, jamais le mot de passe. Sans variable déclarée, rien ne change.
+
 ## [0.1.58] - 2026-11-16
 
 ### Corrigé

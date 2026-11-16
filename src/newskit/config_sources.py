@@ -241,6 +241,9 @@ PROPRES = {
 # personnelle : `utilisateur_env` nomme à sa place la variable qui la porte, lue hors dépôt (utilisateur_boite).
 CHAMPS_BOITE = {"hote": str, "port": int, "dossier": str}
 CHAMPS_UTILISATEUR = ("utilisateur", "utilisateur_env")
+# Hors de macOS, pas de trousseau (16.11.2026, routines de l'édition sur un serveur Linux) : `mot_de_passe_env`, facultatif,
+# nomme la variable qui porte le mot de passe, lue hors dépôt comme `utilisateur_env`. Le secret n'entre jamais au registre.
+CHAMP_MOT_DE_PASSE = "mot_de_passe_env"
 
 
 @dataclass
@@ -309,8 +312,9 @@ def valider_boites(brut, ou: str) -> dict:
     for nom, b in brut.items():
         if not isinstance(b, dict):
             raise ConfigInvalide(f"{ou} : boites.{nom} doit être un bloc")
-        if set(b) - set(CHAMPS_BOITE) - set(CHAMPS_UTILISATEUR):
-            inconnus = sorted(set(b) - set(CHAMPS_BOITE) - set(CHAMPS_UTILISATEUR))
+        connus = set(CHAMPS_BOITE) | set(CHAMPS_UTILISATEUR) | {CHAMP_MOT_DE_PASSE}
+        if set(b) - connus:
+            inconnus = sorted(set(b) - connus)
             raise ConfigInvalide(
                 f"{ou} : boites.{nom} : champs inconnus {inconnus} ; le mot "
                 f"de passe se dépose au trousseau, jamais au registre"
@@ -319,7 +323,10 @@ def valider_boites(brut, ou: str) -> dict:
             raise ConfigInvalide(
                 f"{ou} : boites.{nom} : utilisateur ou utilisateur_env attendu, l'un des deux seulement"
             )
-        for cle, genre in {**CHAMPS_BOITE, next(c for c in CHAMPS_UTILISATEUR if c in b): str}.items():
+        types = {**CHAMPS_BOITE, next(c for c in CHAMPS_UTILISATEUR if c in b): str}
+        if CHAMP_MOT_DE_PASSE in b:
+            types[CHAMP_MOT_DE_PASSE] = str
+        for cle, genre in types.items():
             v = b.get(cle)
             if not isinstance(v, genre) or isinstance(v, bool) or (genre is str and not v.strip()):
                 raise ConfigInvalide(f"{ou} : boites.{nom}.{cle} : {genre.__name__} attendu")
@@ -1528,14 +1535,22 @@ CODES_VERROUILLE = (36, 51)  # errSecInteractionNotAllowed (-25308) et errSecAut
 
 
 def lire_mot_de_passe_boite(nom: str) -> tuple[str | None, str]:
-    """(mot de passe, "") lu dans le trousseau macOS, sinon (None, raison) : entrée absente, trousseau verrouillé ou
-    interaction refusée, autre code de `security`. La raison ne recopie jamais une sortie de la commande ; la valeur ne
-    sert qu'à la connexion IMAP : ni journal, ni fiche, ni manifeste."""
+    """(mot de passe, "") lu dans la variable de `mot_de_passe_env` si la boîte en déclare une et qu'elle a une valeur,
+    sinon dans le trousseau macOS ; sinon (None, raison) : entrée absente, trousseau verrouillé ou interaction refusée,
+    autre code de `security`. La raison ne recopie jamais une sortie de la commande ; la valeur ne sert qu'à la
+    connexion IMAP : ni journal, ni fiche, ni manifeste."""
+    variable = str(((charger().get("boites") or {}).get(nom) or {}).get(CHAMP_MOT_DE_PASSE) or "")
+    if variable:
+        v = commun.variable_hors_depot(variable)
+        if v:
+            return v, ""
     try:
         r = subprocess.run(
             ["security", "find-generic-password", "-s", service_boite(nom), "-w"], capture_output=True, text=True
         )
     except OSError:
+        if variable:
+            return None, f"boîte non configurée : {variable} absente de l'environnement et de {commun.FICHIER_CONTACT}"
         return None, "lecture du trousseau refusée (commande security introuvable)"
     if r.returncode == 0:
         v = r.stdout.strip()

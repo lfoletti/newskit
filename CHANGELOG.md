@@ -6,7 +6,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Corrigé
 
-- Un média dont les données sont un dépôt git sans distant publie quand même : la routine ne pousse rien, puis publie le fil, l’index, les graphes et le cerveau comme après une poussée réussie. Avant, elle s’arrêtait à « Pas de dépôt distant » et ne publiait rien. Les dépôts du navigateur ne lèvent plus d’alerte sans distant. C’est la forme des données au serveur, où la routine tournera seule.
+- Un média dont les données sont un dépôt git sans distant publie quand même : la routine ne pousse rien, puis publie le fil, l’index, les graphes et le cerveau comme après une poussée réussie. Avant, elle s’arrêtait à « Pas de dépôt distant » et ne publiait rien. Les dépôts du navigateur ne lèvent plus d’alerte sans distant. Sans distant, la publication envoie aussi au serveur tout fichier suivi par le dépôt de données, sauf les liens : le rapport, les lettres, les éclairages et les fiches n’arrivent plus par le `git pull` du serveur. C’est la forme des données au serveur, où la routine tournera seule.
 
 ## [0.1.57] - 2026-11-16
 

@@ -61,6 +61,19 @@ def suivis() -> set[str]:
     return {p for p in r.stdout.split("\0") if p}
 
 
+def sans_distant() -> bool:
+    """Les données sont un dépôt git sans distant (au serveur, chantier K, 16.11.2026) : rien n'arrive plus au clone par
+    le pull. Un dossier sans `.git`, ou dont `.git` est un fichier (un worktree), garde la règle du pull."""
+    config = RACINE / ".git" / "config"
+    return config.is_file() and "[remote " not in config.read_text(encoding="utf-8")
+
+
+def suivis_hors_liens() -> set[str]:
+    """Tous les fichiers que le dépôt de données suit, sauf les liens (la configuration, liée depuis le clone)."""
+    r = subprocess.run(["git", "ls-files", "-z"], cwd=RACINE, capture_output=True, text=True, check=True)
+    return {p for p in r.stdout.split("\0") if p and not (RACINE / p).is_symlink()}
+
+
 def fichiers(graphe: str, deja: set[str] | None = None) -> list[str]:
     """Les fichiers du graphe à envoyer, relatifs au dépôt, sans ceux des autres graphes ni ceux que git suit."""
     base = cfg.chemins_du_graphe(graphe)["base"]
@@ -94,7 +107,9 @@ def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]
     graphes = graphes if graphes is not None else sorted(cfg.charger().get("graphes", {}))
     try:
         deja = suivis()
-        liste = sorted({f for g in graphes for f in fichiers(g, deja)})
+        liste = sorted(
+            {f for g in graphes for f in fichiers(g, deja)} | (suivis_hors_liens() if sans_distant() else set())
+        )
     except Exception as e:  # noqa: BLE001
         lignes.append(f"Graphes en ligne : liste impossible ({type(e).__name__} {str(e)[:120]}), rien d'envoyé.")
         return pi._dire(lignes, verbeux)

@@ -56,7 +56,10 @@ REQUETE = (
 
 
 def pousser() -> str:
-    """Pousse les commits du passage ; un refus (hook pre-push, réseau) se dit au journal et au courriel (06.11.2026)."""
+    """Pousse les commits du passage ; un refus (hook pre-push, réseau) se dit au journal et au courriel (06.11.2026).
+    Sans dépôt distant (données locales du serveur, chantier K, 16.11.2026), rien à pousser ni à dire."""
+    if not subprocess.run(["git", "remote"], cwd=RACINE, capture_output=True, text=True).stdout.split():
+        return ""
     try:
         r = subprocess.run(["git", "push", "-q"], cwd=RACINE, capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:

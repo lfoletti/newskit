@@ -891,8 +891,9 @@ def pousser() -> None:
     silence laisse croire à une copie distante qui n'existe pas.
     """
     distants = subprocess.run(["git", "remote"], cwd=RACINE, capture_output=True, text=True).stdout.split()
-    if not distants:
+    if not distants:  # données dans un dépôt local du serveur, jamais poussé (chantier K, 16.11.2026) : on publie
         print("Pas de dépôt distant, rien à envoyer.")
+        publier_en_ligne()
         return
     r = subprocess.run(["git", "push", "--quiet"], cwd=RACINE, capture_output=True, text=True, timeout=600)
     if r.returncode == 0:

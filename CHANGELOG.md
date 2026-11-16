@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.58] - 2026-11-16
+
+### Corrigé
+
+- Un média dont les données sont un dépôt git sans distant publie quand même : la routine ne pousse rien, puis publie le fil, l’index, les graphes et le cerveau comme après une poussée réussie. Avant, elle s’arrêtait à « Pas de dépôt distant » et ne publiait rien. Les dépôts du navigateur ne lèvent plus d’alerte sans distant. C’est la forme des données au serveur, où la routine tournera seule.
+
 ## [0.1.57] - 2026-11-16
 
 ### Modifié

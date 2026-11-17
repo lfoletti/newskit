@@ -32,6 +32,7 @@ from newskit import config_sources as cfg  # noqa: E402
 from newskit import couts  # noqa: E402
 from newskit import lettre as lt  # noqa: E402
 from newskit import nouvelles as nv  # noqa: E402
+from newskit import refus_frequents as rf  # noqa: E402
 from newskit import reglages  # noqa: E402 — les réglages du média
 
 POSTE = "fil"
@@ -1029,7 +1030,7 @@ def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dic
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
     inv = CONSIGNE.format(
         nom=nom,
-        regles=lt.regles(graphe),
+        regles=lt.regles(graphe) + rf.consigne(graphe),  # les refus fréquents dès la première rédaction
         rubriques=", ".join(r["nom"] for r in cfg.rubriques(graphe) or []) or "(aucune)",
         recents="\n".join(
             f"{i}. {b['titre']} — {str(b.get('descriptif') or '')[:RECENT_MAX]}" for i, b in enumerate(recents)

@@ -53,6 +53,28 @@ RE_PARENTHESE_FINALE = re.compile(r"\s*\([^()]*\)\s*$")  # fusionner_graphe : «
 # (une bibliothèque de PDF, 24.10.2026) rendait 4,4 Mo d'un seul appel.
 MORCEAUX_PAR_LECTURE = 200
 COLLECTION_PYRAMIDE = "pyramide"
+# CortexDB fait attendre chaque écrivain son tour au plus 30 s, et son point de contrôle du WAL prend ce tour. Au VPS
+# (3,4 Mo/s en écritures de 4 Ko), un point de contrôle a dépassé 30 s : la reconstruction complète s'arrêtait après une
+# heure (16 et 17.11.2026). L'erreur tombe avant toute écriture : l'appel se renvoie après ces attentes (secondes).
+ATTENTES_TOUR = (10, 30, 60)
+TOUR_PERDU = "no turn to write"
+
+
+def appeler_outil(client, nom: str, args: dict) -> dict:
+    """Un appel d'outil de CortexDB, renvoyé après une attente quand l'écrivain n'a pas eu son tour."""
+    from cortexdb_client import proto  # noqa: PLC0415
+
+    requete = proto.CallToolRequest(name=nom, args_json=json.dumps(args, ensure_ascii=False))
+    for attente in ATTENTES_TOUR:
+        try:
+            return json.loads(client.tools.CallTool(requete).result_json or "{}")
+        except Exception as e:  # noqa: BLE001 — grpc.RpcError, sans importer grpc ici
+            if TOUR_PERDU not in str(e):  # le texte d'une grpc.RpcError porte ses détails
+                raise
+            print(f"  {nom} : tour d'écriture non obtenu, nouvel essai dans {attente} s", file=sys.stderr)
+            time.sleep(attente)
+    return json.loads(client.tools.CallTool(requete).result_json or "{}")
+
 
 # Inventaire de classe (tests/test_puits_cortexdb.py) : chaque champ d'un lot est versé, ou dit pourquoi il ne l'est pas.
 CHAMPS_LOT = {
@@ -622,11 +644,9 @@ def verser(client, v: dict, vus: dict[str, str] | None = None) -> dict:
     les identifiants déjà versés au passage ; une collision d'empreintes s'arrête avant toute écriture."""
     if vus is not None:
         inscrire(vus, v["document"]["document_id"], v["origine"])
-    from cortexdb_client import proto  # noqa: PLC0415
 
     def appel(nom: str, **args) -> dict:
-        r = client.tools.CallTool(proto.CallToolRequest(name=nom, args_json=json.dumps(args, ensure_ascii=False)))
-        return json.loads(r.result_json or "{}")
+        return appeler_outil(client, nom, args)
 
     doc = v["document"]
     d = appel("ingest_document", **doc)
@@ -861,10 +881,7 @@ class EnPlace:
             bilan.setdefault(k, 0)
 
     def appel(self, nom: str, **args) -> dict:
-        from cortexdb_client import proto  # noqa: PLC0415
-
-        r = self.client.tools.CallTool(proto.CallToolRequest(name=nom, args_json=json.dumps(args, ensure_ascii=False)))
-        return json.loads(r.result_json or "{}")
+        return appeler_outil(self.client, nom, args)
 
     def verser(self, v: dict, vus: dict[str, str]) -> dict | None:
         """Verse `v` si besoin ; rend les compteurs de `verser`, ou None pour un versement inchangé."""

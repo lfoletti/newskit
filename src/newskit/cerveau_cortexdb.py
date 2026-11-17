@@ -142,6 +142,14 @@ def cloner(source: Path, dest: Path) -> None:
             r = subprocess.run(["cp", "-c", str(s_), str(dest) + suffixe], capture_output=True)
             if r.returncode:
                 subprocess.run(["cp", str(s_), str(dest) + suffixe], check=True)
+    # retirer_cjk a retiré les index CJK du cerveau publié ; CortexDB les recrée vides et ne les remplit qu'au-dessous de
+    # sa version de schéma. Vides, leur déclencheur casse la première réécriture (« malformed », 17.11.2026).
+    c = sqlite3.connect(dest)
+    try:
+        c.execute("PRAGMA user_version = 0")
+        c.commit()
+    finally:
+        c.close()
 
 
 def pages_libres(cerveau: Path) -> float:

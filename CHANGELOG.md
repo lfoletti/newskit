@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.61] - 2026-11-17
+
+### Corrigé
+
+- Un passage en place du cerveau ne s’arrête plus à `database disk image is malformed` sur le premier document remplacé. La publication retire les index CJK du cerveau ; CortexDB les recréait vides à l’ouverture de la copie de travail sans les remplir. Leur déclencheur échouait à la première réécriture. La copie de travail repart de `user_version` 0 : CortexDB remplit ces index, puis la publication les retire comme avant.
+
 ## [0.1.60] - 2026-11-17
 
 ### Corrigé

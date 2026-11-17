@@ -1472,12 +1472,13 @@ def etat_session(nom: str) -> str:
     compte, service = _service(nom)
     if _session_en_fichier(nom):
         return "deposee"
-    if (
-        subprocess.run(
+    try:
+        trouve = subprocess.run(
             ["security", "find-generic-password", "-a", compte, "-s", service], capture_output=True, text=True
-        ).returncode
-        != 0
-    ):
+        )
+    except FileNotFoundError:  # pas de trousseau macOS (VPS Linux, 17.11.2026)
+        return "absente"
+    if trouve.returncode != 0:
         return "absente"
     r = subprocess.run(
         ["security", "find-generic-password", "-a", compte, "-s", service, "-w"], capture_output=True, text=True

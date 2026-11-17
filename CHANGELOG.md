@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.62] - 2026-11-17
+
+### Corrigé
+
+- Sur une machine sans trousseau macOS (Linux), l’état d’une session vaut « absente ». Avant, l’absence de la commande `security` arrêtait l’envoi du rapport de routine par une erreur, alors que `SMTP_MOT_DE_PASSE` était dans le fichier des secrets.
+
 ## [0.1.61] - 2026-11-17
 
 ### Corrigé

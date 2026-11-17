@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.60] - 2026-11-17
+
+### Corrigé
+
+- La passerelle Thalamus lit le format de sa réponse dans l’en-tête `Content-Type`. Avant, une réponse JSON dont un extrait contenait `data:` était lue comme un flux d’événements et rendue vide. La station du site renvoyait alors l’erreur 503 sur les notions les plus reliées. Un flux sans ligne de données rend aussi une réponse vide, sans erreur de lecture.
+
 ## [0.1.59] - 2026-11-16
 
 ### Ajouté

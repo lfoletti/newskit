@@ -86,7 +86,9 @@ class Passerelle:
             urllib.request.Request(self.url + "/mcp", json.dumps(message).encode(), entetes), timeout=self.delai
         )
         texte = r.read().decode()
-        if "data:" in texte:
+        # Le format se lit à l'en-tête : un extrait « personal data: … » dans une réponse JSON la faisait lire comme un
+        # flux, rendue vide (503 de la station sur les notions les plus reliées, 17.11.2026).
+        if r.headers.get_content_type() == "text/event-stream":
             lignes = [x[5:].strip() for x in texte.splitlines() if x.startswith("data:")]
             texte = lignes[-1] if lignes else ""
         return r.headers.get("Mcp-Session-Id"), (json.loads(texte) if texte.strip() else None)

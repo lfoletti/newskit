@@ -543,6 +543,82 @@ def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None =
     }, ecartes
 
 
+class CoucheUn:
+    """La couche 1 d'une fiche sans graphe composé : le squelette entier (`extraire_squelette.construire`), préparé une
+    fois par passage, puis la structure des titres de chaque fiche (`structure_titres.extraire`). Sur une fiche, le
+    squelette fait foi : la structure perd le balisage de ses titres et le nœud qui redécrit la fiche, par les règles de
+    la composition (`fusionner_graphe`). Le graphe composé de la nuit peut encore différer : identifiants départagés
+    entre deux fiches, arête gagnée par une fiche ancienne ; le contrôle quotidien remplace alors le document."""
+
+    def __init__(self, squelette: dict, racine: Path, alias: dict[str, str] | None = None):
+        from newskit import fusionner_graphe as fg  # noqa: PLC0415 — networkx : absent du venv du client gRPC
+
+        self.fg, self.racine, self.alias = fg, racine, alias or {}
+        self.noeuds = squelette.get("nodes") or []
+        self.ids = {n["id"] for n in self.noeuds}
+        self.titres: dict[str, str] = {}
+        self.fiches: set[str] = set()
+        for n in self.noeuds:
+            if n.get("kind") in FICHES_SQUELETTE:
+                self.titres.setdefault(fg._norm_label(n.get("label", "")), n["id"])
+                self.fiches.add(self._source(n))
+        self.aretes: dict[str, list[dict]] = {}
+        for a in squelette.get("edges") or []:
+            self.aretes.setdefault(self._source(a), []).append(a)
+
+    def _source(self, x: dict) -> str:
+        try:
+            return relatif(str(x.get("source_file") or ""), self.racine)
+        except LotInvalide:
+            return ""
+
+    def d_une_fiche(self, source: str, structure: dict | None) -> dict | None:
+        """Les entités et relations de couche 1 de la fiche ; None si le squelette ne la connaît pas."""
+        if source not in self.fiches:
+            return None
+        st = {"nodes": [dict(n) for n in (structure or {}).get("nodes") or []]}
+        st["edges"] = [dict(a) for a in (structure or {}).get("edges") or []]
+        self.fg.nettoyer_titres(st)
+        self.fg.fondre_doublons_de_fiche(st, self.ids, self.titres, "structure")
+        compose = {"nodes": [*self.noeuds, *st["nodes"]], "links": [*self.aretes.get(source, []), *st["edges"]]}
+        return couche1_par_fiche(compose, self.racine, self.alias)[0].get(source) or {"entites": [], "relations": []}
+
+
+def couche1_d_une_fiche(
+    squelette: dict, structure: dict | None, source: str, racine: Path, alias: dict[str, str] | None = None
+) -> dict | None:
+    """La couche 1 d'une seule fiche (`CoucheUn`, qui prépare le squelette une fois pour plusieurs fiches)."""
+    return CoucheUn(squelette, racine, alias).d_une_fiche(source, structure)
+
+
+def versement_d_une_fiche(
+    source: str,
+    lot: dict | None,
+    couche1: dict | None,
+    alias: dict[str, str] | None,
+    canon: dict | None,
+    droits: dict | None,
+    racine: Path,
+) -> dict | None:
+    """Le versement d'une fiche (chemin relatif `source`) : son texte ou sa notice (`corps_versable`), les entités et
+    relations de son lot de couche 2 s'il existe, sa couche 1 si elle est donnée. None si la fiche n'est plus sur le
+    disque ; LotInvalide si son lot ne se lit pas. Le puits de la nuit et le passage continu passent par ici : une
+    fiche inchangée garde la même empreinte de l'un à l'autre."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    chemin = racine / source
+    if not chemin.exists():
+        return None
+    entete, corps = fiche.lire_fichier(chemin)
+    corps = corps_versable(cfg.source_du_chemin(source), entete, corps, droits, chemin=source)
+    if lot:
+        v = lot_vers_cortexdb(lot, entete, corps, racine, alias, canon)
+    else:
+        v = fiche_vers_cortexdb(source, entete, corps)
+    completer(v, couche1)
+    return v
+
+
 def completer(v: dict, couche1: dict | None) -> None:
     """Ajoute au versement d'une fiche sa couche 1 : les entités qu'il n'a pas déjà (celle du lot l'emporte, nommée par
     le squelette), et toutes les relations."""
@@ -899,12 +975,16 @@ class EnPlace:
             self.bilan["ajoutes"] += 1
         return None if self.compter else verser(self.client, v, vus)
 
+    def retirer(self, ident: str) -> None:
+        """Retire un document du cerveau : son graphe (morceaux, entités devenues orphelines), puis sa connaissance."""
+        self.bilan["retires"] += 1
+        if not self.compter:
+            self.appel("delete_document_graph", document_id=ident)
+            self.appel("knowledge_delete", knowledge_id=ident)
+
     def retirer_absents(self) -> None:
         for ident in sorted(set(self.avant or {}) - set(self.apres)):
-            self.bilan["retires"] += 1
-            if not self.compter:
-                self.appel("delete_document_graph", document_id=ident)
-                self.appel("knowledge_delete", knowledge_id=ident)
+            self.retirer(ident)
 
 
 def main() -> int:
@@ -993,24 +1073,20 @@ def main() -> int:
             if not lot.get("nodes"):
                 bilan["invalides"] += 1
                 continue
-            chemin = RACINE / relatif(lot["nodes"][0]["source_file"], RACINE)
-            avec_lot.add(relatif(lot["nodes"][0]["source_file"], RACINE))
-            if not chemin.exists():  # un lot dont la fiche a disparu : compté, jamais versé
-                bilan["fiche_absente"] += 1
-                continue
-            entete, corps = fiche.lire_fichier(chemin)
             source = relatif(lot["nodes"][0]["source_file"], RACINE)
-            corps = corps_versable(cfg.source_du_chemin(source), entete, corps, droits, chemin=source)
+            avec_lot.add(source)
             try:
-                v = lot_vers_cortexdb(lot, entete, corps, RACINE, alias, canon)
+                v = versement_d_une_fiche(source, lot, couche1.get(source), alias, canon, droits, RACINE)
             except LotInvalide as e:
                 bilan["invalides"] += 1
                 print(f"  !! {p.name} : {e}", file=sys.stderr)
                 continue
+            if v is None:  # un lot dont la fiche a disparu : compté, jamais versé
+                bilan["fiche_absente"] += 1
+                continue
             for cle, n in v["ecartes"].items():
                 bilan[cle] += n
-            bilan["couche1_relations"] += len((c1 := couche1.pop(source, None) or {}).get("relations") or [])
-            completer(v, c1)
+            bilan["couche1_relations"] += len((couche1.pop(source, None) or {}).get("relations") or [])
             for cle, n in versement(v).items():
                 bilan[cle] += n
             bilan["verses"] += 1
@@ -1018,15 +1094,11 @@ def main() -> int:
                 print(f"  {k}/{len(lots)} ({time.time() - t0:.0f} s)", flush=True)
         if graphe and not args.limite:
             for source in fiches_sans_lot(graphe, avec_lot, RACINE):
-                chemin = RACINE / source
-                if not chemin.exists():
+                v = versement_d_une_fiche(source, None, couche1.get(source), alias, canon, droits, RACINE)
+                if v is None:
                     bilan["fiche_absente"] += 1
                     continue
-                entete, corps = fiche.lire_fichier(chemin)
-                corps = corps_versable(cfg.source_du_chemin(source), entete, corps, droits, chemin=source)
-                v = fiche_vers_cortexdb(source, entete, corps)
-                bilan["couche1_relations"] += len((c1 := couche1.pop(source, None) or {}).get("relations") or [])
-                completer(v, c1)
+                bilan["couche1_relations"] += len((couche1.pop(source, None) or {}).get("relations") or [])
                 for cle, n in versement(v).items():
                     bilan[cle] += n
                 bilan["sans_lot"] += 1

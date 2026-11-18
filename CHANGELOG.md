@@ -2,6 +2,18 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.74] - 2026-11-18
+
+### Ajouté
+
+- `puits_cortexdb.versement_d_une_fiche` : le versement d’une seule fiche, avec son lot de couche 2 s’il existe et sa couche 1 si elle est donnée. Une fiche qui n’est plus sur le disque ne rend rien.
+- `puits_cortexdb.CoucheUn` et `couche1_d_une_fiche` : la couche 1 d’une fiche sans graphe composé, à partir du squelette entier et de la structure des titres de la fiche. Sur une fiche, le squelette fait foi, par les règles de la composition (`fusionner_graphe.nettoyer_titres`, `fondre_doublons_de_fiche`).
+- `puits_cortexdb.EnPlace.retirer` : le retrait d’un document du cerveau, que `retirer_absents` appelle.
+
+### Modifié
+
+- La commande du puits calcule chaque versement par `versement_d_une_fiche`. Ses compteurs et les empreintes des versements ne changent pas.
+
 ## [0.1.73] - 2026-11-18
 
 ### Ajouté

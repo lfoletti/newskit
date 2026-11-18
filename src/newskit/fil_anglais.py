@@ -157,7 +157,8 @@ def a_ecrire(F: dict) -> list[dict]:
     la copie publique ; ni refusés par la relecture française, ni déjà écrits, et dont la fiche se lit."""
     vus, out = set(), []
     for b in (F.get("pile") or []) + (F.get("billets") or [])[: publier_fil.MAX]:
-        if b.get("tenu") is False or "en" in b or b["chemin"] in vus or not existe(b["chemin"]):
+        # Un billet trié reçoit sa version anglaise de sa fiche (fil_fiche._reporter).
+        if b.get("tenu") is False or b.get("tri") or "en" in b or b["chemin"] in vus or not existe(b["chemin"]):
             continue
         vus.add(b["chemin"])
         out.append(b)

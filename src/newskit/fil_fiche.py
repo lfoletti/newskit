@@ -116,6 +116,27 @@ def en_attente(F: dict, graphe: str, quand: str | None = None) -> list[dict]:
     return [b for b in F.get("pile") or [] if _a_faire(b) and recent(b)]
 
 
+def sans_fiche_possible(b: dict) -> bool:
+    """Un billet trié (fil.tri_seul) dont la fiche ne sera jamais tenue : refusée ESSAIS fois, ou sa source ne se lit
+    plus. Il quitte la pile sans paraître (mainteneur, 18.11.2026)."""
+    if not b.get("tri"):
+        return False
+    f = b.get("fiche") or {}
+    return (f.get("tenu") is False and f.get("essais", 1) >= ESSAIS) or not existe(b["chemin"])
+
+
+def refus_de_fiche(b: dict) -> dict:
+    """La ligne du journal des refus (fil.journaliser_refus) d'un billet retiré faute de fiche : refus_frequents la lit."""
+    f = b.get("fiche") or {}
+    reproches = f.get("reproches") if f.get("tenu") is False else None
+    return {
+        "chemin": b["chemin"],
+        "titre": b.get("titre", ""),
+        "etape": "fiche",
+        "essais": [{"reproches": list(reproches or ["source illisible"])}],
+    }
+
+
 def a_ecrire(F: dict) -> list[dict]:
     """Les billets qui attendent le texte de leur fiche : la pile d'abord, puis les billets de la copie publique ; ni
     refusés par la relecture, ni déjà écrits, et dont la fiche se lit."""

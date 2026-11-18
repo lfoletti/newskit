@@ -8,6 +8,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 - Un graphe déclare `publie: false` au registre (`config_sources.garde_au_poste`) : le média le tient pour lui seul. Rien de ce graphe ne part au serveur : ni son dossier sous `graphe/`, ni ses lettres, ni les dossiers de fiches qu’aucun graphe publié ne lit (`publier_graphes.chemins_gardes`), ni son index (`publier_index`), ni son cerveau (`publier_cerveau.tenu_au_serveur`). La règle tient lors d’un passage complet, pour un envoi qui nomme le graphe et quand les données sont un dépôt git sans distant, dont tout fichier suivi part au serveur. Le compte rendu de l’envoi nomme le graphe gardé. Sans la clé, rien ne change.
 
+## [0.1.76] - 2026-11-18
+
+### Ajouté
+
+- `cerveau_continu` : le passage continu d’un graphe qui déclare `cerveau_continu: true`. Il lit la file des fiches, extrait la couche 2 sous le budget du jour, puis écrit chaque fiche dans le serveur vivant avec la clé d’écriture. Un document neuf s’ajoute, un document changé remplace l’ancien, une fiche retirée quitte le cerveau. Commande : `python -m newskit.cerveau_continu --graphe <nom>`.
+- Le passage attend pendant la routine du graphe, pendant une construction du cerveau, tant qu’un cerveau prêt n’est pas mis en place, pendant la pause des routines, sans serveur vivant ou sans clé d’écriture. Les événements restent dans la file.
+- `cerveau_continu.est_verse` : une fiche est au cerveau servi quand son document est au relevé des empreintes, hors marque « en cours ».
+- `cerveau_cortexdb.verrou_du_cerveau` : un seul écrivain du cerveau servi à la fois.
+
+### Modifié
+
+- `cerveau_cortexdb.construire` tient le verrou du cerveau, du clone à la publication. Un passage continu en cours finit d’abord.
+
 ## [0.1.75] - 2026-11-18
 
 ### Ajouté

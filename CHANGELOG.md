@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.69] - 2026-11-18
+
+### Modifié
+
+- Les relecteurs du fil, en français et en anglais, lisent dans la source un sigle développé selon son sens établi dans le pays et le domaine de la source (« PS » : « Parti socialiste », dans un article sur la politique chilienne). Avant, ils comptaient ce développement comme un fait absent de la source : une fiche était refusée 3 fois et son billet retiré.
+
 ## [0.1.68] - 2026-11-18
 
 ### Modifié

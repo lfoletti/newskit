@@ -92,7 +92,9 @@ Rends {{"n": numéro, "absents": [...], "clair": vrai ou faux, "motif": ..., "te
 - absents : les noms, les nombres, les dates et les faits du titre ou du texte que la source ne dit pas ; liste vide si
   tout s'y lit. Un nom traduit et un nombre écrit en lettres se lisent dans la source (« the House » : « la Chambre » ;
   « seventy-one percent » : « 71 % » ; « Trento » : « Trente »). Le pays d'une institution que la source nomme se lit
-  dans la source. Lis d'abord « a_verifier », puis le reste du billet.
+  dans la source. Un sigle développé selon son sens établi dans le pays et le domaine de la source se lit dans la
+  source (« PS », dans un article sur la politique chilienne : « Parti socialiste »). Lis d'abord « a_verifier », puis
+  le reste du billet.
 - clair : lis d'abord le titre seul, sans le texte. Faux quand le titre ne se comprend pas seul, à la première
   lecture : il garde un mot anglais ou un mot de métier qu'un mot français courant remplace ; il commence par un nom
   que le lecteur ne connaît pas, sans dire qui c'est ; il est écrit en style télégraphique, sans verbe ; on ne sait pas

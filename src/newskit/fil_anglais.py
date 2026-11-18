@@ -83,7 +83,9 @@ source, and "a_verifier": the names, numbers and dates that an automatic check d
 Return {{"n": number, "absents": [...], "clair": true or false, "motif": ..., "pays": ...}}.
 - absents: the names, numbers, dates and facts of the title or the text that the source does not say; an empty list
   when everything is read in it. A number written in words is read in the source ("seventy-one percent": "71%"). The
-  country of an institution the source names is read in the source. Read "a_verifier" first, then the rest.
+  country of an institution the source names is read in the source. An acronym spelled out in its established meaning
+  in the country and the field of the source is read in the source ("PS", in an article on Chilean politics:
+  "Socialist Party"). Read "a_verifier" first, then the rest.
 - clair: read the title alone first, without the text. False when the title is not understood alone at first reading:
   it keeps a jargon word that a common word replaces; it starts with a name the reader does not know, without saying
   who it is; it is telegraphic, without a verb; one cannot tell who does what; it reads two ways. False also when the

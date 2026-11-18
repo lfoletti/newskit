@@ -81,12 +81,15 @@ def chemins_gardes() -> list[str]:
     gardes = [g for g in decl if cfg.garde_au_poste(g)]
     if not gardes:
         return []
-    lus = {d for g in decl if g not in gardes for d in cfg.dossiers_du_graphe(g)}
+    # Un graphe déclaré sans source à lui n'a pas de dossier de fiches : le registre refuse de les rendre.
+    nourris = set(cfg.graphes())
+    lus = {d for g in decl if g not in gardes and g in nourris for d in cfg.dossiers_du_graphe(g)}
     out: list[str] = []
     for g in gardes:
         out.append(cfg.chemins_du_graphe(g)["base"].relative_to(RACINE).as_posix())
         out.append(f"lettres/{g}")
-        out += [d for d in cfg.dossiers_du_graphe(g, propres=True) if d not in lus]
+        if g in nourris:
+            out += [d for d in cfg.dossiers_du_graphe(g, propres=True) if d not in lus]
     return out
 
 

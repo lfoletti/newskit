@@ -11,6 +11,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Corrigé
 
+- Un graphe gardé au poste (`publie: false`) n’arrête plus l’envoi quand le registre déclare un graphe sans source à lui : `publier_graphes.chemins_gardes` demandait ses dossiers de fiches, que le registre refuse ; l’envoi entier rendait « liste impossible ».
 - L’envoi des graphes rend au compte du service tout ce qu’il envoie (`publier_graphes.commande_distante`, `racines`) : le dossier des graphes et chaque racine de la liste envoyée. Quand les données sont un dépôt git sans distant, les fiches, les lettres et les fichiers de tête envoyés restaient à root avec les dossiers créés pour eux ; le service ne pouvait plus les réécrire ni les retirer.
 ## [0.1.77] - 2026-11-18
 

@@ -2,17 +2,17 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [0.1.78] - 2026-11-18
 
 ### Ajouté
 
 - Un graphe déclare `publie: false` au registre (`config_sources.garde_au_poste`) : le média le tient pour lui seul. Rien de ce graphe ne part au serveur : ni son dossier sous `graphe/`, ni ses lettres, ni les dossiers de fiches qu’aucun graphe publié ne lit (`publier_graphes.chemins_gardes`), ni son index (`publier_index`), ni son cerveau (`publier_cerveau.tenu_au_serveur`). La règle tient lors d’un passage complet, pour un envoi qui nomme le graphe et quand les données sont un dépôt git sans distant, dont tout fichier suivi part au serveur. Le compte rendu de l’envoi nomme le graphe gardé. Sans la clé, rien ne change.
 
-
 ### Corrigé
 
 - Un graphe gardé au poste (`publie: false`) n’arrête plus l’envoi quand le registre déclare un graphe sans source à lui : `publier_graphes.chemins_gardes` demandait ses dossiers de fiches, que le registre refuse ; l’envoi entier rendait « liste impossible ».
 - L’envoi des graphes rend au compte du service tout ce qu’il envoie (`publier_graphes.commande_distante`, `racines`) : le dossier des graphes et chaque racine de la liste envoyée. Quand les données sont un dépôt git sans distant, les fiches, les lettres et les fichiers de tête envoyés restaient à root avec les dossiers créés pour eux ; le service ne pouvait plus les réécrire ni les retirer.
+
 ## [0.1.77] - 2026-11-18
 
 ### Modifié

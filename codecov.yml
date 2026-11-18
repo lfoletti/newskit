@@ -1,0 +1,14 @@
+# Codecov relit chaque PR : le patch doit être couvert à 100 % (codecov/patch).
+# La couverture du projet est donnée à titre d'information, sans bloquer.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        target: 100%
+        threshold: 0%
+comment:
+  layout: "diff, files"
+  require_changes: false

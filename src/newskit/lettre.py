@@ -1681,9 +1681,16 @@ CONTENU_D_ABORD = (
     "qu'ils établissent : résultats, chiffres, exemples, positions. La parution, le format et la liste des intervenants "
     "sont des informations mineures, de contextualisation uniquement.\n"
 )
+ANGLE = (
+    "Angle : le titre et le texte portent ce que la source apporte au lecteur, comme son titre l'annonce (mesures à "
+    "prendre, résultats, recommandations, décision). Une anecdote, un cas ou une scène qui ouvre la source pour "
+    "accrocher le lecteur reste du contexte : ni le titre ni la première phrase ne la portent, sauf si elle est "
+    "elle-même la nouvelle.\n"
+)
 REGLES = (
     LECTEUR_NON_INITIE
     + CONTENU_D_ABORD
+    + ANGLE
     + f"Français simplifié : {MOTS_PAR_PHRASE} mots au plus par phrase ; un sujet par phrase, voix active, présent ou passé composé ; le conditionnel "
     "seulement si la source présente elle-même le fait comme une hypothèse, ou, dans un titre, pour un fait avancé par une seule source et non établi ; un mot, un sens : garde le mot de "
     "la source, sans synonyme pour varier ; pas plus de trois noms à la suite (« la révision de la clause du "

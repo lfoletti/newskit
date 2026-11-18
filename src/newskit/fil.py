@@ -100,6 +100,9 @@ Rends {{"n": numéro, "absents": [...], "clair": vrai ou faux, "motif": ..., "te
   le texte garde un mot de métier que le lecteur ne comprend pas. Faux aussi quand
   la première phrase du texte dit seulement qu'une personne a parlé ou qu'un document a paru,
   ou donne le lieu, le format ou les intervenants, alors que la source donne un contenu : ce contenu doit venir en premier.
+  Faux aussi quand le titre porte une anecdote, un cas ou une scène qui ouvre la source pour accrocher le lecteur,
+  alors que la source annonce par son titre et développe ensuite un apport (mesures à prendre, résultats,
+  recommandations) : le billet doit porter cet apport.
 - motif : ce qui arrête le lecteur, en quinze mots au plus ; vide si le billet est clair.
 - terme : la notion dont dépend le sens du titre, quand ce lecteur ne peut pas la connaître et que ni le billet ni la
   source ne l'explique : le nom d'une doctrine, d'une école de pensée, d'une notion religieuse ou savante, une
@@ -540,13 +543,43 @@ def classer_pile(billets: list[dict]) -> list[dict]:
     return sorted(billets, key=lambda b: (str(b.get("date") or ""), str(b.get("ajoute") or "")), reverse=True)
 
 
-def extrait(f: dict, n: int | None = 1200) -> str:
+# Le filtrage : ce que le lecteur ne lit pas ne compte pas dans les caractères donnés au modèle. Une image disparaît, un
+# lien garde son texte sans son adresse, une adresse nue et une balise disparaissent, un titre perd ses dièses.
+RE_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+RE_LIEN = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+RE_ADRESSE = re.compile(r"https?://\S+")
+RE_BALISE = re.compile(r"</?[A-Za-z][^>]*>")
+RE_DIESES = re.compile(r"^#+\s*", re.M)
+
+
+# La longueur de source que lisent les rédacteurs et les relecteurs du fil, en français et en anglais, est celle du
+# média (mainteneur, 18.11.2026 : « la longueur de troncature devrait [être] une variable média-spécifique et par
+# défaut être réglée sur "toute la longueur" »). Le rédacteur français lisait 1 200 caractères, le relecteur et la
+# version anglaise 3 000 : un article qui ouvre sur une anecdote ne montrait que l'anecdote au rédacteur français.
+DU_MEDIA = object()  # la longueur de juger quand l'appel n'en donne pas : source_max du graphe
+
+
+def source_max(graphe: str) -> int | None:
+    """Les caractères filtrés de la source que lisent les rédacteurs et les relecteurs du graphe : source_max de sa
+    déclaration ; sans déclaration, la source entière (None)."""
+    return cfg.graphe_declare(graphe).get("source_max")
+
+
+def filtrer(t: str) -> str:
+    """Le texte lu d'une source Markdown, sans images, adresses, balises ni dièses de titre, en une ligne."""
+    for motif, par in ((RE_IMAGE, ""), (RE_LIEN, r"\1"), (RE_ADRESSE, ""), (RE_BALISE, ""), (RE_DIESES, "")):
+        t = motif.sub(par, t)
+    return " ".join(t.split())
+
+
+def extrait(f: dict, n: int | None = None) -> str:
+    """Les n premiers caractères de la source d'une fiche, comptés après le filtrage ; None : la source entière."""
     try:
         t = (RACINE / f["chemin"]).read_text(encoding="utf-8")
     except OSError:
         return ""
     t = t.split("---", 2)[-1] if t.startswith("---") else t
-    return " ".join(t.split())[:n]
+    return filtrer(t)[:n]
 
 
 def depense_du_jour(F: dict, jour: str) -> float:
@@ -631,12 +664,14 @@ def terme_du_billet(terme, titre: str, texte: str) -> str:
 
 
 def juger(
-    paires: list[tuple[str, str, dict, dict]], graphe: str, source: int | None = 3000
+    paires: list[tuple[str, str, dict, dict]], graphe: str, source: int | None | object = DU_MEDIA
 ) -> tuple[dict[int, dict], float]:
     """Le relecteur adverse sur des (titre, texte, billet, fiche) : rend {rang: {absents, clair, motif, terme}} et le
     coût. `terme` : la notion que le lecteur ne connaît pas et que la source n'explique pas. Un rang sans réponse n'a pas de
     verdict."""
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
+    if source is DU_MEDIA:
+        source = source_max(graphe)
     v, cout = demander(
         RELECTEUR.format(
             nom=nom,
@@ -787,7 +822,7 @@ def relire(billets: list[dict], graphe: str) -> float:
                                 if lot[n][0].get("suite_de") and lot[n][0].get("neuf")
                                 else {}
                             ),
-                            "source": extrait(lot[n][0], 3000),
+                            "source": extrait(lot[n][0], source_max(graphe)),
                         },
                         ensure_ascii=False,
                     )
@@ -1044,7 +1079,7 @@ def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dic
                     "date": f.get("date"),
                     "titre": f["titre"],
                     "proches": f.get("proches") or [],
-                    "source": extrait(f),
+                    "source": extrait(f, source_max(graphe)),
                 },
                 ensure_ascii=False,
             )

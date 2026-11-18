@@ -780,12 +780,15 @@ def _valider(d: dict, p: Path) -> dict:
             "fiche_usd_jour",
             "fil_usd_jour",
             "fil_max",
+            "source_max",
             "specialisation",
         }
         if surplus:
             raise ConfigInvalide(f"{p.name} : graphes.{nom} : champs inconnus {sorted(surplus)}")
         if "specialisation" in v:
             valider_specialisation(v["specialisation"], nom)
+        if "source_max" in v:
+            valider_source_max(v["source_max"], nom)
         fl = v.get("fil")  # le titre et la description du flux RSS du graphe, par langue (fil.rss)
         if fl is not None and (
             not isinstance(fl, dict)
@@ -1305,6 +1308,14 @@ def lit_cortexdb(nom: str) -> bool:
     """Vrai si les passages d'une réponse se lisent dans le cerveau CortexDB du graphe (`graphes.<nom>.lecture_cortexdb:
     true` ; absent = non). Distinct de `cortexdb` : un cerveau se construit d'abord, se mesure, puis se lit."""
     return bool((charger().get("graphes", {}).get(nom) or {}).get("lecture_cortexdb", False))
+
+
+def valider_source_max(n, graphe: str) -> int:
+    """`source_max` d'un graphe : les caractères filtrés de la source que lisent les rédacteurs et les relecteurs du fil
+    (fil.source_max), un entier positif ; sans la clé, ils lisent la source entière."""
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raise ConfigInvalide(f"graphes.{graphe}.source_max : un entier positif")
+    return n
 
 
 def valider_specialisation(spec, graphe: str) -> dict:

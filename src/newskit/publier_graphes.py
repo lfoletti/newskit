@@ -116,10 +116,17 @@ def fichiers(graphe: str, deja: set[str] | None = None) -> list[str]:
     return sorted(out)
 
 
-def commande_distante(clone: str) -> str:
-    """Côté serveur : tout revient à kg, puis la marque de l'envoi."""
-    g = shlex.quote(f"{clone}/graphe")
-    return f"chown -R kg:kg {g} && runuser -u kg -- touch {shlex.quote(f'{clone}/{MARQUE}')}"
+def racines(liste: list[str]) -> list[str]:
+    """Le premier élément de chaque chemin envoyé : un dossier de tête ou un fichier de tête."""
+    return sorted({rel.split("/", 1)[0] for rel in liste})
+
+
+def commande_distante(clone: str, liste: list[str] | tuple[str, ...] = ()) -> str:
+    """Côté serveur : tout ce qui est envoyé revient à kg, puis la marque de l'envoi. L'envoi écrit sous root : le
+    dossier des graphes et chaque racine de la liste envoyée (fiches, lettres, fichiers de tête quand les données n'ont
+    pas de distant) sont rendus, dossiers créés compris."""
+    cibles = " ".join(shlex.quote(f"{clone}/{r}") for r in sorted({"graphe", *racines(list(liste))}))
+    return f"chown -R kg:kg -- {cibles} && runuser -u kg -- touch {shlex.quote(f'{clone}/{MARQUE}')}"
 
 
 def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]:
@@ -176,7 +183,7 @@ def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]
         if r.returncode != 0:
             raise RuntimeError(f"rsync : {r.stderr.strip()[:160]}")
         subprocess.run(
-            [*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone))],
+            [*ssh, hote, "sudo bash -c " + shlex.quote(commande_distante(clone, liste))],
             capture_output=True,
             text=True,
             timeout=600,

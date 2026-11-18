@@ -43,6 +43,15 @@ def lire_adresse(p: Path) -> tuple[str, str] | None:
         return None
 
 
+def lire_adresse_ecriture(p: Path) -> tuple[str, str] | None:
+    """L'adresse du serveur et ce qui y écrit, pour un graphe continu ; rien sans serveur ou sans clé d'écriture."""
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return (d["adresse"], d["jeton_ecriture"]) if d["jeton_ecriture"] else None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 CLIENT_PILOTE = RACINE / "cache" / "pilote_cortexdb" / "venv"  # le client de ce Mac ; le serveur l'a dans son venv
 
 

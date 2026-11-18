@@ -452,6 +452,7 @@ def main() -> int:
     jetons = {
         c.nom: (secrets.token_hex(16) if c.partage or not c.cles else sc.assurer_cle(c.cles, c.nom)) for c in liste
     }
+    ecritures = {c.nom: None if c.partage else sc.cle_d_ecriture(c.cles, c.nom, jetons[c.nom]) for c in liste}
     vu: dict[str, object] = {}
 
     def etat_cles(g):
@@ -475,11 +476,20 @@ def main() -> int:
 
     encodeurs = Encodeurs(_Ouvert)
 
+    def publier_adresse(g):
+        sc.ecrire_adresse(
+            lc.fichier_adresse(g), f"127.0.0.1:{cerveaux[g].port}", jetons[g], jeton_ecriture=ecritures[g]
+        )
+
     def lancer(g, port):
         c = cerveaux[g]
         sc.mettre_en_place(c.chemin)
         if c.cles and not c.partage:
+            publiees = jetons[g], ecritures[g]
             jetons[g] = sc.assurer_cle(c.cles, g)
+            ecritures[g] = sc.cle_d_ecriture(c.cles, g, jetons[g])
+            if (jetons[g], ecritures[g]) != publiees:  # une clé recréée : l'adresse publiée nommait l'ancienne
+                publier_adresse(g)
         vu[g] = etat_cles(g)
         e = encodeurs.obtenir(cle_encodeur(g))
         p = subprocess.Popen(
@@ -513,7 +523,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, lambda *_: aig.fin.set())
     signal.signal(signal.SIGINT, lambda *_: aig.fin.set())
     for g in graphes:  # le pid de l'aiguilleur : la construction publie à côté
-        sc.ecrire_adresse(lc.fichier_adresse(g), f"127.0.0.1:{cerveaux[g].port}", jetons[g])
+        publier_adresse(g)
     print(
         f"aiguilleur : {', '.join(f'{c.nom} {c.port}' + (' (partagé)' if c.partage else '') for c in liste)} ; "
         f"budget {budget:.2f} Go, repos {repos:g} s, chauds {', '.join(sorted(chauds)) or 'aucun'}",

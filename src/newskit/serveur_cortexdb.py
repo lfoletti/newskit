@@ -52,29 +52,49 @@ def mettre_en_place(cerveau: Path) -> bool:
     return True
 
 
-def ecrire_adresse(p: Path, adresse: str, jeton: str, pid: int | None = None) -> None:
+def ecrire_adresse(
+    p: Path, adresse: str, jeton: str, pid: int | None = None, jeton_ecriture: str | None = None
+) -> None:
+    """Le fichier d'adresse du serveur, lisible de son seul propriétaire. `jeton` lit ; `jeton_ecriture`, publié à part
+    pour un graphe continu, écrit (`lecture_cortexdb.lire_adresse_ecriture`)."""
+    d = {"adresse": adresse, "jeton": jeton, "pid": pid or os.getpid()}
+    if jeton_ecriture:
+        d["jeton_ecriture"] = jeton_ecriture
     tmp = p.with_name(p.name + ".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump({"adresse": adresse, "jeton": jeton, "pid": pid or os.getpid()}, f)
+        json.dump(d, f)
     os.replace(tmp, p)
 
 
-def assurer_cle(cles: Path, graphe: str) -> str:
+def cle_d_ecriture(cles: Path | None, graphe: str, jeton: str) -> str | None:
+    """Ce qui écrit dans le cerveau servi d'un graphe continu : la clé d'écriture de l'édition avec un fichier de clés,
+    sinon le jeton du serveur, qui écrit déjà. Rien pour un graphe sans cerveau continu : personne n'y écrit."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    if not cfg.cerveau_continu(graphe):
+        return None
+    return assurer_cle(cles, graphe, ecriture=True) if cles else jeton
+
+
+def assurer_cle(cles: Path, graphe: str, ecriture: bool = False) -> str:
     """La clé de lecture de l'édition (`<edition>/<g>`, tout le cerveau, bloc `edition:` du registre) dans le fichier de clés que Thalamus tient ;
-    créée une fois, rendue ensuite. Thalamus ne touche qu'à ses clés (`th/…`) : celle-ci reste."""
+    créée une fois, rendue ensuite. Thalamus ne touche qu'à ses clés (`th/…`) : celle-ci reste. `ecriture` : la clé
+    d'écriture de l'édition (`<edition>/<g>/ecriture`, `read-write`), à part de la clé de lecture."""
     try:
         d = json.loads(cles.read_text(encoding="utf-8"))
     except FileNotFoundError:
         d = {"keys": []}
     from newskit import config_sources as cfg  # noqa: PLC0415
 
-    ident = f"{cfg.edition()['nom']}/{graphe}"
+    ident = f"{cfg.edition()['nom']}/{graphe}" + ("/ecriture" if ecriture else "")
     for k in d.get("keys") or []:
         if k.get("id") == ident:
             return k["secret"]
     secret = secrets.token_hex(24)
-    d.setdefault("keys", []).append({"id": ident, "secret": secret, "clearance": "read-only"})
+    d.setdefault("keys", []).append(
+        {"id": ident, "secret": secret, "clearance": "read-write" if ecriture else "read-only"}
+    )
     tmp = cles.with_name(cles.name + ".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -164,14 +184,15 @@ def main() -> int:
     from newskit import config_sources as cfg  # noqa: PLC0415
 
     port = a.port or cfg.port_cortexdb(a.graphe) or cc.port_libre()
-    jeton = secrets.token_hex(16)
+    jeton, ecriture = secrets.token_hex(16), None
     with cc.Encodeur(a.graphe, cc.DOSSIER / f"{a.graphe}.encodeur.log") as e:
 
         def lancer():
-            nonlocal jeton
+            nonlocal jeton, ecriture
             t0 = time.time()
             if a.cles:
                 jeton = assurer_cle(a.cles, a.graphe)
+            ecriture = cle_d_ecriture(a.cles, a.graphe, jeton)
             p = subprocess.Popen(
                 [binaire],
                 env=environnement(cerveau, port, jeton, e.url, e.dim, a.cles),
@@ -192,7 +213,7 @@ def main() -> int:
         signal.signal(signal.SIGINT, lambda *_: fini.append(0))
         g.demarrer()
         g.vu = g._etat()  # la clé de l'édition écrite au lancement n'est pas un changement
-        ecrire_adresse(adresse_p, f"127.0.0.1:{port}", jeton)
+        ecrire_adresse(adresse_p, f"127.0.0.1:{port}", jeton, jeton_ecriture=ecriture)
         code = None
         try:
             while not fini and code is None:

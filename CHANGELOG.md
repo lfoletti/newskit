@@ -2,6 +2,18 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.72] - 2026-11-18
+
+### Ajouté
+
+- L’édition reçoit une clé d’écriture pour le cerveau servi d’un graphe continu (`serveur_cortexdb.assurer_cle` avec `ecriture=True`) : identifiant `<edition>/<graphe>/ecriture`, niveau `read-write`, créée une fois dans le fichier de clés. La clé de lecture reste `read-only`. Mesure sur CortexDB 2.154.6, serveur lancé avec un fichier de clés : une clé `read-only` lit et ne peut pas écrire, une clé `read-write` écrit.
+- Le fichier d’adresse du serveur publie cette clé à part, dans le champ `jeton_ecriture` (`serveur_cortexdb.ecrire_adresse`). `lecture_cortexdb.lire_adresse_ecriture` la rend ; `lire_adresse` rend toujours la clé de lecture. Sans fichier de clés, le jeton du serveur écrit déjà : il est publié dans ce champ.
+- L’aiguilleur et le gardien d’un graphe créent la clé d’écriture pour un graphe continu seulement (`serveur_cortexdb.cle_d_ecriture`). Un autre graphe n’en a pas.
+
+### Modifié
+
+- Quand une clé de l’édition a été retirée du fichier de clés pendant que l’aiguilleur tourne, le lancement suivant du serveur la recrée et réécrit le fichier d’adresse. Avant, l’adresse publiée gardait l’ancienne clé jusqu’au redémarrage du service.
+
 ## [0.1.71] - 2026-11-18
 
 ### Modifié

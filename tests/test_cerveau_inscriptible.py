@@ -241,9 +241,14 @@ def test_un_passage_en_place_publie_par_la_regle_du_graphe(tmp_path, monkeypatch
         lambda g: {"base": tmp_path / "base", "graphe": tmp_path / "absent.json", "carte": tmp_path / "absente.md"},
     )
     monkeypatch.setattr(cfg, "cerveau_continu", lambda g: True)
+    monkeypatch.setattr(cc, "servi", lambda g: True)  # un cerveau continu ne se construit que servi
+    (tmp_path / "g.continu.jour.json").write_text(json.dumps({"x": "h"}), encoding="utf-8")
     bilan = cc.construire("g", force="en_place")
     assert bilan["mode"] == "en_place" and bilan["publie"] is True and bilan["compacte"] is False
-    assert objets_cjk(tmp_path / "g.db") == 2
+    assert (bilan["remplaces_du_jour"], bilan["verses_du_jour"]) == (1, 1)  # le relevé neuf n'a pas « x »
+    assert objets_cjk(sc.pret(tmp_path / "g.db")) == 2  # servi : publié à côté, en attente de mise en place
+    sc.pret(tmp_path / "g.db").unlink()
     monkeypatch.setattr(cfg, "cerveau_continu", lambda g: False)
+    monkeypatch.setattr(cc, "servi", lambda g: False)
     cc.construire("g", force="en_place")
     assert objets_cjk(tmp_path / "g.db") == 0

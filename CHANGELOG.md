@@ -2,6 +2,18 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.70] - 2026-11-18
+
+### Ajouté
+
+- Un graphe déclare `cerveau_continu: true` au registre (`config_sources.cerveau_continu`) : ses fiches entreront dans son cerveau au fil de la journée, dans le fichier que le serveur tient ouvert. La clé demande `cortexdb: true`. Cette version pose la clé et ses deux garanties ; le passage continu vient ensuite.
+
+### Modifié
+
+- Le cerveau d’un graphe continu ne s’envoie pas à un serveur (`publier_cerveau.continu`), ni lors d’un passage complet ni par un envoi qui le nomme : l’envoi poserait un cerveau plus ancien à la place du cerveau servi.
+- Le fichier d’adresse du serveur et l’envoi lisent le dossier des cerveaux de la construction (`cerveau_cortexdb.DOSSIER`, que `CORTEXDB_DOSSIER` déplace). Avant, ils lisaient toujours `cache/cortexdb` du dossier de données : sur une machine où le cerveau servi est rangé ailleurs, la construction ne voyait pas le serveur.
+- `publier_cerveau --lister` écrit le chemin entier de chaque cerveau.
+
 ## [0.1.69] - 2026-11-18
 
 ### Modifié

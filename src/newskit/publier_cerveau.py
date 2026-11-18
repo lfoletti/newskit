@@ -28,20 +28,32 @@ import sys
 from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
+from newskit import cerveau_cortexdb as cc  # noqa: E402
 from newskit import publier_index as pi  # noqa: E402
 
 VPS = RACINE / "cache" / "pilote_cortexdb" / "vps"
 # th-gateway ne part plus par ici (A5, 25.10.2026) : il se déploie par sa release, newskit.deployer_gateway.
 # cortexdb-grpc non plus (C1, 27.10.2026) : sa release amont, newskit.deployer_cortexdb, qui pose aussi celui du Mac.
-DOSSIER = RACINE / "cache" / "cortexdb"
+DOSSIER = cc.DOSSIER  # le dossier des cerveaux, celui de la construction
 
 
 def graphes_engages() -> list[str]:
     from newskit import config_sources as cfg  # noqa: PLC0415
 
     return sorted(
-        g for g, v in (cfg.charger().get("graphes") or {}).items() if (v or {}).get("cortexdb") and tenu_au_serveur(g)
+        g
+        for g, v in (cfg.charger().get("graphes") or {}).items()
+        if (v or {}).get("cortexdb") and tenu_au_serveur(g) and not continu(g)
     )
+
+
+def continu(graphe: str) -> bool:
+    """Vrai pour un graphe au cerveau continu (`cerveau_continu: true`) : son cerveau reçoit des écritures là où il
+    est servi. Un envoi poserait à sa place un cerveau plus ancien. Il ne part ni lors d'un passage complet, ni par un
+    envoi qui le nomme."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    return bool(((cfg.charger().get("graphes") or {}).get(graphe) or {}).get("cerveau_continu"))
 
 
 def tenu_au_serveur(graphe: str) -> bool:
@@ -64,7 +76,7 @@ def a_envoyer(graphes: list[str]) -> list[tuple[Path, str]]:
     for roue in sorted(VPS.glob("cortexdb_client-*.whl")):
         out.append((roue, f"cache/cortexdb/client/{roue.name}"))
     for g in graphes:
-        if (DOSSIER / f"{g}.db").exists() and _publie(g) and tenu_au_serveur(g):
+        if (DOSSIER / f"{g}.db").exists() and _publie(g) and tenu_au_serveur(g) and not continu(g):
             out.append((DOSSIER / f"{g}.db", f"cache/cortexdb/{g}.envoi.db"))
             out.append((DOSSIER / f"{g}.json", f"cache/cortexdb/{g}.envoi.json"))
     return out
@@ -162,7 +174,7 @@ def main() -> int:
     a = ap.parse_args()
     if a.lister:
         for src, rel in a_envoyer(a.graphe or graphes_engages()):
-            print(f"  {rel}  ←  {src.relative_to(RACINE)}  ({src.stat().st_size / 1e6:.0f} Mo)")
+            print(f"  {rel}  ←  {src}  ({src.stat().st_size / 1e6:.0f} Mo)")
         return 0
     lignes = publier(a.graphe)
     return 0 if lignes and "interrompu" not in lignes[-1] else 1

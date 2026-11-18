@@ -2,6 +2,15 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.71] - 2026-11-18
+
+### Modifié
+
+- Le cerveau publié d’un graphe continu (`cerveau_continu: true`) garde ses index CJK (`cerveau_cortexdb.publier` et `publier_en_place`, paramètre `garder_cjk`). Sans eux, CortexDB les recrée vides à l’ouverture et la première réécriture d’un document échoue (« database disk image is malformed »). Mesure sur un cerveau de 4,6 Go : les index pleins pèsent 7,6 % du fichier.
+- La copie de travail d’un passage en place ne repart de `user_version` 0 que si les index CJK sont vides (`cerveau_cortexdb.index_cjk_vides`). Sur des index pleins, le remplissage se rejouait en entier : 80 à 100 s de plus à l’ouverture du serveur pour ce même cerveau.
+- La mise en place d’un cerveau prêt est une seule fonction, `serveur_cortexdb.mettre_en_place`, pour le gardien d’un graphe et pour l’aiguilleur. Avant, chacun portait sa copie des mêmes lignes.
+- Un graphe sans `cerveau_continu` garde son comportement : ses index CJK sont retirés à la publication.
+
 ## [0.1.70] - 2026-11-18
 
 ### Ajouté

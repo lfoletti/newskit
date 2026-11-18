@@ -41,6 +41,17 @@ def pret(cerveau: Path) -> Path:
     return cerveau.with_name(cerveau.stem + ".pret.db")
 
 
+def mettre_en_place(cerveau: Path) -> bool:
+    """Le cerveau prêt remplace le cerveau servi, serveur arrêté ; rend faux s'il n'y a rien de prêt. Le journal de
+    l'ancien s'efface d'abord : SQLite le rejouerait sur le neuf. Le gardien d'un graphe et l'aiguilleur passent par ici."""
+    if not pret(cerveau).exists():
+        return False
+    for suffixe in ("-wal", "-shm"):
+        Path(f"{cerveau}{suffixe}").unlink(missing_ok=True)
+    os.replace(pret(cerveau), cerveau)
+    return True
+
+
 def ecrire_adresse(p: Path, adresse: str, jeton: str, pid: int | None = None) -> None:
     tmp = p.with_name(p.name + ".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -106,14 +117,8 @@ class Gardien:
             return None
         return s and (s.st_mtime_ns, s.st_size, s.st_ino)
 
-    def _mettre_en_place(self) -> None:
-        for suffixe in ("-wal", "-shm"):
-            Path(f"{self.cerveau}{suffixe}").unlink(missing_ok=True)
-        os.replace(pret(self.cerveau), self.cerveau)
-
     def demarrer(self) -> None:
-        if pret(self.cerveau).exists():
-            self._mettre_en_place()
+        mettre_en_place(self.cerveau)
         self.p = self.lancer()
 
     def tour(self) -> int | None:
@@ -122,7 +127,7 @@ class Gardien:
             return 1
         if pret(self.cerveau).exists():
             self.arreter()
-            self._mettre_en_place()
+            mettre_en_place(self.cerveau)
             self.p = self.lancer()
         elif self._etat() != self.vu:
             self.arreter()

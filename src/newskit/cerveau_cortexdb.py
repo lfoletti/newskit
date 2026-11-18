@@ -143,7 +143,11 @@ def cloner(source: Path, dest: Path) -> None:
             if r.returncode:
                 subprocess.run(["cp", str(s_), str(dest) + suffixe], check=True)
     # retirer_cjk a retiré les index CJK du cerveau publié ; CortexDB les recrée vides et ne les remplit qu'au-dessous de
-    # sa version de schéma. Vides, leur déclencheur casse la première réécriture (« malformed », 17.11.2026).
+    # sa version de schéma. Vides, leur déclencheur casse la première réécriture (« malformed », 17.11.2026). Un cerveau
+    # qui a gardé ses index pleins (graphe continu) ne repart pas de zéro : le remplissage rejoué coûte 80 à 100 s
+    # d'ouverture pour un cerveau de 4,6 Go (mesure du 18.11.2026).
+    if not index_cjk_vides(dest):
+        return
     c = sqlite3.connect(dest)
     try:
         c.execute("PRAGMA user_version = 0")
@@ -161,13 +165,15 @@ def pages_libres(cerveau: Path) -> float:
         c.close()
 
 
-def publier_en_place(neuf: Path, cible: Path, servi: bool = False) -> bool:
+def publier_en_place(neuf: Path, cible: Path, servi: bool = False, garder_cjk: bool = False) -> bool:
     """Le clone mis à jour remplace l'ancien par renommage ; compacté seulement au-delà de COMPACTER pages libres.
-    Rend True s'il a été compacté. Un cerveau servi se pose à côté (`<g>.pret.db`), comme `publier`."""
-    retirer_cjk(neuf)
+    Rend True s'il a été compacté. Un cerveau servi se pose à côté (`<g>.pret.db`), comme `publier`. `garder_cjk` :
+    voir `publier`."""
+    if not garder_cjk:
+        retirer_cjk(neuf)
     dest = cible.with_name(cible.stem + ".pret.db") if servi else cible
     if pages_libres(neuf) > COMPACTER:
-        publier(neuf, cible, servi)
+        publier(neuf, cible, servi, garder_cjk)
         return True
     effacer(Path(str(dest) + "-wal"))
     effacer(Path(str(dest) + "-shm"))
@@ -351,12 +357,29 @@ def servi(graphe: str) -> bool:
     return True
 
 
-def publier(neuf: Path, cible: Path, servi: bool = False) -> None:
+def index_cjk_vides(cerveau: Path) -> bool:
+    """Vrai si aucun index CJK du cerveau ne porte une ligne : retirés, ou recréés vides par CortexDB. Un index vide
+    sous un cerveau qui a des morceaux casse la première réécriture ; seul un remplissage (`user_version` à 0) le
+    répare."""
+    c = sqlite3.connect(cerveau)
+    try:
+        tables = c.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%\\_cjk' ESCAPE '\\' "
+            "AND sql LIKE 'CREATE VIRTUAL TABLE%'"
+        ).fetchall()
+        return not any(c.execute(f'SELECT 1 FROM "{nom}_docsize" LIMIT 1').fetchone() for (nom,) in tables)
+    finally:
+        c.close()
+
+
+def publier(neuf: Path, cible: Path, servi: bool = False, garder_cjk: bool = False) -> None:
     """Remplace l'ancien cerveau par le neuf, complet, sans index CJK, compacté. L'ancien s'efface d'abord (le neuf,
     complet, le remplace déjà) : la place de pointe est le neuf et sa copie compacte. Un compactage qui échoue (disque
     plein) publie le neuf tel quel. Un cerveau `servi` ne s'efface pas sous son serveur : le neuf se publie à côté
-    (`<g>.pret.db`), que le gardien de serveur_cortexdb met en place."""
-    retirer_cjk(neuf)
+    (`<g>.pret.db`), que le gardien de serveur_cortexdb met en place. `garder_cjk` laisse les index CJK : un cerveau
+    qui reçoit des écritures là où il est servi (graphe continu) en a besoin pleins."""
+    if not garder_cjk:
+        retirer_cjk(neuf)
     a_cote = cible.with_name(cible.stem + ".pret.db")
     effacer(a_cote)
     if servi:
@@ -516,8 +539,19 @@ def effacer(cerveau: Path) -> None:
 # --- un passage --------------------------------------------------------------------------------------------------------
 
 
+def _regle_cjk(graphe: str) -> dict:
+    """Le paramètre `garder_cjk` de la publication, posé pour le seul graphe continu."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    return {"garder_cjk": True} if cfg.cerveau_continu(graphe) else {}
+
+
 def _publier_du_graphe(graphe: str, neuf: Path, cible: Path) -> None:
-    publier(neuf, cible, servi=servi(graphe))
+    publier(neuf, cible, servi=servi(graphe), **_regle_cjk(graphe))
+
+
+def _publier_en_place_du_graphe(graphe: str, neuf: Path, cible: Path) -> bool:
+    return publier_en_place(neuf, cible, servi=servi(graphe), **_regle_cjk(graphe))
 
 
 def options_du_versement(graphe: str, base: Path, couche1: bool = False) -> list[str]:
@@ -710,7 +744,7 @@ def construire(
         print(json.dumps(bilan, ensure_ascii=False))
         raise RuntimeError(f"cerveau incomplet, l'ancien est gardé : {fin}")
     if mode == "en_place":
-        bilan["compacte"] = publier_en_place(neuf, cible, servi=servi(graphe))
+        bilan["compacte"] = _publier_en_place_du_graphe(graphe, neuf, cible)
     else:
         _publier_du_graphe(graphe, neuf, cible)
     os.replace(neuf_emp, p_emp)

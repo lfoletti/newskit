@@ -176,6 +176,17 @@ def test_une_fiche_retiree_quitte_le_cerveau_et_le_releve(at):
     assert set(at.releve()) == {ident(B)} and bilan["retires"] == 1
 
 
+def test_le_passage_tient_la_liste_des_documents_du_jour(at):
+    at.evenement(A)
+    at.evenement(B)
+    at.passer()
+    assert json.loads(ct.du_jour("g").read_text(encoding="utf-8")) == at.releve()
+    (at.tmp / A).unlink()
+    at.evenement(A, "retiree")
+    at.passer()
+    assert set(json.loads(ct.du_jour("g").read_text(encoding="utf-8"))) == {ident(B)}
+
+
 def test_une_fiche_retiree_jamais_versee_n_appelle_rien(at):
     at.evenement(C, "retiree")
     assert at.passer()["retires"] == 0 and at.appels == []

@@ -632,9 +632,29 @@ def verrou_du_cerveau(graphe: str, attendre: bool = True):
         yield True
 
 
+def remplaces_du_jour(graphe: str, releve_neuf: dict[str, str]) -> tuple[int, int]:
+    """Le contrôle de la nuit face au passage continu : (documents versés le jour dont l'empreinte a changé ou qui ont
+    quitté le cerveau, documents versés le jour). La liste du jour (`cerveau_continu.du_jour`) repart de zéro."""
+    p = DOSSIER / f"{graphe}.continu.jour.json"
+    try:
+        jour = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0, 0
+    p.unlink()
+    return sum(1 for ident, h in jour.items() if releve_neuf.get(ident) != h), len(jour)
+
+
 def construire(
     graphe: str, reprendre_de: list[Path] | None = None, couche1: bool = False, force: str | None = None
 ) -> dict:
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
+    if cfg.cerveau_continu(graphe) and chemin_cerveau(graphe).exists() and not servi(graphe):
+        # Sans serveur, la construction remplacerait le fichier sur place, à côté de ce que le service rouvrira.
+        raise RuntimeError(
+            f"cerveau continu de {graphe} : aucun serveur ne le tient ouvert, la construction s'arrête ; "
+            "relancer le service du cerveau, puis la routine"
+        )
     attendu = attendre_encodeur(graphe)
     if attendu:
         print(f"  {graphe} : {attendu} s d'attente d'un essai d'encodeur", file=sys.stderr)
@@ -770,6 +790,10 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         bilan["compacte"] = _publier_en_place_du_graphe(graphe, neuf, cible)
     else:
         _publier_du_graphe(graphe, neuf, cible)
+    if cfg.cerveau_continu(graphe):
+        bilan["remplaces_du_jour"], bilan["verses_du_jour"] = remplaces_du_jour(
+            graphe, json.loads(neuf_emp.read_text(encoding="utf-8"))
+        )
     os.replace(neuf_emp, p_emp)
     bilan["octets"] = cible.stat().st_size
     bilan["publie"] = True

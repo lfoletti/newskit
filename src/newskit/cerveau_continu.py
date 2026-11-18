@@ -69,6 +69,15 @@ def noter(p: Path, ident: str, empreinte: str | None) -> None:
     os.replace(tmp, p)
 
 
+def du_jour(graphe: str) -> Path:
+    """Les documents que le passage continu a écrits depuis le dernier contrôle de la nuit, avec leur empreinte."""
+    return cc.DOSSIER / f"{graphe}.continu.jour.json"
+
+
+def noter_du_jour(graphe: str, ident: str, empreinte: str | None) -> None:
+    noter(du_jour(graphe), ident, empreinte)
+
+
 def est_verse(graphe: str, chemin: str) -> bool:
     """La fiche (chemin relatif) est au cerveau servi : son document est au relevé, hors marque « en cours »."""
     return lire_releve(graphe).get(pc.court(chemin), EN_COURS) != EN_COURS
@@ -241,6 +250,7 @@ def _passer(graphe: str, client, horloge, bilan: dict) -> dict:
                     if "NOT_FOUND" not in str(e):  # un retrait rejoué : le document a déjà quitté le cerveau
                         raise
                 noter(p_releve, ident, None)
+                noter_du_jour(graphe, ident, None)
                 del rel[ident]
 
         try:
@@ -270,6 +280,7 @@ def _passer(graphe: str, client, horloge, bilan: dict) -> dict:
                 ep.verser(v, {})
                 if rel.get(ident) != h:
                     noter(p_releve, ident, h)
+                    noter_du_jour(graphe, ident, h)
                     rel[ident] = h
             for ident in orphelins:
                 retirer(ident)

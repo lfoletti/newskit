@@ -96,14 +96,42 @@ class Journal:
         self.attention.append(texte)
 
 
-def cerveau_cortexdb(j: Journal, g: str, etiquette: str) -> None:
+def passage_court(argv: list[str] | None = None) -> bool:
+    """Un passage court : sans collecte et sous plafond, celui qu'un lien déposé lance en journée. Lu aux arguments
+    de la commande (`--sans-collecte --plafond n`), ceux de ce processus par défaut."""
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("--sans-collecte", action="store_true")
+    ap.add_argument("--plafond", type=int)
+    a, _ = ap.parse_known_args(sys.argv[1:] if argv is None else argv)
+    return bool(a.sans_collecte and a.plafond)
+
+
+def cerveau_cortexdb(j: Journal, g: str, etiquette: str, court: bool | None = None) -> None:
     """Le cerveau CortexDB du graphe, reconstruit après la composition, l'index, la pyramide et les cartes (CortexDB est la base du moteur,
     22.10.2026) : lots et synthèses versés tels quels, vecteurs repris ou encodés en local, aucun appel au modèle.
     Seulement pour un graphe engagé au registre (`graphes.<nom>.cortexdb: true`)."""
-    if cfg.verse_cortexdb(g):
-        lancer(
-            j, f"cerveau CortexDB{etiquette}", ["scripts/cerveau_cortexdb.py", "--graphe", g], garder=1, delai=5 * 3600
-        )  # 3 h d'attente d'un encodeur au plus
+    if not cfg.verse_cortexdb(g):
+        return
+    continu = cfg.cerveau_continu(g)
+    if continu and (passage_court() if court is None else court):
+        # Le passage continu écrit ce cerveau en journée ; une construction le suspendrait pour un seul lien déposé.
+        j.dire(f"  cerveau CortexDB{etiquette} : passage court, le cerveau continu attend le contrôle de la nuit")
+        return
+    ok, _ = lancer(
+        j, f"cerveau CortexDB{etiquette}", ["scripts/cerveau_cortexdb.py", "--graphe", g], garder=1, delai=5 * 3600
+    )  # 3 h d'attente d'un encodeur au plus
+    if continu and ok:
+        from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
+
+        try:
+            b = json.loads((cc.DOSSIER / f"{g}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            b = {}
+        if b.get("verses_du_jour"):
+            j.dire(
+                f"  cerveau continu{etiquette} : {b.get('remplaces_du_jour', 0)} document(s) sur "
+                f"{b['verses_du_jour']} versés le jour, remplacés par le contrôle"
+            )
 
 
 # Les sources qui ne suivent pas une actualité : le canon et les dépôts se remplissent à la demande, une bibliothèque ou

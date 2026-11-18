@@ -1978,7 +1978,15 @@ def lire_le_reste(graphe: str) -> int:
     """Avant la lettre du jour, le fil lit les fiches candidates qui restent, hors plafond du jour (mainteneur, 05.11.2026 :
     « ok pour le plafond, écris-le ») : la lettre prend au registre le titre, la rubrique et les redites de chaque
     nouvelle. La dépense compte dans le jour : le plafond borne le reste de la journée. Rend le nombre de fiches
-    restées non lues (limite d'usage, appel échoué, ou plus de PASSAGES_AVANT_LETTRE passages)."""
+    restées non lues (limite d'usage, appel échoué, ou plus de PASSAGES_AVANT_LETTRE passages). Avant, la passe du jour
+    des règles apprises des refus (regles_apprises), qui ne bloque jamais la lettre."""
+    from newskit import regles_apprises as ra  # noqa: PLC0415
+
+    try:
+        for r in ra.passer(graphe):
+            print(f"règle apprise : {r['fr']}")
+    except Exception as e:  # noqa: BLE001 — la lettre part sans les règles du jour
+        print(f"règles apprises : passe en échec ({type(e).__name__})", file=sys.stderr)
     reste = None
     for _ in range(PASSAGES_AVANT_LETTRE):
         avant, reste = reste, passer(graphe, hors_plafond=True)

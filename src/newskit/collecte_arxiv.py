@@ -624,7 +624,7 @@ def mode_redater() -> int:
         nouveau = f.with_name(f"{depot}_{f.name.split('_', 1)[1]}")
         fiche.ecrire(nouveau, champs, corps, remplace=f)  # un déplacement : la fiche garde son identité
         if nouveau != f:
-            f.unlink()
+            fiche.retirer(f, par="collecte_arxiv")
         redatees += 1
     print(f"  {redatees} fiche(s) redatée(s) au mois de dépôt")
     return 0
@@ -643,8 +643,6 @@ def mode_repartir(controle: bool) -> int:
     y est copié, pas déplacé, sinon le graphe principal le réduirait à une
     coquille jusqu'à la prochaine collecte des citations.
     """
-    import shutil  # noqa: PLC0415
-
     par_theme = {t: RACINE / "sources" / v["dossier"] for v in VEILLES for t in v["themes"]}
     cites = identifiants_cites()
     deplacees: Counter = Counter()
@@ -659,7 +657,7 @@ def mode_repartir(controle: bool) -> int:
             garde = d == OUT and champs.get("arxiv_id") in cites
             if not controle:
                 cible.mkdir(parents=True, exist_ok=True)
-                (shutil.copy2 if garde else shutil.move)(str(f), str(cible / f.name))
+                fiche.deplacer(f, cible / f.name, copie=garde, par="collecte_arxiv")
             copiees += garde
             deplacees[f"{d.relative_to(RACINE)} → {cible.relative_to(RACINE)}"] += 1
     for trajet, n in deplacees.items():

@@ -174,7 +174,7 @@ def fondre() -> tuple[list[str], list[Groupe]]:
             a_trancher.append(g)
             continue
         for x in g.retirees:
-            (racine / x).unlink()
+            fiche.retirer(racine / x, par="doublons_d_identite")
             retirees.append(x)
     fiche.oublier_index()
     return retirees, a_trancher

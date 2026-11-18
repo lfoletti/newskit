@@ -117,12 +117,22 @@ def publicites() -> set[str]:
     return out
 
 
+def retirer_publicites() -> set[str]:
+    """Efface les fiches publicitaires ; rend leurs chemins, que `purger` retire ensuite des graphes."""
+    from newskit import fiche  # noqa: PLC0415
+
+    cibles = publicites()
+    for c in sorted(cibles):
+        print("publicité :", c)
+        fiche.retirer(RACINE / c, par="purger_fiches")
+    return cibles
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    purger(retirer_publicites() if argv == ["--publicites"] else set(argv))
+    return 0
+
+
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--publicites"]:
-        cibles = publicites()
-        for c in sorted(cibles):
-            print("publicité :", c)
-            (RACINE / c).unlink()
-    else:
-        cibles = set(sys.argv[1:])
-    purger(cibles)
+    sys.exit(main())

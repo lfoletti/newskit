@@ -2,6 +2,20 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.73] - 2026-11-18
+
+### Ajouté
+
+- La file des fiches d’un graphe continu (`file_fiches`) : qui écrit, change ou retire une fiche le signale par une ligne de `<graphe>.file.jsonl`, dans le dossier des cerveaux. Quatre sortes d’événement : `parue`, `modifiee`, `retiree`, `droits`. `file_fiches.lire` rend les événements en attente ; `file_fiches.acquitter` retire ceux qui sont traités, sous verrou, sans perdre un événement arrivé entre-temps.
+- La file n’existe que pour un graphe qui déclare `cerveau_continu: true`, sur la machine où le passage continu a posé sa marque (`file_fiches.ouvrir`). Ailleurs, rien ne s’écrit. `file_fiches.signaler` ne lève jamais : une file illisible n’empêche pas l’écriture d’une fiche.
+- `fiche.retirer` efface une fiche et le signale ; `fiche.deplacer` déplace ou copie une fiche et signale le départ et l’arrivée.
+
+### Modifié
+
+- `fiche.ecrire` signale « parue » pour une fiche neuve et « modifiée » quand le texte écrit change. Une réécriture identique ne signale rien.
+- Les programmes qui effacent ou déplacent une fiche passent par `fiche.retirer` ou `fiche.deplacer` : la fusion des doublons d’identité, la purge des publicités, la redatation et la répartition des fiches arXiv, la collecte d’un dossier local, la quarantaine d’un graphe naissant.
+- `purger_fiches` a une fonction `main` et une fonction `retirer_publicites`.
+
 ## [0.1.72] - 2026-11-18
 
 ### Ajouté

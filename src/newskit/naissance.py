@@ -21,7 +21,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -144,11 +143,13 @@ def depense_du_registre(graphe: str, depuis: str) -> float:
 
 def mettre_en_quarantaine(chemins: list[str], racine: Path, cible: Path) -> list[str]:
     """Déplace les fiches (chemin relatif à `racine` ou absolu) dans `cible` ; rend leurs chemins relatifs, pour l'état."""
+    from newskit import fiche  # noqa: PLC0415
+
     cible.mkdir(parents=True, exist_ok=True)
     notes = []
     for c in chemins:
         p = Path(c) if Path(c).is_absolute() else racine / c
-        shutil.move(str(p), str(cible / p.name))
+        fiche.deplacer(p, cible / p.name, par="naissance")
         notes.append(p.relative_to(racine).as_posix())
     return notes
 

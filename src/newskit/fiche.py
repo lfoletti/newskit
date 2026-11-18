@@ -768,10 +768,42 @@ def ecrire(
     if erreurs and strict:
         raise ValueError(f"{chemin} ne respecte pas le contrat de fiche : " + " ; ".join(erreurs))
     chemin = Path(chemin)
-    graphes = [] if chemin.exists() else _verifier_identite(chemin, c, hors_graphe, remplace)
+    avant = chemin.read_text(encoding="utf-8", errors="replace") if chemin.exists() else None
+    graphes = [] if avant is not None else _verifier_identite(chemin, c, hors_graphe, remplace)
     chemin.parent.mkdir(parents=True, exist_ok=True)
-    chemin.write_text(rendre(c, corps), encoding="utf-8")
+    texte = rendre(c, corps)
+    chemin.write_text(texte, encoding="utf-8")
+    if texte != avant:
+        _signaler(chemin, "parue" if avant is None else "modifiee")
     noter_contacts(str(champs.get("author") or ""), c.get("url") or "")
     if graphes:
         _noter(chemin, c, graphes, remplace)
     return avertissements
+
+
+def _signaler(chemin: Path, sorte: str, par: str = "") -> None:
+    from newskit import file_fiches  # noqa: PLC0415 — file_fiches lit ce module
+
+    file_fiches.signaler(chemin, sorte, par)
+
+
+def retirer(chemin: Path, *, par: str = "", absente_admise: bool = False) -> None:
+    """Point d'entrée unique pour effacer une fiche : l'efface et le signale à la file des graphes continus qui la
+    lisaient (`file_fiches`). Une fiche absente lève FileNotFoundError, sauf `absente_admise` ; elle ne signale rien."""
+    chemin = Path(chemin)
+    if absente_admise and not chemin.exists():
+        return
+    chemin.unlink()
+    _signaler(chemin, "retiree", par)
+
+
+def deplacer(chemin: Path, cible: Path, *, copie: bool = False, par: str = "") -> None:
+    """Déplace une fiche telle quelle, ou la copie : le départ se signale « retirée », l'arrivée « parue ». Chaque
+    graphe continu ne reçoit que ce qui touche ses dossiers."""
+    import shutil  # noqa: PLC0415
+
+    chemin, cible = Path(chemin), Path(cible)
+    (shutil.copy2 if copie else shutil.move)(str(chemin), str(cible))
+    if not copie:
+        _signaler(chemin, "retiree", par)
+    _signaler(cible, "parue", par)

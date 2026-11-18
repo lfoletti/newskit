@@ -209,7 +209,7 @@ def traiter_source(src, controle: bool, echecs: list[str]) -> dict:
     for nom in sorted(set(manifeste) - vus):
         compte["retirees"] += 1
         if not controle:
-            (src.chemin / nom).unlink(missing_ok=True)
+            fiche.retirer(src.chemin / nom, par="collecte_dossier_local", absente_admise=True)
             del manifeste[nom]
     if not controle:
         src.manifeste.write_text(json.dumps(manifeste, indent=1, ensure_ascii=False), encoding="utf-8")

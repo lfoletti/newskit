@@ -130,6 +130,15 @@ def test_opus_ecrit_et_les_deux_langues_sont_relues(banc):
     assert "constats" in banc["invite"] and "conformite:dsa" in banc["invite"]
 
 
+def test_la_redaction_des_fiches_porte_les_refus_frequents(banc, monkeypatch):
+    # Les motifs récurrents de la relecture entrent dès la première rédaction (mainteneur, 17.11.2026).
+    from newskit import refus_frequents as rf
+
+    monkeypatch.setattr(rf, "consigne", lambda g, maintenant=None: "REFUS FREQUENTS\n")
+    ff.etoffer({"billets": [billet()]}, "g", 20)
+    assert "REFUS FREQUENTS\n" in banc["invite"]
+
+
 def test_une_fiche_deja_ecrite_n_est_pas_convertie(banc):
     b = {**billet(), "fiche": {"texte": "ancien", "tenu": True}}
     assert ff.etoffer({"billets": [b]}, "g", 20) == 0.0

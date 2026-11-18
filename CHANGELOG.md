@@ -2,6 +2,12 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.63] - 2026-11-17
+
+### Ajouté
+
+- Les refus fréquents de la relecture entrent dans la consigne de la première rédaction, pour les billets du fil et pour leurs fiches (`refus_frequents`). Le module lit les reproches des 14 derniers jours dans les journaux du média : `cache/fil_refus.jsonl` et les fiches refusées du registre du fil. Il les regroupe par motif : le terme cité en tête du reproche, sinon la forme du reproche (tête avant « : », nombres réduits, 6 premiers mots). Il porte les 10 motifs les plus fréquents, vus au moins 2 fois, avec leur dernier exemple. Le 17.11.2026, 295 reproches d’ai-governance revenaient sous quelques formes : faits absents de la source (79), titres trop longs (19), fait neuf absent du titre (17), « agents » sans dire qu’il s’agit d’IA (13). Chaque refus coûtait une réécriture.
+
 ## [0.1.62] - 2026-11-17
 
 ### Corrigé

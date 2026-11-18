@@ -24,6 +24,7 @@ from newskit import extrait as ex
 from newskit import fil
 from newskit import lettre as lt
 from newskit import publier_fil
+from newskit import refus_frequents as rf
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
 from newskit import reglages  # noqa: E402 — les réglages du média
@@ -360,7 +361,7 @@ def _une_fiche(lot: list[tuple[dict, dict]], graphe: str, feuilles: dict) -> flo
     r, cout = fil.demander(
         REDACTION_ELEMENTS.format(
             nom=cfg.graphe_declare(graphe).get("libelle") or graphe,
-            regles=lt.regles(graphe),
+            regles=lt.regles(graphe) + rf.consigne(graphe),  # les refus fréquents dès la première rédaction
             entete=", ".join(entete(graphe)),
             arbre="\n".join(f"- {k} ; champs : {', '.join(v[2])}" for k, v in feuilles.items()),
             billets="\n".join(

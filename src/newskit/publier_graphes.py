@@ -74,6 +74,27 @@ def suivis_hors_liens() -> set[str]:
     return {p for p in r.stdout.split("\0") if p and not (RACINE / p).is_symlink()}
 
 
+def chemins_gardes() -> list[str]:
+    """Les chemins, relatifs aux données, des graphes gardés au poste (`publie: false`) : leur dossier sous graphe/,
+    leurs lettres, et leurs dossiers de fiches qu'aucun graphe publié ne lit."""
+    decl = cfg.charger().get("graphes", {})
+    gardes = [g for g in decl if cfg.garde_au_poste(g)]
+    if not gardes:
+        return []
+    lus = {d for g in decl if g not in gardes for d in cfg.dossiers_du_graphe(g)}
+    out: list[str] = []
+    for g in gardes:
+        out.append(cfg.chemins_du_graphe(g)["base"].relative_to(RACINE).as_posix())
+        out.append(f"lettres/{g}")
+        out += [d for d in cfg.dossiers_du_graphe(g, propres=True) if d not in lus]
+    return out
+
+
+def garde(rel: str, chemins: list[str]) -> bool:
+    """Vrai si le fichier est un chemin gardé ou se trouve dessous."""
+    return any(rel == c or rel.startswith(c + "/") for c in chemins)
+
+
 def fichiers(graphe: str, deja: set[str] | None = None) -> list[str]:
     """Les fichiers du graphe à envoyer, relatifs au dépôt, sans ceux des autres graphes ni ceux que git suit."""
     base = cfg.chemins_du_graphe(graphe)["base"]
@@ -106,9 +127,17 @@ def publier(graphes: list[str] | None = None, verbeux: bool = True) -> list[str]
     lignes: list[str] = []
     graphes = graphes if graphes is not None else sorted(cfg.charger().get("graphes", {}))
     try:
+        retenus = [g for g in graphes if cfg.garde_au_poste(g)]
+        if retenus:
+            lignes.append(f"Graphes en ligne : {', '.join(retenus)} gardé au poste (publie: false), jamais envoyé.")
+        graphes = [g for g in graphes if g not in retenus]
+        chemins = chemins_gardes()
         deja = suivis()
         liste = sorted(
-            {f for g in graphes for f in fichiers(g, deja)} | (suivis_hors_liens() if sans_distant() else set())
+            f
+            for f in {f for g in graphes for f in fichiers(g, deja)}
+            | (suivis_hors_liens() if sans_distant() else set())
+            if not garde(f, chemins)
         )
     except Exception as e:  # noqa: BLE001
         lignes.append(f"Graphes en ligne : liste impossible ({type(e).__name__} {str(e)[:120]}), rien d'envoyé.")

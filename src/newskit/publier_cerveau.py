@@ -58,9 +58,12 @@ def continu(graphe: str) -> bool:
 
 def tenu_au_serveur(graphe: str) -> bool:
     """Faux pour un cerveau gardé au Mac (`cortexdb_publie: false`) : construit et mesuré avant d'être servi (GV7,
-    2 novembre 2026). Il ne part ni lors d'un passage complet, ni par un envoi qui le nomme."""
+    2 novembre 2026). Faux aussi pour le cerveau d'un graphe gardé au poste (`publie: false`). Il ne part ni lors d'un
+    passage complet, ni par un envoi qui le nomme."""
     from newskit import config_sources as cfg  # noqa: PLC0415
 
+    if cfg.garde_au_poste(graphe):
+        return False
     return ((cfg.charger().get("graphes") or {}).get(graphe) or {}).get("cortexdb_publie", True) is not False
 
 

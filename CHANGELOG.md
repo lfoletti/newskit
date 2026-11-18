@@ -2,6 +2,11 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+
+- Un graphe déclare `publie: false` au registre (`config_sources.garde_au_poste`) : le média le tient pour lui seul. Rien de ce graphe ne part au serveur : ni son dossier sous `graphe/`, ni ses lettres, ni les dossiers de fiches qu’aucun graphe publié ne lit (`publier_graphes.chemins_gardes`), ni son index (`publier_index`), ni son cerveau (`publier_cerveau.tenu_au_serveur`). La règle tient lors d’un passage complet, pour un envoi qui nomme le graphe et quand les données sont un dépôt git sans distant, dont tout fichier suivi part au serveur. Le compte rendu de l’envoi nomme le graphe gardé. Sans la clé, rien ne change.
 ## [0.1.74] - 2026-11-18
 
 ### Ajouté

@@ -763,6 +763,7 @@ def _valider(d: dict, p: Path) -> dict:
             "cortexdb_port",
             "cortexdb_publie",
             "cerveau_continu",
+            "publie",
             "cartes_plafond",
             "couche1",
             "depots",
@@ -820,7 +821,15 @@ def _valider(d: dict, p: Path) -> dict:
         port = v.get("cortexdb_port")
         if port is not None and (type(port) is not int or not 1024 <= port <= 65535):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.cortexdb_port : un port entre 1024 et 65535")
-        for cle in ("cortexdb", "lecture_cortexdb", "cortexdb_publie", "cerveau_continu", "couche1", "depots"):
+        for cle in (
+            "cortexdb",
+            "lecture_cortexdb",
+            "cortexdb_publie",
+            "cerveau_continu",
+            "publie",
+            "couche1",
+            "depots",
+        ):
             if not isinstance(v.get(cle, False), bool):
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.{cle} : vrai ou faux")
         if v.get("cerveau_continu") and not v.get("cortexdb"):
@@ -1306,6 +1315,13 @@ def cerveau_continu(nom: str) -> bool:
     ouvert (`graphes.<nom>.cerveau_continu: true` ; absent = non). Ce cerveau n'a qu'un fichier par machine et ne
     s'envoie pas."""
     return bool((charger().get("graphes", {}).get(nom) or {}).get("cerveau_continu", False))
+
+
+def garde_au_poste(nom: str) -> bool:
+    """Vrai pour un graphe que le média tient pour lui seul (`graphes.<nom>.publie: false` ; absent = publié). Rien de
+    ce graphe ne part au serveur : ni son dossier, ni ses lettres, ni ses fiches propres, ni son index, ni son
+    cerveau."""
+    return (charger().get("graphes", {}).get(nom) or {}).get("publie", True) is False
 
 
 def port_cortexdb(nom: str) -> int:

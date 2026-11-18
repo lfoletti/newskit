@@ -844,17 +844,22 @@ def _graphe_du_site() -> str | None:
 
 def regles(graphe: str | None = None, langue: str = "fr") -> str:
     """Les règles de rédaction d'une langue : la section `# fr` ou `# en` du fichier `regles_redaction` du média,
-    éditable sans version ; sans fichier déclaré ou sans la section, celles du paquet."""
+    éditable sans version ; sans fichier déclaré ou sans la section, celles du paquet. Les règles apprises des refus
+    du graphe (regles_apprises) suivent."""
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import fil_anglais as fa  # noqa: PLC0415
 
+    from newskit import regles_apprises as ra  # noqa: PLC0415
+
     defaut = fa.REGLES if langue == "en" else REGLES
-    chemin = cfg.graphe_declare(graphe).get("regles_redaction") if graphe else None
-    if not chemin:
+    if not graphe:
         return defaut
-    sections = re.split(r"^# (fr|en)[ \t]*$", (RACINE / chemin).read_text(encoding="utf-8"), flags=re.M)
-    lu = dict(zip(sections[1::2], sections[2::2], strict=True))
-    return lu[langue].strip() + "\n" if lu.get(langue, "").strip() else defaut
+    chemin = cfg.graphe_declare(graphe).get("regles_redaction")
+    if chemin:
+        sections = re.split(r"^# (fr|en)[ \t]*$", (RACINE / chemin).read_text(encoding="utf-8"), flags=re.M)
+        lu = dict(zip(sections[1::2], sections[2::2], strict=True))
+        defaut = lu[langue].strip() + "\n" if lu.get(langue, "").strip() else defaut
+    return defaut + ra.texte(graphe, langue)  # les règles apprises des refus (regles_apprises.py)
 
 
 def _invite(faits: list[dict], fiches: dict[str, dict], autres=(), brefs=()) -> str:

@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.67] - 2026-11-18
+
+### Ajouté
+
+- Les motifs de refus récurrents de la relecture deviennent des règles de rédaction du média (`regles_apprises`). Une passe par jour, avant la lettre (`fil.lire_le_reste`), prend les motifs vus au moins 5 fois dans la fenêtre de `refus_frequents` et encore sans règle, 3 au plus, les plus fréquents d’abord. Un appel au modèle écrit pour chacun une règle générale, en français et en anglais ; une règle vide retient un motif que les règles du média couvrent déjà.
+- Les règles vivent dans `graphe/<graphe>/regles_apprises.json`, dans le dossier de données du média. `lettre.regles` les ajoute aux règles du média : elles entrent dans toutes les rédactions et réécritures, pas seulement dans la première. Une règle reste jusqu’à ce que le mainteneur la retire du fichier.
+- Les règles ajoutées partent au mainteneur par courriel. Un envoi manqué ne retire aucune règle ; une passe en échec ne bloque pas la lettre.
+
 ## [0.1.66] - 2026-11-18
 
 ### Modifié

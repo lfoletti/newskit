@@ -148,15 +148,11 @@ def au_fil(graphe: str) -> set[str]:
 
 
 def squelette_du_graphe(graphe: str) -> dict:
-    from newskit import extraire_squelette as ex  # noqa: PLC0415
-
-    return ex.construire(graphe)[0]
+    return pc.squelette_du_graphe(graphe)
 
 
 def structure_de(source: str) -> dict:
-    from newskit import structure_titres as st  # noqa: PLC0415
-
-    return st.extraire([pc.RACINE / source], pc.RACINE)
+    return pc.structure_de(source)
 
 
 def lot_de(source: str) -> dict | None:

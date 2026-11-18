@@ -71,8 +71,15 @@ DOSSIERS = {  # les dossiers de fiches de chaque graphe ; « interne » lit auss
 }
 
 
-def donnees(tmp_path, monkeypatch, gardes=("interne",), distant=None):
-    """Un dépôt de données à trois graphes, dont un gardé au poste ; rend la liste des envois de rsync."""
+def donnees(tmp_path, monkeypatch, gardes=("interne",), distant=None, sans_source=()):
+    """Un dépôt de données à trois graphes, dont un gardé au poste ; rend la liste des envois de rsync. Un graphe
+    `sans_source` est déclaré au registre sans source à lui : le registre refuse de rendre ses dossiers."""
+
+    def dossiers(g, propres=False):
+        if g in sans_source:
+            raise cfg.ConfigInvalide(f"graphe inconnu : {g}")
+        return list(DOSSIERS[g])
+
     r = tmp_path / "donnees"
     r.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=r, check=True)
@@ -86,7 +93,8 @@ def donnees(tmp_path, monkeypatch, gardes=("interne",), distant=None):
     monkeypatch.setattr(pg, "RACINE", r)
     monkeypatch.setattr(cfg, "charger", lambda chemin=None: {"graphes": decl})
     monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": r / "graphe" / g})
-    monkeypatch.setattr(cfg, "dossiers_du_graphe", lambda g, propres=False: list(DOSSIERS[g]))
+    monkeypatch.setattr(cfg, "graphes", lambda: [g for g in DOSSIERS if g not in sans_source])
+    monkeypatch.setattr(cfg, "dossiers_du_graphe", dossiers)
     monkeypatch.setattr(pg.pi, "lire_acces", lambda: {"VPS_HOTE": "127.0.0.1", "VPS_UTILISATEUR": "u", "VPS_CLE": "/k"})
     envois = []
     vrai = subprocess.run
@@ -109,6 +117,32 @@ def test_les_chemins_gardes_sont_ceux_du_graphe_seul(tmp_path, monkeypatch):
     assert pg.garde("graphe/interne/graphe.json.gz", pg.chemins_gardes())
     assert pg.garde("graphe/interne", pg.chemins_gardes())
     assert not pg.garde("graphe/internet/graphe.json.gz", pg.chemins_gardes())
+
+
+def test_un_graphe_declare_sans_source_n_empeche_pas_la_garde(tmp_path, monkeypatch):
+    # Un registre déclare parfois un graphe qui n'a pas encore de source : `dossiers_du_graphe` le refuse. La liste des
+    # chemins gardés levait alors, et l'envoi entier s'arrêtait (« liste impossible »).
+    envois = donnees(tmp_path, monkeypatch, distant=tmp_path / "ailleurs", sans_source=("internet",))
+    assert pg.chemins_gardes() == ["graphe/interne", "lettres/interne", "sources/interne/notes"]
+    lignes = pg.publier(verbeux=False)
+    assert envois == [["graphe/internet/graphe.json.gz", "graphe/ouvert/graphe.json.gz"]]
+    assert not any("liste impossible" in l for l in lignes)
+
+
+def test_un_graphe_garde_sans_source_garde_son_dossier_et_ses_lettres(tmp_path, monkeypatch):
+    donnees(tmp_path, monkeypatch, sans_source=("interne",))
+    assert pg.chemins_gardes() == ["graphe/interne", "lettres/interne"]
+
+
+def test_la_garde_tient_sur_un_registre_entier(monkeypatch):
+    # Le registre du média témoin, lu par les vraies fonctions, avec un graphe déclaré sans source.
+    d, g = registre(publie=False)
+    d["graphes"]["sans-source"] = {"libelle": "Un graphe déclaré avant ses sources"}
+    conf = cfg._valider(d, cfg.FICHIER)
+    monkeypatch.setattr(cfg, "charger", lambda chemin=None: conf)
+    assert "sans-source" not in cfg.graphes()
+    gardes = pg.chemins_gardes()
+    assert f"lettres/{g}" in gardes and pg.garde(f"lettres/{g}/a.json", gardes)
 
 
 def test_sans_graphe_garde_rien_n_est_retenu(tmp_path, monkeypatch):

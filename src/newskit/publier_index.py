@@ -64,7 +64,7 @@ def a_un_index(graphe: str) -> bool:
 
 def graphes_indexes() -> list[str]:
     """Les graphes du registre qui ont un index calculé ici."""
-    return sorted(g for g in cfg.charger().get("graphes", {}) if a_un_index(g))
+    return sorted(g for g in cfg.charger().get("graphes", {}) if a_un_index(g) and not cfg.garde_au_poste(g))
 
 
 def a_envoyer(graphe: str, modeles: bool = True) -> list[tuple[Path, str]]:
@@ -95,6 +95,10 @@ def publier(graphes: list[str] | None = None, modeles: bool = True, verbeux: boo
         return _dire(lignes, verbeux)
     if graphes is None:
         graphes = graphes_indexes()
+    retenus = [g for g in graphes if cfg.garde_au_poste(g)]
+    if retenus:
+        lignes.append(f"Index en ligne : {', '.join(retenus)} gardé au poste (publie: false), jamais envoyé.")
+    graphes = [g for g in graphes if g not in retenus]
     cle = str(Path(acces["VPS_CLE"]).expanduser())
     hote = f"{acces['VPS_UTILISATEUR']}@{acces['VPS_HOTE']}"
     clone = acces.get("VPS_CLONE", CLONE_DEFAUT).rstrip("/")

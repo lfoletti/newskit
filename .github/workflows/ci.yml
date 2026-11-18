@@ -27,7 +27,9 @@ jobs:
       - name: format
         run: ruff format --check .
       - name: pytest
-        run: python -m pytest -q --basetemp=/tmp/essais --cov=newskit --cov-report=xml
+        run: >-
+          python -m pytest -q --basetemp=/tmp/essais --cov=newskit --cov-report=xml
+          --junitxml=junit.xml -o junit_family=legacy
       - name: couverture vers Codecov
         if: matrix.python == '3.13'
         uses: codecov/codecov-action@v5
@@ -35,6 +37,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
           fail_ci_if_error: true
+      - name: résultats des tests vers Codecov
+        if: ${{ !cancelled() && matrix.python == '3.13' }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
       - name: consignes du témoin sans réponse enregistrée
         if: failure()
         uses: actions/upload-artifact@v7

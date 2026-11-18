@@ -7,6 +7,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 ### Ajouté
 
 - Un graphe déclare `publie: false` au registre (`config_sources.garde_au_poste`) : le média le tient pour lui seul. Rien de ce graphe ne part au serveur : ni son dossier sous `graphe/`, ni ses lettres, ni les dossiers de fiches qu’aucun graphe publié ne lit (`publier_graphes.chemins_gardes`), ni son index (`publier_index`), ni son cerveau (`publier_cerveau.tenu_au_serveur`). La règle tient lors d’un passage complet, pour un envoi qui nomme le graphe et quand les données sont un dépôt git sans distant, dont tout fichier suivi part au serveur. Le compte rendu de l’envoi nomme le graphe gardé. Sans la clé, rien ne change.
+
+## [0.1.75] - 2026-11-18
+
+### Ajouté
+
+- Clé `couche2_continu_jour` d’un graphe au registre : le budget de fiches extraites par jour, commun au passage continu et à la nuit. Entier positif ou nul.
+- `extraire_concepts.extraire` : l’extraction d’une liste de fiches donnée, sortie de la commande. Elle rend le nombre de fiches faites, d’échecs et de fiches arrêtées par la limite d’usage.
+- `extraire_concepts.viser` : le graphe visé par le processus, sorti de la commande.
+- `extraire_concepts.faites_du_jour` : les extractions réussies du jour, lues au registre des coûts.
+- `extraire_concepts.quota` : la part d’un passage continu. Les fiches du fil prennent ce qui reste du jour, les autres suivent la part du jour écoulée.
+
+### Modifié
+
+- Avec `couche2_continu_jour`, la commande d’extraction retranche de son plafond les extractions du jour. `--plafond` passe outre. Sans la clé, rien ne change.
+
 ## [0.1.74] - 2026-11-18
 
 ### Ajouté

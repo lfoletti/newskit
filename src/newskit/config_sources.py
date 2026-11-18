@@ -762,6 +762,7 @@ def _valider(d: dict, p: Path) -> dict:
             "lecture_cortexdb",
             "cortexdb_port",
             "cortexdb_publie",
+            "cerveau_continu",
             "cartes_plafond",
             "couche1",
             "depots",
@@ -819,9 +820,11 @@ def _valider(d: dict, p: Path) -> dict:
         port = v.get("cortexdb_port")
         if port is not None and (type(port) is not int or not 1024 <= port <= 65535):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.cortexdb_port : un port entre 1024 et 65535")
-        for cle in ("cortexdb", "lecture_cortexdb", "cortexdb_publie", "couche1", "depots"):
+        for cle in ("cortexdb", "lecture_cortexdb", "cortexdb_publie", "cerveau_continu", "couche1", "depots"):
             if not isinstance(v.get(cle, False), bool):
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.{cle} : vrai ou faux")
+        if v.get("cerveau_continu") and not v.get("cortexdb"):
+            raise ConfigInvalide(f"{p.name} : graphes.{nom}.cerveau_continu demande cortexdb: true")
         et = v.get("etapes")
         if et is not None and (
             not isinstance(et, dict) or set(et) - ETAPES or not all(isinstance(b, bool) for b in et.values())
@@ -1296,6 +1299,13 @@ def verse_cortexdb(nom: str) -> bool:
     """Vrai si le graphe a son cerveau CortexDB, reconstruit à chaque passage (`graphes.<nom>.cortexdb: true` ; absent =
     non : CortexDB est la base du moteur depuis le 22.10.2026, les graphes y passent un à un, mesure à l'appui)."""
     return bool((charger().get("graphes", {}).get(nom) or {}).get("cortexdb", False))
+
+
+def cerveau_continu(nom: str) -> bool:
+    """Vrai si les fiches du graphe entrent dans son cerveau au fil de la journée, dans le fichier que le serveur tient
+    ouvert (`graphes.<nom>.cerveau_continu: true` ; absent = non). Ce cerveau n'a qu'un fichier par machine et ne
+    s'envoie pas."""
+    return bool((charger().get("graphes", {}).get(nom) or {}).get("cerveau_continu", False))
 
 
 def port_cortexdb(nom: str) -> int:

@@ -28,7 +28,11 @@ DELAI = 20  # secondes par recherche : une réponse ne doit pas attendre un serv
 
 
 def fichier_adresse(graphe: str) -> Path:
-    return RACINE / "cache" / "cortexdb" / f"{graphe}.adresse"
+    """Le fichier d'adresse du serveur vit dans le dossier des cerveaux : qui construit un cerveau et qui le lit
+    regardent le même serveur."""
+    from newskit import cerveau_cortexdb as cc  # noqa: PLC0415 — cerveau_cortexdb lit ce module
+
+    return cc.DOSSIER / f"{graphe}.adresse"
 
 
 def lire_adresse(p: Path) -> tuple[str, str] | None:

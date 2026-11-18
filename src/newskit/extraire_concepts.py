@@ -466,50 +466,45 @@ def valider(ext: dict) -> list[str]:
     return [str(e) for e in valider_extraction(ext)]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--etat", action="store_true", help="dit ce qui est en retard, n'appelle rien")
-    ap.add_argument("--plafond", type=int, default=None, help="fiches par passage (défaut : registre, sinon 6)")
-    ap.add_argument("--graphe", help="nom d'un graphe du registre (défaut : le principal)")
-    ap.add_argument(
-        "--seulement",
-        help="expression rationnelle sur le chemin : n'extraire que les fiches en retard qui y répondent "
-        "(rattrapage ciblé, à la main — 09.10.2026 : les deux versions de l'AI Act pour la diachronie)",
-    )
-    args = ap.parse_args()
+def viser(graphe: str | None) -> dict:
+    """Vise un graphe du registre pour ce processus : ses empreintes, ses lots, son nom au registre des coûts et son
+    domaine. Le graphe principal garde les chemins du module. Rend la déclaration du graphe."""
     global EMPREINTES, LOTS, GRAPHE, DOMAINE
-    if args.graphe and args.graphe != cfg.GRAPHE_PRINCIPAL:
-        GRAPHE = args.graphe
-        chemins = cfg.chemins_du_graphe(args.graphe)
+    if graphe and graphe != cfg.GRAPHE_PRINCIPAL:
+        GRAPHE = graphe
+        chemins = cfg.chemins_du_graphe(graphe)
         EMPREINTES, LOTS = chemins["couche2"] / "empreintes.json", chemins["couche2"] / "fiches"
-    decl = cfg.graphe_declare(args.graphe or cfg.GRAPHE_PRINCIPAL)
+    decl = cfg.graphe_declare(graphe or cfg.GRAPHE_PRINCIPAL)
     DOMAINE = decl["domaine"]
-    retard = fiches_en_retard()
-    if args.seulement:
-        motif = re.compile(args.seulement)
-        retard = [(f, h) for f, h in retard if motif.search(str(f.relative_to(RACINE)))]
-    if args.plafond is None:
-        # Le registre donne le plancher (`plafond_couche2`) et la part du stock (`stock_couche2`) ;
-        # le plafond du jour s'en déduit. `--plafond` l'impose tel quel, pour un rattrapage à la main.
-        args.plafond = plafond_du_passage(
-            retard,
-            int(decl.get("plafond_couche2") or PLAFOND),
-            int(decl.get("stock_couche2", STOCK)),
-            time.strftime("%Y-%m-%d"),
-            int(decl.get("plafond_couche2_max", PLAFOND_MAX)),
-        )
-    if not retard:
-        print("  couche 2 à jour : aucune fiche dense nouvelle ou modifiée")
-        return 0
-    print(
-        f"  {len(retard)} fiche(s) dense(s) en retard"
-        + (f", {args.plafond} traitées ce passage" if len(retard) > args.plafond else "")
-    )
-    if args.etat:
-        for f, _ in retard:
-            print(f"    - {f.relative_to(RACINE)}")
-        return 0
+    return decl
 
+
+def faites_du_jour(graphe: str | None, jour: str) -> int:
+    """Combien de fiches le graphe a extraites le jour « AAAA-MM-JJ » : les appels réussis du poste « extraction » au
+    registre des coûts, où le passage continu et la nuit écrivent tous deux."""
+    return sum(
+        1
+        for l in couts.lignes(jour, jour + " 23:59:59")
+        if l.get("poste") == "extraction" and l.get("ok") and l.get("graphe") == (graphe or "principal")
+    )
+
+
+def quota(budget_jour: int, faites: int, maintenant, urgentes: int) -> tuple[int, int]:
+    """Combien de fiches un passage continu extrait, sous un budget de fiches par jour dont `faites` sont déjà
+    extraites : (fiches du fil, autres fiches). Les fiches du fil (`urgentes`) prennent ce qui reste du jour. Les
+    autres ne dépassent pas la part du jour écoulée à `maintenant` : le retard se rattrape au fil de la journée et
+    laisse au fil du soir de quoi extraire ses articles."""
+    reste = max(0, budget_jour - faites)
+    du_fil = min(urgentes, reste)
+    ecoule = (maintenant.hour * 3600 + maintenant.minute * 60 + maintenant.second) / 86400
+    autres = min(reste - du_fil, int(budget_jour * ecoule) - faites - du_fil)
+    return du_fil, max(0, autres)
+
+
+def extraire(retard: list[tuple[Path, str]]) -> dict:
+    """Extrait la couche 2 des fiches données (chemin, empreinte), toutes : le plafond se décide avant. Écrit chaque
+    lot et son empreinte dès la réponse. Rend {faites, echecs, limites} ; `limites` compte les fiches non tentées
+    parce que la limite d'usage est atteinte."""
     LOTS.mkdir(parents=True, exist_ok=True)
     connues = json.loads(EMPREINTES.read_text(encoding="utf-8")) if EMPREINTES.exists() else {}
     faites = echecs = 0
@@ -539,7 +534,7 @@ def main() -> int:
     # appels se chevauchent. Les lots et les empreintes sont écrits par le fil principal.
     limites = 0
     with ThreadPoolExecutor(max_workers=PARALLELE) as pool:
-        futurs = {pool.submit(lire, f): (f, h) for f, h in retard[: args.plafond]}
+        futurs = {pool.submit(lire, f): (f, h) for f, h in retard}
         for fut in as_completed(futurs):
             try:
                 f, h = futurs[fut]
@@ -590,6 +585,53 @@ def main() -> int:
                 )
             finally:
                 places.release()  # le résultat traité, une place s'ouvre
+    return {"faites": faites, "echecs": echecs, "limites": limites}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--etat", action="store_true", help="dit ce qui est en retard, n'appelle rien")
+    ap.add_argument("--plafond", type=int, default=None, help="fiches par passage (défaut : registre, sinon 6)")
+    ap.add_argument("--graphe", help="nom d'un graphe du registre (défaut : le principal)")
+    ap.add_argument(
+        "--seulement",
+        help="expression rationnelle sur le chemin : n'extraire que les fiches en retard qui y répondent "
+        "(rattrapage ciblé, à la main — 09.10.2026 : les deux versions de l'AI Act pour la diachronie)",
+    )
+    args = ap.parse_args()
+    decl = viser(args.graphe)
+    retard = fiches_en_retard()
+    if args.seulement:
+        motif = re.compile(args.seulement)
+        retard = [(f, h) for f, h in retard if motif.search(str(f.relative_to(RACINE)))]
+    if args.plafond is None:
+        # Le registre donne le plancher (`plafond_couche2`) et la part du stock (`stock_couche2`) ;
+        # le plafond du jour s'en déduit. `--plafond` l'impose tel quel, pour un rattrapage à la main.
+        args.plafond = plafond_du_passage(
+            retard,
+            int(decl.get("plafond_couche2") or PLAFOND),
+            int(decl.get("stock_couche2", STOCK)),
+            time.strftime("%Y-%m-%d"),
+            int(decl.get("plafond_couche2_max", PLAFOND_MAX)),
+        )
+        if "couche2_continu_jour" in decl:
+            # Le budget du jour est commun au passage continu et à la nuit : la nuit prend ce qu'il en reste.
+            reste = int(decl["couche2_continu_jour"]) - faites_du_jour(GRAPHE, time.strftime("%Y-%m-%d"))
+            args.plafond = min(args.plafond, max(0, reste))
+    if not retard:
+        print("  couche 2 à jour : aucune fiche dense nouvelle ou modifiée")
+        return 0
+    print(
+        f"  {len(retard)} fiche(s) dense(s) en retard"
+        + (f", {args.plafond} traitées ce passage" if len(retard) > args.plafond else "")
+    )
+    if args.etat:
+        for f, _ in retard:
+            print(f"    - {f.relative_to(RACINE)}")
+        return 0
+
+    bilan = extraire(retard[: args.plafond])
+    faites, echecs, limites = bilan["faites"], bilan["echecs"], bilan["limites"]
     reste = len(retard) - faites
     print(f"  -> {faites} extraite(s), {echecs} échec(s), {reste} encore en retard")
     if limites:

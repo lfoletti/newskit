@@ -764,6 +764,7 @@ def _valider(d: dict, p: Path) -> dict:
             "cortexdb_publie",
             "cerveau_continu",
             "publie",
+            "couche2_continu_jour",
             "cartes_plafond",
             "couche1",
             "depots",
@@ -832,6 +833,10 @@ def _valider(d: dict, p: Path) -> dict:
         ):
             if not isinstance(v.get(cle, False), bool):
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.{cle} : vrai ou faux")
+        if "couche2_continu_jour" in v:
+            budget = v["couche2_continu_jour"]
+            if isinstance(budget, bool) or not isinstance(budget, int) or budget < 0:
+                raise ConfigInvalide(f"{p.name} : graphes.{nom}.couche2_continu_jour : entier positif ou nul")
         if v.get("cerveau_continu") and not v.get("cortexdb"):
             raise ConfigInvalide(f"{p.name} : graphes.{nom}.cerveau_continu demande cortexdb: true")
         et = v.get("etapes")

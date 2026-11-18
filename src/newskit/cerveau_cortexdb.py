@@ -26,6 +26,7 @@ vecteurs laissés par `delete_document_graph`, corrigés en v2.137.0) ; elle ser
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import secrets
@@ -614,14 +615,36 @@ def attendre_encodeur(graphe: str, delai: int = 3 * 3600, pas: int = 60) -> int:
     return attendu
 
 
+@contextlib.contextmanager
+def verrou_du_cerveau(graphe: str, attendre: bool = True):
+    """Un seul écrivain du cerveau servi à la fois : une construction, ou le passage continu (`cerveau_continu`). La
+    construction part d'une copie du cerveau servi ; une écriture faite pendant qu'elle tourne serait perdue. Rend
+    vrai une fois le verrou pris ; faux, sans attendre, si un autre le tient et que `attendre` est faux."""
+    import fcntl  # noqa: PLC0415
+
+    DOSSIER.mkdir(parents=True, exist_ok=True)
+    with open(DOSSIER / f"{graphe}.verrou", "a", encoding="utf-8") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | (0 if attendre else fcntl.LOCK_NB))
+        except OSError:
+            yield False
+            return
+        yield True
+
+
 def construire(
     graphe: str, reprendre_de: list[Path] | None = None, couche1: bool = False, force: str | None = None
 ) -> dict:
-    from newskit import config_sources as cfg  # noqa: PLC0415
-
     attendu = attendre_encodeur(graphe)
     if attendu:
         print(f"  {graphe} : {attendu} s d'attente d'un essai d'encodeur", file=sys.stderr)
+    with verrou_du_cerveau(graphe):  # du clone à la publication ; un passage continu en cours finit d'abord
+        return _construire(graphe, reprendre_de, couche1, force)
+
+
+def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, force: str | None) -> dict:
+    from newskit import config_sources as cfg  # noqa: PLC0415
+
     DOSSIER.mkdir(parents=True, exist_ok=True)
     cible, neuf, cote = chemin_cerveau(graphe), DOSSIER / f"{graphe}.neuf.db", DOSSIER / f"{graphe}.provenance.db"
     journal, p_bilan = DOSSIER / f"{graphe}.log", DOSSIER / f"{graphe}.json"

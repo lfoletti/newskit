@@ -27,7 +27,6 @@ REECRITURES = fil.REECRITURES
 TITRE_MAX = fil.TITRE_MAX
 MOTS_TITRE = lt.MOTS_TITRE
 MOTS_PAR_PHRASE = lt.MOTS_PAR_PHRASE
-SOURCE_MAX = 3000  # caractères de la source donnés au rédacteur et au relecteur
 # « says that » est interdit ; « said » reste permis devant une citation directe (signalement du 9.11.2026).
 RE_SAYS_THAT = re.compile(r"\b(?:says|said|say) that\b", re.IGNORECASE)
 
@@ -35,7 +34,10 @@ LECTEUR = (
     "The reader is a manager in a company, who reads English, is neither a lawyer nor an engineer and does not "
     "know the topic in advance."
 )
-REGLES = f"""Plain English: {MOTS_PAR_PHRASE} words at most per sentence; one subject per sentence, active voice, present or
+REGLES = f"""Angle: the title and the text carry what the source brings to the reader, as its title announces it
+(measures to take, results, recommendations, a decision). An anecdote, a case or a scene that opens the source to
+hook the reader stays context: neither the title nor the first sentence carries it, unless it is the news itself.
+Plain English: {MOTS_PAR_PHRASE} words at most per sentence; one subject per sentence, active voice, present or
 past tense; the conditional only when the source itself presents the fact as a hypothesis, or, in a title, for a fact put forward by one source and not established; one word, one meaning: keep
 the word of the source, no synonym for variety; numbers in figures with their unit ("3,000 start-ups", "$6.43
 billion"); an acronym is spelled out at its first mention, the acronym in brackets, except AI, EU, AI Act, GDPR, OECD.
@@ -88,6 +90,9 @@ Return {{"n": number, "absents": [...], "clair": true or false, "motif": ..., "p
   title and the text do not tell the same fact, or when the text keeps a jargon word the reader does not understand.
   False also when the first sentence of the text only says that someone spoke or that a document came out, or gives
   the venue, the format or the speakers, while the source gives a content: that content must come first.
+  False also when the title carries an anecdote, a case or a scene that opens the source to hook the reader, while
+  the source announces in its title and then develops a contribution (measures to take, results, recommendations):
+  the item must carry that contribution.
 - motif: what stops the reader, in fifteen words at most; empty when the item is clear.
 - pays: the country, or the group of countries, where the fact happens, when the fact belongs to a country (an
   election, a law, an authority, a court, an administration, a study run in a country or by a university of that
@@ -213,7 +218,7 @@ def _juger(
                         "titre": essais[n][0],
                         "texte": essais[n][1],
                         "a_verifier": fil.doutes(*essais[n], lot[n][1]),
-                        "source": fil.extrait(lot[n][0], SOURCE_MAX),
+                        "source": fil.extrait(lot[n][0], fil.source_max(graphe)),
                     },
                     ensure_ascii=False,
                 )
@@ -290,7 +295,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
                         "date": b.get("date") or f.get("date"),
                         "titre": f.get("titre"),
                         **_suite(b),
-                        "source": fil.extrait(b, SOURCE_MAX),
+                        "source": fil.extrait(b, fil.source_max(graphe)),
                     },
                     ensure_ascii=False,
                 )
@@ -331,7 +336,7 @@ def ecrire(lot: list[tuple[dict, dict]], graphe: str) -> tuple[dict[int, dict], 
                             "texte": essais[n][-1][1],
                             "reproches": m,
                             **_suite(lot[n][0]),
-                            "source": fil.extrait(lot[n][0], SOURCE_MAX),
+                            "source": fil.extrait(lot[n][0], fil.source_max(graphe)),
                         },
                         ensure_ascii=False,
                     )

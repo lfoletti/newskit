@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.66] - 2026-11-18
+
+### Modifié
+
+- Les rédacteurs et les relecteurs du fil, en français et en anglais, lisent la source à la même longueur, celle du média : la clé `source_max` de la déclaration du graphe (`fil.source_max`), un entier positif. Sans la clé, ils lisent la source entière. Avant, le rédacteur français lisait 1 200 caractères, le relecteur et la version anglaise 3 000 : un article qui ouvre sur une anecdote ne montrait que l’anecdote au rédacteur français. Les deux langues racontaient alors deux histoires.
+- La longueur se compte après filtrage (`fil.filtrer`) : les images, les adresses des liens (le texte du lien reste), les adresses nues, les balises et les dièses des titres ne comptent plus.
+- Règle d’angle dans les règles par défaut, en français (`lettre.ANGLE`) et en anglais : le titre et le texte portent ce que la source apporte au lecteur, comme son titre l’annonce (mesures à prendre, résultats, recommandations, décision) ; l’anecdote d’ouverture reste du contexte. Les relecteurs français et anglais refusent un titre qui porte cette anecdote.
+
 ## [0.1.65] - 2026-11-18
 
 ### Ajouté

@@ -37,7 +37,6 @@ MOTS_PAR_PHRASE = 30
 # Les textes de fiche ont leur plafond du jour, pris dans celui du fil : les billets neufs passent d'abord (mainteneur,
 # 07.11.2026 ; le matin, les réécritures de textes longs avaient vidé le budget du fil sans un billet). F["depense_fiche"].
 FICHE_USD_JOUR = 3.0  # défaut ; un graphe déclare le sien (fiche_usd_jour)
-SOURCE_MAX = 3000  # caractères de la source : ceux que lit aussi le relecteur (fil.juger)
 
 REDACTION = """Tu écris le texte de la fiche des billets d'un fil d'actualité sur {nom}, en français. Le lecteur a lu
 le titre et le chapeau ; il ouvre la fiche pour en savoir plus, et peut la partager. Pour chaque billet tu reçois le
@@ -455,7 +454,7 @@ def _etoffer(F: dict, graphe: str) -> float:
                         "n": n,
                         "titre": b["titre"],
                         "chapeau": b.get("descriptif") or "",
-                        "source": fil.extrait(b, SOURCE_MAX),
+                        "source": fil.extrait(b, fil.source_max(graphe)),
                         **({"a_corriger": b["fiche"]["reproches"]} if (b.get("fiche") or {}).get("reproches") else {}),
                     },
                     ensure_ascii=False,

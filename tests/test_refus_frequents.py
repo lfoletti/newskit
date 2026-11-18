@@ -106,7 +106,7 @@ def test_la_redaction_des_billets_porte_la_consigne(monkeypatch):
     monkeypatch.setattr(rf, "consigne", lambda g, maintenant=None: "REFUS FREQUENTS\n")
     monkeypatch.setattr(fil.cfg, "graphe_declare", lambda g: {"libelle": "IA"})
     monkeypatch.setattr(fil.cfg, "rubriques", lambda g: [])
-    monkeypatch.setattr(fil, "extrait", lambda f: "source")
+    monkeypatch.setattr(fil, "extrait", lambda f, n=None: "source")
 
     def demander(inv, schema, graphe, note, **k):
         vu["invite"] = inv

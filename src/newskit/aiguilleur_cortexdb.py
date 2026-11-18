@@ -477,10 +477,7 @@ def main() -> int:
 
     def lancer(g, port):
         c = cerveaux[g]
-        if sc.pret(c.chemin).exists():
-            for suffixe in ("-wal", "-shm"):
-                Path(f"{c.chemin}{suffixe}").unlink(missing_ok=True)
-            os.replace(sc.pret(c.chemin), c.chemin)
+        sc.mettre_en_place(c.chemin)
         if c.cles and not c.partage:
             jetons[g] = sc.assurer_cle(c.cles, g)
         vu[g] = etat_cles(g)

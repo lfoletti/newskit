@@ -2,6 +2,16 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [0.1.68] - 2026-11-18
+
+### Modifié
+
+- Pour un graphe qui déclare un arbre des catégories (`arbre_fiches`), le billet trie seulement (`fil.tri_seul`, `fil.CONSIGNE_TRI`) : pertinent, doublon ou suite, rubrique. Il n’écrit ni titre ni texte, en français comme en anglais. Il n’a ni relecture, ni révision des titres, ni complément. Jusqu’à sa fiche, il garde le titre de la source et le début de son texte, qui servent au rapprochement.
+- La fiche écrit le billet : elle lit l’article entier et lui donne son titre et son chapeau dans les deux langues (`fil_fiche._reporter`). Sa relecture adverse est la seule. Elle s’écrit sur le budget de la rédaction, pas sur le budget secondaire.
+- Un billet trié attend sa fiche tenue dans la pile, sans limite de temps (`fil.provisoire`). Une fiche refusée 3 fois, ou une source qui ne se lit plus, retire le billet sans parution (`fil_fiche.sans_fiche_possible`). Le refus va au journal des refus, que `refus_frequents` et `regles_apprises` lisent.
+- La liaison des nouvelles, la relecture des billets d’avant et la version anglaise sautent un billet trié sans fiche tenue.
+- Un graphe sans arbre des catégories garde le billet écrit, relu et traduit. Un billet entré dans la pile avant cette version garde aussi son parcours.
+
 ## [0.1.67] - 2026-11-18
 
 ### Ajouté

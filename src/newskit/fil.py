@@ -202,6 +202,61 @@ SCHEMA = {
     },
 }
 
+# Le billet trie, la fiche écrit (mainteneur, 18.11.2026 : « je préférerais voir une relecture de la fiche, plutôt que
+# du billet »). Pour un graphe à arbre des catégories, la fiche lit l'article entier et donne au billet son titre et son
+# chapeau, dans les deux langues (fil_fiche._reporter) ; sa relecture adverse est la seule. Le billet ne fait que le tri :
+# il garde le titre de la source et le début de son texte jusqu'à sa fiche, et ne paraît pas sans elle (paraitre).
+CONSIGNE_TRI = """Tu tries les fiches d'une veille sur {nom} pour son fil d'actualité. Pour chaque fiche, rends
+{{"n": numéro, "pertinent": vrai ou faux, "doublon_de": numéro d'un billet récent ou -1, "developpement": ...,
+"rubrique": ...}}. Tu n'écris pas le billet : un autre rédacteur l'écrira d'après l'article entier.
+- pertinent : faux si la fiche ne porte pas une nouvelle pour un responsable de la gouvernance de l'IA (publicité,
+  page d'accueil, entrefilet sans fait, sujet hors champ).
+- doublon_de : le numéro d'un billet récent (liste « récents ») qui porte le même événement : la même décision, la
+  même publication, la même enquête, le même incident, même vu par une autre source et sous un autre angle ; sinon -1.
+  Compare les faits (acteurs, nombres, dates), pas les titres. Lis d'abord les billets dont le numéro est dans
+  « proches » : ils partagent des noms ou des nombres avec la fiche.
+- developpement : vide, sauf quand doublon_de n'est pas -1 et que la fiche apporte un fait survenu après le billet
+  récent (une décision prise, une réaction officielle datée, un chiffre publié ensuite) : ce fait, en une phrase. Une
+  fiche qui redit le billet récent a un developpement vide.
+- rubrique : celle du fait, exactement un de ces noms : {rubriques}.
+Rends l'objet {{"billets": [...]}}.
+
+Récents :
+{recents}
+
+Fiches :
+{fiches}"""
+SCHEMA_TRI = {
+    "type": "object",
+    "required": ["billets"],
+    "properties": {
+        "billets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["n", "pertinent", "doublon_de"],
+                "properties": {
+                    "n": {"type": "integer"},
+                    "pertinent": {"type": "boolean"},
+                    "doublon_de": {"type": "integer"},
+                    "developpement": {"type": "string"},
+                    "rubrique": {"type": "string"},
+                },
+            },
+        }
+    },
+}
+
+
+def tri_seul(graphe: str) -> bool:
+    """Vrai pour un graphe qui déclare un arbre des catégories : sa fiche écrit le billet, le billet trie seulement."""
+    return bool(cfg.graphe_declare(graphe).get("arbre_fiches"))
+
+
+def provisoire(b: dict) -> bool:
+    """Un billet trié dont la fiche n'est pas encore tenue : son titre et son texte sont ceux de la source."""
+    return bool(b.get("tri")) and (b.get("fiche") or {}).get("tenu") is not True
+
 
 def chemin_fil(graphe: str) -> Path:
     return cfg.chemins_du_graphe(graphe)["base"] / "fil.json"
@@ -1063,9 +1118,10 @@ def reviser_titres(billets: list[dict], graphe: str) -> float:
 
 def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dict], float]:
     nom = cfg.graphe_declare(graphe).get("libelle") or graphe
-    inv = CONSIGNE.format(
+    tri = tri_seul(graphe)
+    inv = (CONSIGNE_TRI if tri else CONSIGNE).format(
         nom=nom,
-        regles=lt.regles(graphe) + rf.consigne(graphe),  # les refus fréquents dès la première rédaction
+        regles="" if tri else lt.regles(graphe) + rf.consigne(graphe),  # les refus fréquents dès la première rédaction
         rubriques=", ".join(r["nom"] for r in cfg.rubriques(graphe) or []) or "(aucune)",
         recents="\n".join(
             f"{i}. {b['titre']} — {str(b.get('descriptif') or '')[:RECENT_MAX]}" for i, b in enumerate(recents)
@@ -1086,7 +1142,7 @@ def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dic
             for i, f in enumerate(lot)
         ),
     )
-    brut, cout = demander(inv, SCHEMA, graphe, "titres")
+    brut, cout = demander(inv, SCHEMA_TRI if tri else SCHEMA, graphe, "tri" if tri else "titres")
     return brut.get("billets") or [], cout
 
 
@@ -1178,7 +1234,7 @@ SCHEMA_LIAISON = {
 
 def a_lier(F: dict) -> list[dict]:
     """Les nouvelles du registre pas encore comparées aux autres, dans l'ordre du registre."""
-    return [b for b in nv.toutes(F) if not b.get("contexte_juge")]
+    return [b for b in nv.toutes(F) if not b.get("contexte_juge") and not provisoire(b)]
 
 
 def lier(F: dict, graphe: str) -> float:
@@ -1773,7 +1829,11 @@ def paraitre(graphe: str, F: dict) -> int:
     from newskit import fil_fiche  # noqa: PLC0415 — fil_fiche importe ce module
 
     quand = maintenant()
+    retires = [b for b in F["pile"] if fil_fiche.sans_fiche_possible(b)]
+    journaliser_refus(graphe, [fil_fiche.refus_de_fiche(b) for b in retires])
+    F["pile"] = [b for b in F["pile"] if not any(b is x for x in retires)]
     attente = fil_fiche.en_attente(F, graphe, quand)
+    attente += [b for b in F["pile"] if provisoire(b) and not any(b is x for x in attente)]
     F["pile"] = [b for b in F["pile"] if not any(b is x for x in attente)]
     n = liberer(F, quand, cadence_du_moment(graphe, len(F["pile"]), quand), fil_max(graphe))
     F["pile"] = F["pile"] + attente
@@ -1802,7 +1862,7 @@ def enrichir(b: dict) -> None:
 
 def a_relire(F: dict) -> list[dict]:
     """Les billets, en attente ou parus, que la relecture n'a pas encore jugés (champ `tenu`)."""
-    return [b for b in F["pile"] + F["billets"] if "tenu" not in b]
+    return [b for b in F["pile"] + F["billets"] if "tenu" not in b and not b.get("tri")]
 
 
 PART_SECONDAIRE = 0.8  # part du plafond du jour au-delà de laquelle seules la rédaction et l'anglais tournent
@@ -1888,12 +1948,13 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     proposer(lot, F, recents, textes)
     reps, cout_r = rediger(lot, recents, graphe) if lot else ([], 0.0)
     cout += cout_r
+    tri = tri_seul(graphe)
     neufs = []
     for r in reps:
         if not (0 <= r.get("n", -1) < len(lot)):
             continue
         f = lot[r["n"]]
-        if not r.get("pertinent") or not r.get("texte"):
+        if not r.get("pertinent") or not (tri or r.get("texte")):
             continue
         k, suite = r.get("doublon_de", -1), {}
         if 0 <= k < len(recents):  # le même événement : une source de plus, ou un développement
@@ -1910,8 +1971,12 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
             continue
         neufs.append(
             {
-                "titre": r["titre"],
-                "descriptif": r["texte"],
+                # Trié : le titre et le début de la source servent au rapprochement jusqu'à la fiche.
+                **(
+                    {"titre": f["titre"], "descriptif": extrait(f, RECENT_MAX), "tri": True}
+                    if tri
+                    else {"titre": r["titre"], "descriptif": r["texte"]}
+                ),
                 "rubrique": rubrique,
                 "chemin": f["chemin"],
                 "url": f["url"],
@@ -1925,13 +1990,15 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
                 **suite,
             }
         )
-    anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(neufs))]
-    cout += relire(neufs + anciens, graphe)  # avant le complément : il part du billet relu
-    fondre_sans_angle(F, neufs + anciens)  # une suite sans angle : une source de plus de sa nouvelle
+    ecrits = [b for b in neufs if not b.get("tri")]  # un billet trié n'a pas de texte à relire : la fiche l'écrira
+    anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(ecrits))]
+    cout += relire(ecrits + anciens, graphe)  # avant le complément : il part du billet relu
+    fondre_sans_angle(F, ecrits + anciens)  # une suite sans angle : une source de plus de sa nouvelle
     neufs = [b for b in neufs if b.get("tenu") is not False]  # sans titre ni texte qui tienne : pas de billet
-    cout += reviser_titres(neufs, graphe)  # trois titres, puis un juge (mainteneur, 9.11.2026)
-    cout += completer(neufs, graphe, max(0.0, reste - cout))
-    for b in neufs + [x for x in anciens if x.get("relecture")]:  # le billet relu entre à la fiche, donc au graphe
+    ecrits = [b for b in neufs if not b.get("tri")]
+    cout += reviser_titres(ecrits, graphe)  # trois titres, puis un juge (mainteneur, 9.11.2026)
+    cout += completer(ecrits, graphe, max(0.0, reste - cout))
+    for b in ecrits + [x for x in anciens if x.get("relecture")]:  # le billet relu entre à la fiche, donc au graphe
         enrichir(b)
     F["pile"] = neufs + F["pile"]  # un billet rédigé attend son tour
 
@@ -1943,7 +2010,9 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     # La version anglaise, d'après la source, jusqu'au plafond comme la rédaction : sans elle, le billet ne paraît pas
     # (publier_fil.aligne ; mainteneur, 11.11.2026, option A).
     cout += fil_anglais().anglais(F, graphe, max(0.0, reste - cout))
-    cout += fil_fiche.etoffer(F, graphe, sec())  # le texte long de la fiche, d'après la source
+    # Le texte long de la fiche, d'après la source. Quand la fiche écrit le billet (tri_seul), elle passe sur le budget
+    # de la rédaction : sans elle, le billet ne paraît pas.
+    cout += fil_fiche.etoffer(F, graphe, max(0.0, reste - cout) if tri else sec())
     parus += paraitre(graphe, F)
     # Lue : le modèle a répondu sur la fiche. Une fiche sans réponse (appel échoué) reste à lire : « lue sans
     # nouvelle » veut dire « écartée » pour la lettre (nouvelles.ecartees).

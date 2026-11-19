@@ -8,10 +8,13 @@ contenu :
     procedes:
       papier:                                    # le type de contenu
         contenu: {champ: arxiv_id}               # les fiches dont l'en-tête porte ce champ
-        texte: {integral: true, mots_max: 45000} # le texte intégral du document, coupé à mots_max mots
+        texte:                                   # le texte intégral, coupé à mots_max mots
+          integral: true
+          adresse: "https://arxiv.org/pdf/{arxiv_id}"   # le PDF, d'après l'en-tête ; un champ `pdf` l'emporte
+          mots_max: 45000
         convention: ontologie.yaml               # obligatoire : types de nœuds et relations admis
         passes:                                  # dans l'ordre d'exécution
-          lecture: {consigne: procedes/lecture.txt, sortie: corps}       # la réponse devient le corps de la fiche
+          lecture: {consigne: procedes/lecture.txt, sortie: corps, mots_min: 500}  # la réponse devient le corps
           procede: {consigne: procedes/procede.txt, forme: etapes}       # la réponse suit une forme du moteur
           architecture: {consigne: procedes/archi.txt, forme: composants, tri: procedes/tri.txt}
         extraction: {volume: procedes/volume.txt}  # la consigne de volume de la couche 2 pour ce contenu
@@ -44,7 +47,7 @@ FORMES = {
 MENTIONS = ("mentions", "uses")  # du document, d'une étape, vers une notion canonique que son texte nomme
 NOM = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")  # un type de contenu, une passe, un type ou une relation
 CHAMPS = {"contenu", "texte", "convention", "passes", "extraction", "mentions", "appel"}
-PASSE = {"consigne", "sortie", "forme", "tri"}
+PASSE = {"consigne", "sortie", "forme", "tri", "mots_min"}
 
 
 def _fichier(racine: Path, chemin, ou: str) -> Path:
@@ -103,9 +106,13 @@ def _passe(nom, p, racine: Path, ou: str) -> dict:
         raise ValueError(f"{ou} : sortie parmi {list(SORTIES)}, lu {p['sortie']!r}")
     if "forme" in p and p["forme"] not in FORMES:
         raise ValueError(f"{ou} : forme parmi {sorted(FORMES)}, lu {p['forme']!r}")
+    mots_min = p.get("mots_min", 1)
+    if isinstance(mots_min, bool) or not isinstance(mots_min, int) or mots_min < 0:
+        raise ValueError(f"{ou}.mots_min : un entier positif ou nul, lu {mots_min!r}")
     return {
         "nom": nom,
         "consigne": _fichier(racine, p.get("consigne"), f"{ou}.consigne"),
+        "mots_min": mots_min,
         "sortie": p.get("sortie"),
         "forme": p.get("forme"),
         "tri": _fichier(racine, p["tri"], f"{ou}.tri") if "tri" in p else None,
@@ -124,8 +131,11 @@ def _type_de_contenu(nom, v, racine: Path) -> dict:
         raise ValueError(f"{nom}.convention : obligatoire, un procédé sans convention se refuse")
     conv = convention(_fichier(racine, v["convention"], f"{nom}.convention"))
     t = v.get("texte", {})
-    if not isinstance(t, dict) or set(t) - {"integral", "mots_max"}:
-        raise ValueError(f"{nom}.texte : {{integral, mots_max}} attendu, lu {t!r}")
+    if not isinstance(t, dict) or set(t) - {"integral", "adresse", "mots_max"}:
+        raise ValueError(f"{nom}.texte : {{integral, adresse, mots_max}} attendu, lu {t!r}")
+    adresse = t.get("adresse")
+    if adresse is not None and (not isinstance(adresse, str) or not re.match(r"^https?://\S+$", adresse)):
+        raise ValueError(f"{nom}.texte.adresse : une adresse http(s), champs d'en-tête entre accolades, lu {adresse!r}")
     integral, mots = t.get("integral", True), t.get("mots_max", MOTS_MAX)
     if not isinstance(integral, bool):
         raise ValueError(f"{nom}.texte.integral : vrai ou faux")
@@ -158,7 +168,7 @@ def _type_de_contenu(nom, v, racine: Path) -> dict:
         raise ValueError(f"{nom}.appel : parmi {list(APPELS)}, lu {appel!r}")
     return {
         "contenu": {"champ": c["champ"]},
-        "texte": {"integral": integral, "mots_max": mots},
+        "texte": {"integral": integral, "adresse": adresse, "mots_max": mots},
         "convention": conv,
         "passes": passes,
         "extraction": {"volume": volume},

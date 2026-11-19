@@ -82,11 +82,12 @@ def test_sans_declaration_rien():
 def test_une_declaration_complete_se_lit_dans_l_ordre_des_passes(media):
     d = procedes.declaration(complet(), media)["papier"]
     assert d["contenu"] == {"champ": "arxiv_id"}
-    assert d["texte"] == {"integral": True, "mots_max": 45000}
+    assert d["texte"] == {"integral": True, "adresse": None, "mots_max": 45000}
     assert [p["nom"] for p in d["passes"]] == ["lecture", "procede", "architecture"]
     assert d["passes"][0] == {
         "nom": "lecture",
         "consigne": media / "procedes/lecture.txt",
+        "mots_min": 1,
         "sortie": "corps",
         "forme": None,
         "tri": None,
@@ -103,7 +104,7 @@ def test_les_valeurs_par_defaut(media):
     for k in ("texte", "extraction", "mentions", "appel"):
         del decl["papier"][k]
     d = procedes.declaration(decl, media)["papier"]
-    assert d["texte"] == {"integral": True, "mots_max": procedes.MOTS_MAX}
+    assert d["texte"] == {"integral": True, "adresse": None, "mots_max": procedes.MOTS_MAX}
     assert d["extraction"] == {"volume": None}
     assert d["mentions"] is False and d["appel"] == "claude_p"
 

@@ -2,6 +2,14 @@
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les versions suivent [SemVer](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Corrigé
+
+- Le contrôle de la nuit ne remplace plus les documents que le passage continu a versés le jour. Le puits (`puits_cortexdb --couche1`) calcule la couche 1 de chaque fiche comme le passage continu, par `CoucheUn` : le squelette du graphe et la structure des titres de la fiche. Il la tirait du graphe composé, qui range les extrémités d’une arête dans un ordre à lui, fond des titres de même libellé et donne une arête à une seule de deux fiches : une fiche inchangée avait rarement la même empreinte des deux côtés. Le premier contrôle qui suit cette version remplace une fois les documents du cerveau.
+- `puits_cortexdb.couche1_par_fiche` suit le sens d’une arête du graphe composé (`_src`, `_tgt`).
+- `CoucheUn.d_une_fiche` ne parcourt que les nœuds du squelette que la fiche touche. Un lien de la fiche vers un fichier hors du graphe ne compte plus parmi les arêtes sans extrémité.
+
 ## [0.1.78] - 2026-11-18
 
 ### Ajouté

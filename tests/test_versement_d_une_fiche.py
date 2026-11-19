@@ -227,6 +227,8 @@ def test_le_puits_de_la_nuit_rend_la_meme_empreinte(fiche_sur_disque, tmp_path, 
     monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": base, "graphe": base / "graphe.json"})
     monkeypatch.setattr(cfg, "charger_droits_auteurs", lambda: None)
     monkeypatch.setattr(pc, "lots_du_graphe", lambda g: [lot_p])
+    monkeypatch.setattr(pc, "squelette_du_graphe", lambda g: copy.deepcopy(SQUELETTE))
+    monkeypatch.setattr(pc, "structure_de", lambda source: None)
     apres = tmp / "apres.json"
     apres.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(

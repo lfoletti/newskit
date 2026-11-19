@@ -504,7 +504,8 @@ def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None =
         producteur = PRODUCTEURS_COMPOSES.get(a.get("_origin"))
         if producteur is None:
             continue
-        bouts = [noeuds.get(a["source"]), noeuds.get(a["target"])]
+        # la composition range `source` et `target` dans un ordre à elle : `_src` et `_tgt` gardent le sens de l'arête
+        bouts = [noeuds.get(a.get("_src", a["source"])), noeuds.get(a.get("_tgt", a["target"]))]
         if any(b is None or de_balisage(b.get("label", "")) for b in bouts):
             ecartes["arete_sans_extremite"] += 1
             continue
@@ -547,15 +548,16 @@ class CoucheUn:
     """La couche 1 d'une fiche sans graphe composé : le squelette entier (`extraire_squelette.construire`), préparé une
     fois par passage, puis la structure des titres de chaque fiche (`structure_titres.extraire`). Sur une fiche, le
     squelette fait foi : la structure perd le balisage de ses titres et le nœud qui redécrit la fiche, par les règles de
-    la composition (`fusionner_graphe`). Le graphe composé de la nuit peut encore différer : identifiants départagés
-    entre deux fiches, arête gagnée par une fiche ancienne ; le contrôle quotidien remplace alors le document."""
+    la composition (`fusionner_graphe`). Le puits de la nuit et le passage continu passent tous deux par ici : une fiche
+    inchangée garde son empreinte de l'un à l'autre. `ecartes` compte les arêtes écartées au fil des fiches."""
 
     def __init__(self, squelette: dict, racine: Path, alias: dict[str, str] | None = None):
         from newskit import fusionner_graphe as fg  # noqa: PLC0415 — networkx : absent du venv du client gRPC
 
         self.fg, self.racine, self.alias = fg, racine, alias or {}
         self.noeuds = squelette.get("nodes") or []
-        self.ids = {n["id"] for n in self.noeuds}
+        self.par_id = {n["id"]: n for n in self.noeuds}
+        self.ids = set(self.par_id)
         self.titres: dict[str, str] = {}
         self.fiches: set[str] = set()
         for n in self.noeuds:
@@ -565,6 +567,8 @@ class CoucheUn:
         self.aretes: dict[str, list[dict]] = {}
         for a in squelette.get("edges") or []:
             self.aretes.setdefault(self._source(a), []).append(a)
+        # une arête sans fiche du dépôt n'entre dans aucun versement
+        self.ecartes = {"arete_sans_extremite": 0, "fiche_hors_depot": len(self.aretes.pop("", [])), "boucle": 0}
 
     def _source(self, x: dict) -> str:
         try:
@@ -580,8 +584,18 @@ class CoucheUn:
         st["edges"] = [dict(a) for a in (structure or {}).get("edges") or []]
         self.fg.nettoyer_titres(st)
         self.fg.fondre_doublons_de_fiche(st, self.ids, self.titres, "structure")
-        compose = {"nodes": [*self.noeuds, *st["nodes"]], "links": [*self.aretes.get(source, []), *st["edges"]]}
-        return couche1_par_fiche(compose, self.racine, self.alias)[0].get(source) or {"entites": [], "relations": []}
+        # Un lien de la fiche vers un fichier que le graphe ne porte pas n'est pas une arête : la composition ne la
+        # garde pas non plus, et elle n'entre pas au compte des arêtes sans extrémité.
+        connus = self.ids | {n["id"] for n in st["nodes"]}
+        liens = [a for a in st["edges"] if a.get("relation") != "references" or a["target"] in connus]
+        aretes = [*self.aretes.get(source, []), *liens]
+        # les seuls nœuds du squelette que la fiche touche : le squelette entier, par fiche, coûterait la nuit
+        bouts = dict.fromkeys(i for a in aretes for i in (a["source"], a["target"]) if i in self.par_id)
+        compose = {"nodes": [*(self.par_id[i] for i in bouts), *st["nodes"]], "links": aretes}
+        par_fiche, ecartes = couche1_par_fiche(compose, self.racine, self.alias)
+        for k, n in ecartes.items():
+            self.ecartes[k] += n
+        return par_fiche.get(source) or {"entites": [], "relations": []}
 
 
 def couche1_d_une_fiche(
@@ -589,6 +603,20 @@ def couche1_d_une_fiche(
 ) -> dict | None:
     """La couche 1 d'une seule fiche (`CoucheUn`, qui prépare le squelette une fois pour plusieurs fiches)."""
     return CoucheUn(squelette, racine, alias).d_une_fiche(source, structure)
+
+
+def squelette_du_graphe(graphe: str) -> dict:
+    """Le squelette du graphe, tiré de ses fiches (`extraire_squelette.construire`)."""
+    from newskit import extraire_squelette as ex  # noqa: PLC0415
+
+    return ex.construire(graphe)[0]
+
+
+def structure_de(source: str) -> dict:
+    """La structure des titres d'une fiche (`structure_titres.extraire`)."""
+    from newskit import structure_titres as st  # noqa: PLC0415
+
+    return st.extraire([RACINE / source], RACINE)
 
 
 def versement_d_une_fiche(
@@ -1024,14 +1052,38 @@ def main() -> int:
     alias_p = base / "alias.json"
     alias = alias_par_identifiant(json.loads(alias_p.read_text(encoding="utf-8"))) if alias_p.exists() else {}
     lots = lots_du_graphe(args.graphe)
-    chemin_graphe = cfg.chemins_du_graphe(args.graphe).get("graphe")
-    graphe = (
-        json.loads(Path(chemin_graphe).read_text(encoding="utf-8"))
-        if chemin_graphe and Path(chemin_graphe).exists()
-        else {}
-    )
-    canon = canon_squelette(graphe) if args.couche1 else None
-    couche1, ecartes1 = couche1_par_fiche(graphe, RACINE, alias) if args.couche1 else ({}, {})
+    if args.couche1:
+        # Le squelette et la structure des titres, fiche par fiche, comme le passage continu (`cerveau_continu`) : le
+        # graphe composé donne à une fiche d'autres relations (extrémités rangées, titres fondus, arête gagnée par
+        # une fiche ancienne), et la nuit remplaçait presque chaque document versé le jour.
+        squelette = squelette_du_graphe(args.graphe)
+        graphe = {"nodes": squelette.get("nodes") or []}
+        canon = canon_squelette(graphe)
+        preparee = CoucheUn(squelette, RACINE, alias)
+    else:
+        chemin_graphe = cfg.chemins_du_graphe(args.graphe).get("graphe")
+        graphe = (
+            json.loads(Path(chemin_graphe).read_text(encoding="utf-8"))
+            if chemin_graphe and Path(chemin_graphe).exists()
+            else {}
+        )
+        canon = preparee = None
+    calculees: dict[str, int] = {}
+    faites: set[str] = set()
+
+    def couche1(source: str) -> dict | None:
+        """La couche 1 de la fiche ; rien pour un graphe sans couche 1."""
+        if preparee is None:
+            return None
+        c = preparee.d_une_fiche(source, structure_de(source))
+        calculees[source] = len((c or {}).get("relations") or [])
+        return c
+
+    def versee(source: str) -> None:
+        """La fiche a son document : sa couche 1 entre au bilan."""
+        faites.add(source)
+        bilan["couche1_relations"] += calculees.pop(source, 0)
+
     if args.limite:
         lots = lots[: args.limite]
     bilan = {
@@ -1047,7 +1099,6 @@ def main() -> int:
         "arete_sans_extremite": 0,
         "couche1_relations": 0,
         "couche1_sans_document": 0,
-        **{f"couche1_{k}": n for k, n in ecartes1.items()},
     }
     avec_lot: set[str] = set()
     droits = cfg.charger_droits_auteurs()
@@ -1076,7 +1127,7 @@ def main() -> int:
             source = relatif(lot["nodes"][0]["source_file"], RACINE)
             avec_lot.add(source)
             try:
-                v = versement_d_une_fiche(source, lot, couche1.get(source), alias, canon, droits, RACINE)
+                v = versement_d_une_fiche(source, lot, couche1(source), alias, canon, droits, RACINE)
             except LotInvalide as e:
                 bilan["invalides"] += 1
                 print(f"  !! {p.name} : {e}", file=sys.stderr)
@@ -1086,7 +1137,7 @@ def main() -> int:
                 continue
             for cle, n in v["ecartes"].items():
                 bilan[cle] += n
-            bilan["couche1_relations"] += len((couche1.pop(source, None) or {}).get("relations") or [])
+            versee(source)
             for cle, n in versement(v).items():
                 bilan[cle] += n
             bilan["verses"] += 1
@@ -1094,11 +1145,11 @@ def main() -> int:
                 print(f"  {k}/{len(lots)} ({time.time() - t0:.0f} s)", flush=True)
         if graphe and not args.limite:
             for source in fiches_sans_lot(graphe, avec_lot, RACINE):
-                v = versement_d_une_fiche(source, None, couche1.get(source), alias, canon, droits, RACINE)
+                v = versement_d_une_fiche(source, None, couche1(source), alias, canon, droits, RACINE)
                 if v is None:
                     bilan["fiche_absente"] += 1
                     continue
-                bilan["couche1_relations"] += len((couche1.pop(source, None) or {}).get("relations") or [])
+                versee(source)
                 for cle, n in versement(v).items():
                     bilan[cle] += n
                 bilan["sans_lot"] += 1
@@ -1121,8 +1172,10 @@ def main() -> int:
             ep.retirer_absents()
             if args.empreintes_apres and not args.compter:
                 args.empreintes_apres.write_text(json.dumps(ep.apres, ensure_ascii=False), encoding="utf-8")
-    if args.couche1 and not args.limite:  # une couche 1 sans document : sa fiche n'est pas au cerveau
-        bilan["couche1_sans_document"] = sum(len(x["relations"]) for x in couche1.values())
+    if preparee is not None:
+        bilan.update({f"couche1_{k}": n for k, n in preparee.ecartes.items()})
+        if not args.limite:  # une couche 1 sans document : sa fiche n'est pas au cerveau
+            bilan["couche1_sans_document"] = sum(len(a) for s, a in preparee.aretes.items() if s not in faites)
     bilan["duree_s"] = round(time.time() - t0, 1)
     print(json.dumps(bilan, ensure_ascii=False))
     return 0 if not bilan["invalides"] else 1

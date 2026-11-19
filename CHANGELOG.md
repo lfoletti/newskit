@@ -4,6 +4,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- Une source prolixe déclare sa série au registre : `serie: {theme, heure}`. Le thème tient en une phrase. L'heure
+  s'écrit « HH:MM » entre guillemets. Ses fiches ne font plus chacune un billet. Elles attendent l'heure dite, puis le
+  fil écrit un seul billet groupé pour le jour (`fil_serie`) : un titre et un chapeau écrits chaque jour, puis pour
+  chaque article un titre court, deux ou trois phrases et son lien, en français et en anglais. Le billet groupé entre
+  au fil à son heure, sans attendre dans la pile. Sa page liste les articles avec un lien « Lire l'article ».
+- Le modèle classe chaque article dans le thème de la série ou hors de lui. Un article hors du thème suit la voie
+  ordinaire dans le même passage, comme celui de toute source. Un seul article du thème ne fait pas un groupe.
+- Les fiches ne changent pas : chaque article entre au graphe, avec son titre court et son texte à l'en-tête.
+- Un billet groupé compte 25 articles au plus. Une fiche arrivée après le billet du jour rejoint celui du lendemain.
+  Une réponse incomplète du modèle ne fait pas de billet. L'essai se reprend une heure plus tard.
+
 ## [0.1.80] - 2026-11-19
 
 ### Ajouté

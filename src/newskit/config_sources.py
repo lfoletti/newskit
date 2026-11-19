@@ -63,6 +63,7 @@ COMMUNS_FACULTATIFS = {
     "nature",
     "muette",
     "collecte",
+    "serie",
 }
 # Les plateformes dont le collecteur lit `collecte: false` (collecte_rss) ; ailleurs la clé est refusée, pour qu'elle
 # ne reste pas sans effet.
@@ -269,6 +270,7 @@ class Source:
     masque: list = field(default_factory=list)  # portées dont le contenu n'est pas publié
     muette: dict = field(default_factory=dict)  # cause déclarée d'un silence : {cause, le, code?} (CAUSES_MUETTE)
     collecte: bool = True  # faux : la source reste déclarée, son dossier et ses fiches restent, rien de neuf n'entre
+    serie: dict = field(default_factory=dict)  # source prolixe : {theme, heure}, un billet groupé par jour au fil
 
     @property
     def payant(self) -> bool:
@@ -305,6 +307,23 @@ def valider_muette(brut, ou: str) -> dict:
     if (cause == "refus d'accès") != ("code" in brut):
         raise ConfigInvalide(f"{ou} : un refus d'accès porte son code HTTP, et seul lui")
     return {"cause": cause, "le": le, **({"code": int(brut["code"])} if "code" in brut else {})}
+
+
+def valider_serie(brut, ou: str) -> dict:
+    """`serie: {theme, heure}` : le thème de la série en une phrase, et l'heure locale « HH:MM » du billet groupé du
+    jour. Une source prolixe publie plusieurs articles par jour sur un même thème ; le fil les réunit en un billet."""
+    if not isinstance(brut, dict):
+        raise ConfigInvalide(f"{ou} : serie doit être un bloc {{theme, heure}}")
+    theme, heure = brut.get("theme"), brut.get("heure")
+    if not isinstance(theme, str) or not theme.strip():
+        raise ConfigInvalide(f"{ou} : serie.theme attend une phrase")
+    if not isinstance(heure, str):
+        raise ConfigInvalide(f"{ou} : serie.heure attend « HH:MM » entre guillemets (YAML lit 15:00 comme un nombre)")
+    if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", heure):
+        raise ConfigInvalide(f"{ou} : serie.heure « {heure} » hors du format HH:MM")
+    if set(brut) - {"theme", "heure"}:
+        raise ConfigInvalide(f"{ou} : serie n'admet que theme, heure")
+    return {"theme": theme.strip(), "heure": heure}
 
 
 def valider_boites(brut, ou: str) -> dict:
@@ -381,6 +400,12 @@ def reservee(source: Source | None, entete: dict) -> bool:
 def fiche_publiable(source: Source | None, entete: dict, droits: dict | None = None, portee: str = "extraits") -> bool:
     """Le texte d'une fiche peut-il être servi ? Sa source, et chacun des auteurs de son champ `author`."""
     return contenu_publiable(source, portee, commun.separer_auteurs(entete.get("author")), droits)
+
+
+def serie_du_chemin(relatif: str) -> Source | None:
+    """La source de la fiche si elle déclare une série (`serie` au registre), sinon rien."""
+    s = source_du_chemin(relatif)
+    return s if s is not None and s.serie else None
 
 
 def source_du_chemin(relatif: str) -> Source | None:
@@ -629,6 +654,7 @@ def _valider(d: dict, p: Path) -> dict:
             valider_date_adresse(s["date_adresse"], ou)
         masque = valider_masque(s["masque"], ou) if "masque" in s else []
         muette = valider_muette(s["muette"], ou) if "muette" in s else {}
+        serie = valider_serie(s["serie"], ou) if "serie" in s else {}
         if "collecte" in s and not isinstance(s["collecte"], bool):
             raise ConfigInvalide(f"{ou} : collecte « {s['collecte']} » : vrai ou faux")
         if s.get("collecte") is False and plat not in COLLECTE_ARRETABLE:
@@ -669,6 +695,7 @@ def _valider(d: dict, p: Path) -> dict:
                 masque=masque,
                 muette=muette,
                 collecte=s.get("collecte", True),
+                serie=serie,
             )
         )
 

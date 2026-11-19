@@ -45,7 +45,13 @@ def _typo(p: dict) -> dict:
     fr = {k: lt.typographie(p[k], "fr") for k in ("titre", "descriptif", "fiche", "resume", "categorie")}
     en = {k: lt.typographie(p[k], "en") for k in ("titre_en", "descriptif_en", "resume_en", "categorie_en")}
     els = {
-        k: [{c: lt.typographie(e[c], lg) for c in ("champ", "texte")} for e in p[k]]
+        k: [
+            {
+                **{c: lt.typographie(e[c], lg) for c in ("champ", "texte")},
+                **({"lien": e["lien"]} if e.get("lien") else {}),
+            }
+            for e in p[k]
+        ]
         for k, lg in (("elements", "fr"), ("elements_en", "en"))
     }
     tetes = {
@@ -100,6 +106,20 @@ def _champs(F: dict) -> list[dict]:
 def elements(b: dict) -> dict:
     """La fiche au format résumé, catégorie, éléments, dans les deux langues ; les citations restent internes. Vide pour une
     fiche d'avant ce format ou refusée."""
+    articles = b.get("articles") or []
+    if articles:  # un billet groupé (fil_serie) : un élément par article, avec son lien
+        vide = {
+            "resume": "",
+            "categorie": "",
+            "resume_en": "",
+            "categorie_en": "",
+            "auteur": "",
+            "meta": [],
+            "meta_en": [],
+        }
+        fr = [{"champ": a["titre"], "texte": a["texte"], "lien": a["url"]} for a in articles]
+        en = [{"champ": a["en"]["titre"], "texte": a["en"]["texte"], "lien": a["url"]} for a in articles]
+        return {**vide, "elements": fr, "elements_en": en}
     f = b.get("fiche") or {}
     tenue = f if f.get("tenu") is True else {}
     en = tenue.get("en") or {}

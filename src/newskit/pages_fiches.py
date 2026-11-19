@@ -105,6 +105,7 @@ MOIS = {
 }
 LOCALES = {"fr": "fr_FR", "en": "en_US"}
 D_APRES = {"fr": "D’après", "en": "Based on"}
+LIRE = {"fr": "Lire l’article", "en": "Read the article"}
 LIGATURES = str.maketrans({"œ": "oe", "Œ": "oe", "æ": "ae", "Æ": "ae", "ß": "ss", "ø": "o", "Ø": "o", "đ": "d"})
 
 
@@ -250,6 +251,8 @@ def article(p: dict, langue: str, site: str) -> str:
     for e in p.get("elements" + s) or []:
         morceaux.append(f"<h2>{_e(e['champ'])}</h2>")
         morceaux.extend(f"<p>{_e(x)}</p>" for x in str(e["texte"]).split("\n\n") if x.strip())
+        if e.get("lien"):  # un article d'un billet groupé (fil_serie)
+            morceaux.append(f'<p><a href="{_e(e["lien"])}">{LIRE[langue]}</a></p>')
     morceaux.append("</article>")
     return "\n".join(morceaux) + "\n"
 

@@ -25,6 +25,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 - La passe `sortie: corps` devient le corps de la fiche, sous son titre : la fiche change d'empreinte et repasse en
   couche 2. Un refus du modèle note la fiche dans `manquants.json` ; une passe réussie l'en retire. Les passes à forme
   attendent leur forme.
+- La couche 2 d'une fiche d'un type de contenu déclaré suit la convention du média. Chaque nœud reçoit sa nature,
+  un champ du schéma, parmi les types de la convention ; une nature hors convention se retire. Les relations de la
+  convention s'ajoutent à celles du moteur. La consigne de volume du média (`extraction.volume`) remplace celle du
+  moteur ; elle nomme entre accolades un champ de l'en-tête, `cle_id` ou `court` (nom du premier auteur et année).
+  Une fiche hors de tout type garde la consigne et le schéma du moteur, à l'identique.
 - `extraire_concepts.fiches_lues` donne les fiches que lit la couche 2, sans regard à leur empreinte.
 
 ## [0.1.81] - 2026-11-19

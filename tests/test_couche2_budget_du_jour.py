@@ -39,7 +39,7 @@ def atelier(tmp_path, monkeypatch):
     monkeypatch.setattr(ec, "fiches_en_retard", lambda: fiches)
     monkeypatch.setattr(ec, "prompt_de", lambda f: ({"titre": f.stem}, f.stem))
     monkeypatch.setattr(
-        ec, "appeler_claude", lambda invite: appels.append(invite) or ({"nodes": [{"id": "n"}], "edges": []}, "")
+        ec, "appeler_claude", lambda invite, *a: appels.append(invite) or ({"nodes": [{"id": "n"}], "edges": []}, "")
     )
     monkeypatch.setattr(ec, "normaliser_extraction", lambda ext, f, champs: (ext, []))
     monkeypatch.setattr(ec, "valider", lambda ext: [])
@@ -62,7 +62,9 @@ def test_extraire_ne_traite_que_la_liste_donnee(atelier):
 def test_extraire_compte_les_echecs_et_la_limite(atelier, monkeypatch):
     fiches, lots, _ = atelier
     reponses = {"f0": (None, "erreur du modèle"), "f1": (None, ec.LIMITE + " atteinte")}
-    monkeypatch.setattr(ec, "appeler_claude", lambda i: reponses.get(i, ({"nodes": [{"id": "n"}], "edges": []}, "")))
+    monkeypatch.setattr(
+        ec, "appeler_claude", lambda i, *a: reponses.get(i, ({"nodes": [{"id": "n"}], "edges": []}, ""))
+    )
     monkeypatch.setattr(ec, "est_un_refus", lambda *a: False)
     assert ec.extraire(fiches[:3]) == {"faites": 1, "echecs": 2, "limites": 1}
     assert [p.name for p in lots.glob("*.json")] == ["f2.json"]

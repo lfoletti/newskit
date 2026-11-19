@@ -60,7 +60,9 @@ def _fichier(racine: Path, chemin, ou: str) -> Path:
     return p
 
 
-def _ids(liste, ou: str) -> list[str]:
+def _ids(liste, ou: str, definitions: dict | None = None) -> list[str]:
+    """Les identifiants d'une liste de la convention ; la définition de chacun (`definition`, sinon `liaison`) va dans
+    `definitions`."""
     if not isinstance(liste, list) or not liste:
         raise ValueError(f"{ou} : une liste non vide attendue")
     out = []
@@ -71,12 +73,15 @@ def _ids(liste, ou: str) -> list[str]:
             if not NOM.match(i):
                 raise ValueError(f"{ou} : identifiant {i!r} : minuscules, chiffres, « _ » et « - »")
             out.append(i)
+            if definitions is not None:
+                definitions[i] = str(x.get("definition") or x.get("liaison") or "").strip()
     return out
 
 
 def convention(chemin: Path) -> dict:
-    """La convention d'un graphe : {nom, canoniques, propres, relations}. Une ligne de relation peut en nommer deux
-    (« precedes, follows »). ValueError si elle est illisible ou mal formée."""
+    """La convention d'un graphe : {nom, canoniques, propres, relations, definitions}. Une ligne de relation peut en
+    nommer deux (« precedes, follows »). `definitions` : la définition de chaque type et de chaque relation, dans
+    l'ordre de la convention. ValueError si elle est illisible ou mal formée."""
     try:
         d = yaml.safe_load(Path(chemin).read_text(encoding="utf-8"))
     except yaml.YAMLError as e:
@@ -86,12 +91,19 @@ def convention(chemin: Path) -> dict:
     noeuds = d.get("noeuds")
     if not isinstance(noeuds, dict):
         raise ValueError("convention : `noeuds` attendu, {canoniques, propres}")
-    canoniques = _ids(noeuds.get("canoniques"), "convention : noeuds.canoniques")
-    propres = _ids(noeuds.get("propres"), "convention : noeuds.propres")
+    definitions: dict[str, str] = {}
+    canoniques = _ids(noeuds.get("canoniques"), "convention : noeuds.canoniques", definitions)
+    propres = _ids(noeuds.get("propres"), "convention : noeuds.propres", definitions)
     if len(set(canoniques) | set(propres)) != len(canoniques) + len(propres):
         raise ValueError("convention : un type de nœud déclaré deux fois")
-    relations = _ids(d.get("relations"), "convention : relations")
-    return {"nom": d["nom"], "canoniques": set(canoniques), "propres": set(propres), "relations": set(relations)}
+    relations = _ids(d.get("relations"), "convention : relations", definitions)
+    return {
+        "nom": d["nom"],
+        "canoniques": set(canoniques),
+        "propres": set(propres),
+        "relations": set(relations),
+        "definitions": definitions,
+    }
 
 
 def _passe(nom, p, racine: Path, ou: str) -> dict:
@@ -185,3 +197,11 @@ def declaration(decl, racine: Path) -> dict | None:
     if not isinstance(decl, dict) or not decl:
         raise ValueError("un dictionnaire type de contenu → procédé attendu")
     return {nom: _type_de_contenu(nom, v, Path(racine)) for nom, v in decl.items()}
+
+
+def type_de(decls: dict, champs: dict) -> dict | None:
+    """Le procédé du type de contenu d'une fiche : le premier déclaré dont l'en-tête porte le champ ; None sinon."""
+    for decl in (decls or {}).values():
+        if champs.get(decl["contenu"]["champ"]):
+            return decl
+    return None

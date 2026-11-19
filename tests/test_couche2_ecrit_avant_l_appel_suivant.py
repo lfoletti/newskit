@@ -33,7 +33,7 @@ def test_aucun_appel_ne_part_avant_l_ecriture_du_lot_precedent(tmp_path, monkeyp
     monkeypatch.setattr(ec, "prompt_de", lambda f: ({"titre": f.stem}, f.read_text(encoding="utf-8")))
     vus = []
 
-    def appeler(invite):
+    def appeler(invite, *a):
         vus.append(len(list(lots.glob("*.json"))) if lots.exists() else 0)
         return {"nodes": [{"id": "n"}], "edges": []}, ""
 

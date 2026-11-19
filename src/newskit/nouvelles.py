@@ -144,6 +144,7 @@ def ecartees(F: dict, chemins: list[str]) -> set[str]:
     """Les fiches que le fil a lues sans en faire une nouvelle ni une attache : hors champ ou sans fait."""
     vues = set(F.get("vues") or [])
     connues = {c for b in toutes(F) for c in fiches_de(b)}
+    connues |= {a["chemin"] for b in toutes(F) for a in b.get("articles") or []}  # les articles d'un billet groupé
     return {c for c in chemins if c in vues and c not in connues}
 
 

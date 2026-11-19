@@ -1864,7 +1864,7 @@ def enrichir(b: dict) -> None:
 
 def a_relire(F: dict) -> list[dict]:
     """Les billets, en attente ou parus, que la relecture n'a pas encore jugés (champ `tenu`)."""
-    return [b for b in F["pile"] + F["billets"] if "tenu" not in b and not b.get("tri")]
+    return [b for b in F["pile"] + F["billets"] if "tenu" not in b and not b.get("tri") and not b.get("articles")]
 
 
 PART_SECONDAIRE = 0.8  # part du plafond du jour au-delà de laquelle seules la rédaction et l'anglais tournent
@@ -1915,6 +1915,10 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         change = change or bool(parus)
         change = bool(nv.rattacher(F, lt.charger_fiches)) or change  # les attaches d'avant reçoivent leur chemin
     cands = sorted(candidates(graphe, vues, jour), key=lambda f: f.get("date") or "", reverse=True)
+    from newskit import fil_serie  # noqa: PLC0415 — le billet groupé d'une source prolixe (`serie` au registre)
+
+    cands, en_serie = fil_serie.partager(cands, F)  # les fiches d'une série attendent l'heure de leur billet groupé
+    series_dues = fil_serie.dues(en_serie, F, maintenant())
     anciens = [] if sans_modele else a_relire(F)
     a_rapprocher = not sans_modele and any(not b.get("rapproche") for b in nv.toutes(F))
     sans_lien = a_lier(F)
@@ -1925,7 +1929,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     sans_fiche = [] if sans_modele else fil_fiche.a_ecrire(F)
     etat = "" if sans_modele else f", {parus} paru(s), {len(F['pile'])} en attente"
     if sans_modele or not (
-        cands or anciens or a_rapprocher or sans_lien or sans_definition or sans_anglais or sans_fiche
+        cands or series_dues or anciens or a_rapprocher or sans_lien or sans_definition or sans_anglais or sans_fiche
     ):
         for f in cands[:40]:
             print(" ", f.get("date"), f.get("rubrique"), f["titre"][:90])
@@ -1940,12 +1944,15 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
             ecrire(graphe, F)
         print(f"plafond du jour atteint ({plafond(jour, graphe)} $) ou limite d'usage : rien de rédigé" + etat)
         return len(cands)
-    lot = cands[:PAR_PASSAGE]
     rubs = cfg.rubriques(graphe)
+    lues_serie, hors_theme, cout = fil_serie.passer(series_dues, en_serie, F, graphe, maintenant(), rubs)
+    cands = hors_theme + cands  # hors du thème de sa série : la voie ordinaire, dans ce passage
+    lot = cands[:PAR_PASSAGE]
     secondaire = budget_secondaire(F, graphe, jour)
-    cout = rapprocher(F, graphe) if a_rapprocher and secondaire >= 0.10 else 0.0  # le même événement se fond
+    cout += rapprocher(F, graphe) if a_rapprocher and secondaire >= 0.10 else 0.0  # le même événement se fond
     anciens = a_relire(F) if secondaire - cout >= 0.10 else []  # une nouvelle fondue n'est plus à relire
-    recents = F["pile"] + F["billets"][:RECENTS]  # la pile aussi : un doublon s'ajoute au billet qui attend
+    # La pile aussi : un doublon s'ajoute au billet qui attend. Pas un billet groupé : il ne porte pas un événement.
+    recents = [b for b in F["pile"] + F["billets"][:RECENTS] if not b.get("articles")]
     textes = textes_du_registre(F) if lot else {}
     proposer(lot, F, recents, textes)
     reps, cout_r = rediger(lot, recents, graphe) if lot else ([], 0.0)
@@ -2019,7 +2026,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
     # Lue : le modèle a répondu sur la fiche. Une fiche sans réponse (appel échoué) reste à lire : « lue sans
     # nouvelle » veut dire « écartée » pour la lettre (nouvelles.ecartees).
     lues = {lot[r["n"]]["chemin"] for r in reps if 0 <= r.get("n", -1) < len(lot)}
-    F["vues"] = sorted(vues | lues)[-5000:]
+    F["vues"] = sorted(vues | lues | lues_serie)[-5000:]  # les articles d'un billet groupé sont lus aussi
     F.setdefault("depense", {})[jour] = depense_du_jour(F, jour) + cout
     ecrire(graphe, F)
     print(

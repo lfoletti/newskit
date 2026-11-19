@@ -23,14 +23,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 - Chaque passe à sortie envoie sa consigne et le texte à `claude -p`, au registre des coûts. Sa réponse se garde sous
   `graphe/procedes/<type>/<passe>/` ; une passe faite ne repart pas. Une réponse sous `mots_min` mots ne se garde pas.
 - La passe `sortie: corps` devient le corps de la fiche, sous son titre : la fiche change d'empreinte et repasse en
-  couche 2. Un refus du modèle note la fiche dans `manquants.json` ; une passe réussie l'en retire. Les passes à forme
-  attendent leur forme.
+  couche 2. Un refus du modèle note la passe de la fiche dans `manquants.json` ; une passe réussie l'en retire.
 - La couche 2 d'une fiche d'un type de contenu déclaré suit la convention du média. Chaque nœud reçoit sa nature,
   un champ du schéma, parmi les types de la convention ; une nature hors convention se retire. Les relations de la
   convention s'ajoutent à celles du moteur. La consigne de volume du média (`extraction.volume`) remplace celle du
   moteur ; elle nomme entre accolades un champ de l'en-tête, `cle_id` ou `court` (nom du premier auteur et année).
   Une fiche hors de tout type garde la consigne et le schéma du moteur, à l'identique.
 - `extraire_concepts.fiches_lues` donne les fiches que lit la couche 2, sans regard à leur empreinte.
+- Les passes à forme tournent avec les passes à sortie. Chacune répond en JSON au schéma de sa forme : `etapes`
+  (procédés, étapes ordonnées, réglages, variantes) ou `composants` (architectures, composants, flux, sauts, blocs,
+  variantes). Une passe peut déclarer un tri : un oui ou un non sur les 1 500 premiers mots, au modèle de lecture,
+  avant la lecture entière. Une passe écartée par le tri garde la forme vide.
+- La fiche s'écrit une fois, quand toutes ses passes sont faites ou refusées : la lecture en corps, puis la section de
+  chaque forme. Le moteur tire de chaque forme, sans modèle, des nœuds reliés (procedure, step, variant, model,
+  component) qui entrent dans le lot de couche 2 de la fiche. Un lot déjà écrit les reprend sans nouvel appel.
 
 ## [0.1.81] - 2026-11-19
 

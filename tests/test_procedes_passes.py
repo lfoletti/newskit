@@ -50,7 +50,6 @@ def declaration(media: Path, **texte) -> dict:
             "convention": "convention.yaml",
             "passes": {
                 "lecture": {"consigne": "procedes/lecture.txt", "sortie": "corps", "mots_min": 20},
-                "procede": {"consigne": "procedes/etapes.txt", "forme": "etapes"},
             },
         }
     }
@@ -107,13 +106,19 @@ def texte_pdf(monkeypatch):
 def test_l_adresse_du_texte_et_le_minimum_de_mots_se_declarent(media):
     d = declaration(media)
     assert d["texte"]["adresse"] == "https://exemple.org/pdf/{arxiv_id}"
-    assert d["passes"][0]["mots_min"] == 20 and d["passes"][1]["mots_min"] == 1
+    assert d["passes"][0]["mots_min"] == 20
 
 
 @pytest.mark.parametrize("texte", [{"adresse": ""}, {"adresse": 3}, {"adresse": "ftp://x/{a}"}])
 def test_une_adresse_mal_formee_se_refuse(media, texte):
     with pytest.raises(ValueError, match="adresse"):
         declaration(media, **texte)
+
+
+def test_le_minimum_de_mots_vaut_un_par_defaut(media):
+    decl = {"papier": {"contenu": {"champ": "arxiv_id"}, "convention": "convention.yaml",
+                       "passes": {"lecture": {"consigne": "procedes/lecture.txt", "sortie": "corps"}}}}  # fmt: skip
+    assert procedes.declaration(decl, media)["papier"]["passes"][0]["mots_min"] == 1
 
 
 @pytest.mark.parametrize("mots", [-1, "20", True])
@@ -303,13 +308,6 @@ def test_une_fiche_deja_ecrite_par_sa_passe_ne_se_reecrit_pas(media, texte_pdf, 
     mtime = p.stat().st_mtime_ns
     pp.traiter("essai", "papier", declaration(media), p)
     assert p.stat().st_mtime_ns == mtime
-
-
-def test_les_passes_a_forme_attendent_leur_forme(media, texte_pdf, monkeypatch):
-    claude = Claude()
-    monkeypatch.setattr(pp.subprocess, "run", claude)
-    pp.traiter("essai", "papier", declaration(media), papier(media))
-    assert len(claude.invites) == 1  # la lecture seule ; le procédé suit sa forme (P4)
 
 
 def test_le_texte_en_cache_s_efface_quand_toutes_les_passes_de_texte_sont_faites(media, texte_pdf, monkeypatch):

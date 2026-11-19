@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.81] - 2026-11-19
+
 ### Ajouté
 
 - Une source prolixe déclare sa série au registre : `serie: {theme, heure}`. Le thème tient en une phrase. L'heure

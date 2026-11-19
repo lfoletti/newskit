@@ -42,6 +42,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   le lot n'a pas. Une étape reçoit `uses` vers une notion canonique que son texte nomme. Les notions canoniques sont
   celles des lots du graphe, d'un type canonique de la convention, hors alias et mots vides. Un libellé se cherche à
   partir de deux mots ; les `variantes` d'alias.json toujours. Un nouveau passage remplace le précédent.
+- Les passes d'un procédé par les lots de l'API d'Anthropic, à moitié prix : `python3 -m newskit.procedes_lots
+  --graphe <g> --type <t> soumettre`, puis `relever` quand le lot est fini. Le texte de la fiche est le premier bloc de
+  chaque requête, marqué pour le cache ; la consigne suit. Les réponses se gardent, se refusent et achèvent la fiche
+  comme par `claude -p`. Le tri passe dans un lot ; la passe qu'il retient part dans le lot suivant. Un type déclaré
+  `appel: lots` ne passe plus par `procedes_passes`, sauf pour `--etat`. La clé se lit dans `ANTHROPIC_API_KEY`, sinon
+  dans `~/.secrets/anthropic.env`.
+- Le verdict d'un tri qui retient une fiche se garde : une lecture entière qui échoue ne refait pas le tri.
 
 ## [0.1.81] - 2026-11-19
 

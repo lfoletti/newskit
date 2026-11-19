@@ -182,23 +182,55 @@ def appeler(
     return str(env.get("result") or ""), "ok"
 
 
+def deja_faite(type_: str, passe: dict, cle: str) -> bool:
+    out = _sortie_de(type_, passe, cle)
+    return out.exists() and (bool(passe["forme"]) or len(out.read_text(encoding="utf-8").split()) >= passe["mots_min"])
+
+
+def tri_retenu(type_: str, passe: dict, cle: str) -> bool:
+    """Le tri de la passe a déjà retenu la fiche : il ne repart pas, même si la lecture entière a échoué."""
+    return sortie(type_, passe["nom"], cle, ".tri").exists()
+
+
+def garder_tri(type_: str, passe: dict, cle: str, verdict: dict) -> bool:
+    """Garde le verdict du tri : la marque d'une fiche retenue, la forme vide d'une fiche écartée. Vrai si retenue."""
+    retenu = bool(verdict.get("retenu"))
+    out = sortie(type_, passe["nom"], cle, ".tri") if retenu else _sortie_de(type_, passe, cle)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("retenu\n" if retenu else json.dumps(pf.VIDE[passe["forme"]], ensure_ascii=False), encoding="utf-8")
+    return retenu
+
+
+def garder(type_: str, passe: dict, cle: str, rendu) -> str | None:
+    """Garde la réponse d'une passe ; le motif du rejet, ou None. Une forme veut un objet JSON, une sortie au moins
+    `mots_min` mots."""
+    nom, forme = passe["nom"], passe["forme"]
+    if forme and not isinstance(rendu, dict):
+        return "réponse sans JSON"
+    if not forme and len(rendu.split()) < passe["mots_min"]:
+        return f"réponse de {len(rendu.split())} mots, {passe['mots_min']} attendus"
+    out = _sortie_de(type_, passe, cle)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(rendu, ensure_ascii=False, indent=1) if forme else rendu, encoding="utf-8")
+    _effacer_manquant(type_, cle, nom)
+    return None
+
+
 def passer(graphe: str, type_: str, decl: dict, passe: dict, chemin: Path, champs: dict, cle: str) -> str:
     """Une passe sur une fiche ; la ligne de compte rendu."""
-    nom, out, forme = passe["nom"], _sortie_de(type_, passe, cle), passe["forme"]
-    if out.exists() and (forme or len(out.read_text(encoding="utf-8").split()) >= passe["mots_min"]):
+    nom, forme = passe["nom"], passe["forme"]
+    if deja_faite(type_, passe, cle):
         return f"déjà  {nom} {cle}"
     t = texte(chemin, champs, cle, decl)
     if t is None:
         return f"!! {nom} {cle} : pas de texte"
     note = f"{type_}:{nom} {cle}"
-    if passe["tri"]:
+    if passe["tri"] and not tri_retenu(type_, passe, cle):
         tri = passe["tri"].read_text(encoding="utf-8")
         verdict, diag = appeler(invite(tri, t, MOTS_TRI), graphe, f"{note} (tri)", pf.SCHEMA_TRI, "lecture")
         if verdict is None:
             return f"!! {nom} {cle} : tri sans réponse ({diag})"
-        if not verdict.get("retenu"):
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(json.dumps(pf.VIDE[forme], ensure_ascii=False), encoding="utf-8")
+        if not garder_tri(type_, passe, cle, verdict):
             return f"écartée {nom} {cle} : le tri ne la retient pas"
     consigne = passe["consigne"].read_text(encoding="utf-8")
     schema = pf.SCHEMAS[forme] if forme else None
@@ -207,11 +239,9 @@ def passer(graphe: str, type_: str, decl: dict, passe: dict, chemin: Path, champ
         if diag == REFUS:
             noter_manquant(type_, cle, nom, REFUS)
         return f"!! {nom} {cle} : {diag}"
-    if not forme and len(rendu.split()) < passe["mots_min"]:
-        return f"!! {nom} {cle} : réponse de {len(rendu.split())} mots, {passe['mots_min']} attendus"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(rendu, ensure_ascii=False, indent=1) if forme else rendu, encoding="utf-8")
-    _effacer_manquant(type_, cle, nom)
+    rejet = garder(type_, passe, cle, rendu)
+    if rejet:
+        return f"!! {nom} {cle} : {rejet}"
     return f"fait  {nom} {cle}" + ("" if forme else f" : {len(rendu.split())} mots")
 
 
@@ -261,7 +291,15 @@ def traiter(graphe: str, type_: str, decl: dict, chemin: Path) -> list[str]:
     le texte en cache effacé."""
     champs, _ = fiche.lire_fichier(chemin)
     cle = cle_de(champs[decl["contenu"]["champ"]])
-    lignes = [passer(graphe, type_, decl, p, chemin, champs, cle) for p in decl["passes"]]
+    return [passer(graphe, type_, decl, p, chemin, champs, cle) for p in decl["passes"]] + achever(
+        type_, decl, chemin, cle
+    )
+
+
+def achever(type_: str, decl: dict, chemin: Path, cle: str) -> list[str]:
+    """Quand toutes les passes de la fiche sont terminées : la fiche écrite une fois, son lot repris, le texte en
+    cache effacé. Rien avant."""
+    lignes: list[str] = []
     if not all(_terminee(type_, p, cle) for p in decl["passes"]):
         return lignes
     corps_ = [p for p in decl["passes"] if p["sortie"] == "corps"]
@@ -289,6 +327,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.type_ not in decls:
         raise SystemExit(f"{a.graphe} : type de contenu non déclaré : {a.type_} (déclarés : {sorted(decls)})")
     decl = decls[a.type_]
+    if decl["appel"] == "lots" and not a.etat:
+        raise SystemExit(f"{a.type_} : déclaré `appel: lots` ; passer par python3 -m newskit.procedes_lots")
     tout = fiches(a.graphe, decl)
     attente = [f for f, _, cle in tout if not _faite(a.type_, decl, cle)]
     if a.etat:

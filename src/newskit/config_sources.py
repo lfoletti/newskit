@@ -62,7 +62,11 @@ COMMUNS_FACULTATIFS = {
     "masque",
     "nature",
     "muette",
+    "collecte",
 }
+# Les plateformes dont le collecteur lit `collecte: false` (collecte_rss) ; ailleurs la clé est refusée, pour qu'elle
+# ne reste pas sans effet.
+COLLECTE_ARRETABLE = {"Flux RSS", "Plan de site", "Page de liste"}
 # La cause d'une source muette, dans un vocabulaire fermé (mainteneur, 03.11.2026 : liste publiable des sources muettes) :
 # `muette: {cause: …, le: AAAA-MM-JJ}`, et `code` (le statut HTTP) pour un refus d'accès.
 CAUSES_MUETTE = {
@@ -264,6 +268,7 @@ class Source:
     propres: dict = field(default_factory=dict)
     masque: list = field(default_factory=list)  # portées dont le contenu n'est pas publié
     muette: dict = field(default_factory=dict)  # cause déclarée d'un silence : {cause, le, code?} (CAUSES_MUETTE)
+    collecte: bool = True  # faux : la source reste déclarée, son dossier et ses fiches restent, rien de neuf n'entre
 
     @property
     def payant(self) -> bool:
@@ -624,6 +629,10 @@ def _valider(d: dict, p: Path) -> dict:
             valider_date_adresse(s["date_adresse"], ou)
         masque = valider_masque(s["masque"], ou) if "masque" in s else []
         muette = valider_muette(s["muette"], ou) if "muette" in s else {}
+        if "collecte" in s and not isinstance(s["collecte"], bool):
+            raise ConfigInvalide(f"{ou} : collecte « {s['collecte']} » : vrai ou faux")
+        if s.get("collecte") is False and plat not in COLLECTE_ARRETABLE:
+            raise ConfigInvalide(f"{ou} : collecte: false sans effet sur {plat} ; admis {sorted(COLLECTE_ARRETABLE)}")
         if cle in vues_cles:
             raise ConfigInvalide(f"{ou} : clé en double")
         if s["dossier"] in vus_dossiers:
@@ -659,6 +668,7 @@ def _valider(d: dict, p: Path) -> dict:
                 propres={k: s[k] for k in (oblig | fac) if k in s},
                 masque=masque,
                 muette=muette,
+                collecte=s.get("collecte", True),
             )
         )
 

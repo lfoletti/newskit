@@ -4,6 +4,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- Un graphe déclare ses procédés d'ingestion par type de contenu, sous `procedes` au registre. Le bloc d'un type
+  déclare son contenu, son texte, sa convention, ses passes, son extraction, ses mentions et son appel. Le type se
+  reconnaît à un champ d'en-tête de la fiche (`contenu: {champ: arxiv_id}`).
+- Les passes s'enchaînent dans l'ordre déclaré ; chacune a sa consigne, un fichier du dossier du média. Une seule
+  passe écrit le corps de la fiche (`sortie: corps`) ; les autres suivent une forme du moteur (`etapes` ou
+  `composants`).
+- La convention du média est obligatoire : elle nomme les types de nœuds et les relations admis. Un procédé sans
+  convention, ou dont une forme pose un type ou une relation absents de la convention, est refusé au chargement du
+  registre. Ce bloc ne fait encore rien : les passes viennent ensuite.
+
 ## [0.1.81] - 2026-11-19
 
 ### Ajouté

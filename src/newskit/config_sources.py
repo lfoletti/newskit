@@ -822,6 +822,7 @@ def _valider(d: dict, p: Path) -> dict:
             "fil_max",
             "source_max",
             "specialisation",
+            "procedes",
         }
         if surplus:
             raise ConfigInvalide(f"{p.name} : graphes.{nom} : champs inconnus {sorted(surplus)}")
@@ -930,6 +931,13 @@ def _valider(d: dict, p: Path) -> dict:
                 td.declaration(v["tendances"])
             except ValueError as e:
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.tendances : {e}") from e
+        if v.get("procedes") is not None:
+            from newskit import procedes as pr  # noqa: PLC0415
+
+            try:
+                pr.declaration(v["procedes"], RACINE)
+            except ValueError as e:
+                raise ConfigInvalide(f"{p.name} : graphes.{nom}.procedes : {e}") from e
     for nom, v in graphes_decl.items():
         for g in v.get("inclut") or []:
             if (graphes_decl.get(g) or {}).get("inclut"):

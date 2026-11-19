@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.82] - 2026-11-20
+
 ### Ajouté
 
 - Un graphe déclare ses procédés d'ingestion par type de contenu, sous `procedes` au registre. Le bloc d'un type

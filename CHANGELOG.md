@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.80] - 2026-11-19
+
 ### Ajouté
 
 - Une source déclare `collecte: false` au registre : elle reste déclarée. Son dossier, ses fiches comme ce qui en est paru restent ; plus rien de neuf n’y entre. `collecte_rss` ne lit plus son flux, même nommée par `--source`. La routine ne la compte pas parmi les sources muettes. Retirer le bloc était la seule voie ; elle défait le dossier du graphe et l’éclaireur redéclare le domaine quand il le retrouve. La clé vaut pour « Flux RSS », « Plan de site » et « Page de liste » ; le registre la refuse ailleurs, où aucun collecteur ne la lit.

@@ -2,10 +2,13 @@
 """Les passes de texte d'un procédé d'ingestion (procedes.py ; mainteneur, 15 et 19.11.2026).
 
 Pour chaque fiche d'un type de contenu déclaré, parmi celles que lit la couche 2 du graphe : le texte intégral (le PDF
-à l'adresse déclarée, lu puis effacé), puis chaque passe à sortie, dans l'ordre, par `claude -p`. La réponse se garde
-sous `graphe/procedes/<type>/<passe>/<clé>.md` ; une passe déjà faite ne repart pas. La passe `sortie: corps` devient
-le corps de la fiche, sous son titre : la fiche change d'empreinte et repasse en couche 2. Un refus du modèle se note
-dans `graphe/procedes/<type>/manquants.json` (« manquant, à ingérer »). Les passes à forme viennent ensuite.
+à l'adresse déclarée, lu puis effacé), puis chaque passe, dans l'ordre, par `claude -p`. Une passe à sortie garde sa
+réponse sous `graphe/procedes/<type>/<passe>/<clé>.md` ; une passe à forme répond au schéma de sa forme
+(procedes_formes) et la garde en `.json`, après un tri sur le début du texte quand elle en déclare un. Une passe faite
+ne repart pas. Quand toutes les passes sont faites ou refusées, la fiche s'écrit une fois : la réponse de la passe
+`sortie: corps` sous son titre, puis la section de chaque forme. Elle change d'empreinte et repasse en couche 2 ; un
+lot de couche 2 déjà là reprend les nœuds des formes. Un refus du modèle se note dans
+`graphe/procedes/<type>/manquants.json` (« manquant, à ingérer »).
 
 Usage :
     python3 -m newskit.procedes_passes --graphe ai-engineering --type papier --plafond 20
@@ -26,6 +29,7 @@ from pathlib import Path
 
 from newskit import config_sources as cfg
 from newskit import couts, fiche, media, procedes
+from newskit import procedes_formes as pf
 from newskit import extraire_concepts as ec
 from newskit.collecte_pdf_local import lire_pdf, nettoyer
 from newskit.commun import RACINE
@@ -33,6 +37,7 @@ from newskit.commun import RACINE
 DELAI = 900  # secondes par appel : une lecture d'un texte de 45 000 mots prend quelques minutes
 PAUSE = 3  # secondes entre deux téléchargements (arXiv en demande trois)
 PARALLELE = 4
+MOTS_TRI = 1500  # mots du début du texte lus par le tri (titre, résumé, introduction)
 POSTE = "procede"
 LIMITE = "limite d'usage atteinte"
 REFUS = "refus du modèle"
@@ -47,8 +52,12 @@ def dossier(type_: str) -> Path:
     return RACINE / "graphe" / "procedes" / type_
 
 
-def sortie(type_: str, passe: str, cle: str) -> Path:
-    return dossier(type_) / passe / f"{cle}.md"
+def sortie(type_: str, passe: str, cle: str, ext: str = ".md") -> Path:
+    return dossier(type_) / passe / f"{cle}{ext}"
+
+
+def _sortie_de(type_: str, passe: dict, cle: str) -> Path:
+    return sortie(type_, passe["nom"], cle, ".json" if passe["forme"] else ".md")
 
 
 def _cache_texte(cle: str) -> Path:
@@ -68,13 +77,15 @@ def _ecrire_manquants(type_: str, m: dict) -> None:
 
 def noter_manquant(type_: str, cle: str, passe: str, motif: str) -> None:
     m = manquants(type_)
-    m[cle] = f"{passe} : {motif} ({time.strftime('%Y-%m-%d')})"
+    m.setdefault(cle, {})[passe] = f"{motif} ({time.strftime('%Y-%m-%d')})"
     _ecrire_manquants(type_, m)
 
 
-def _effacer_manquant(type_: str, cle: str) -> None:
+def _effacer_manquant(type_: str, cle: str, passe: str) -> None:
     m = manquants(type_)
-    if m.pop(cle, None) is not None:
+    if m.get(cle, {}).pop(passe, None) is not None:
+        if not m[cle]:
+            del m[cle]
         _ecrire_manquants(type_, m)
 
 
@@ -143,12 +154,17 @@ def invite(consigne: str, texte_: str, mots_max: int) -> str:
     return f"{consigne.rstrip()}\n<document>\n{corps}\n</document>\n"
 
 
-def appeler(invite_: str, graphe: str, note: str) -> tuple[str | None, str]:
-    """(réponse, diagnostic) d'un appel à `claude -p`, consigné au registre des coûts."""
+def appeler(
+    invite_: str, graphe: str, note: str, schema: dict | None = None, role: str = "extraction"
+) -> tuple[str | dict | None, str]:
+    """(réponse, diagnostic) d'un appel à `claude -p`, consigné au registre des coûts : le texte, ou avec `schema` le
+    JSON structuré."""
     if couts.en_limite():
         return None, LIMITE
-    modele = media.modele("extraction")
+    modele = media.modele(role)
     args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json", "--model", modele]
+    if schema:
+        args += ["--json-schema", json.dumps(schema)]
     t0 = time.time()
     try:
         r = subprocess.run(args, input=invite_, capture_output=True, text=True, timeout=DELAI, cwd=RACINE)
@@ -160,65 +176,105 @@ def appeler(invite_: str, graphe: str, note: str) -> tuple[str | None, str]:
         return None, REFUS
     if r.returncode != 0 or env.get("is_error"):
         return None, f"échec : {(r.stderr or str(env.get('result') or ''))[:160]}"
+    if schema:
+        s = env.get("structured_output")
+        return (s, "ok") if isinstance(s, dict) else (None, "réponse sans JSON")
     return str(env.get("result") or ""), "ok"
 
 
 def passer(graphe: str, type_: str, decl: dict, passe: dict, chemin: Path, champs: dict, cle: str) -> str:
-    """Une passe de texte sur une fiche ; la ligne de compte rendu."""
-    nom, out = passe["nom"], sortie(type_, passe["nom"], cle)
-    if out.exists() and len(out.read_text(encoding="utf-8").split()) >= passe["mots_min"]:
+    """Une passe sur une fiche ; la ligne de compte rendu."""
+    nom, out, forme = passe["nom"], _sortie_de(type_, passe, cle), passe["forme"]
+    if out.exists() and (forme or len(out.read_text(encoding="utf-8").split()) >= passe["mots_min"]):
         return f"déjà  {nom} {cle}"
     t = texte(chemin, champs, cle, decl)
     if t is None:
         return f"!! {nom} {cle} : pas de texte"
+    note = f"{type_}:{nom} {cle}"
+    if passe["tri"]:
+        tri = passe["tri"].read_text(encoding="utf-8")
+        verdict, diag = appeler(invite(tri, t, MOTS_TRI), graphe, f"{note} (tri)", pf.SCHEMA_TRI, "lecture")
+        if verdict is None:
+            return f"!! {nom} {cle} : tri sans réponse ({diag})"
+        if not verdict.get("retenu"):
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(pf.VIDE[forme], ensure_ascii=False), encoding="utf-8")
+            return f"écartée {nom} {cle} : le tri ne la retient pas"
     consigne = passe["consigne"].read_text(encoding="utf-8")
-    rendu, diag = appeler(invite(consigne, t, decl["texte"]["mots_max"]), graphe, f"{type_}:{nom} {cle}")
+    schema = pf.SCHEMAS[forme] if forme else None
+    rendu, diag = appeler(invite(consigne, t, decl["texte"]["mots_max"]), graphe, note, schema)
     if rendu is None:
         if diag == REFUS:
             noter_manquant(type_, cle, nom, REFUS)
         return f"!! {nom} {cle} : {diag}"
-    if len(rendu.split()) < passe["mots_min"]:
+    if not forme and len(rendu.split()) < passe["mots_min"]:
         return f"!! {nom} {cle} : réponse de {len(rendu.split())} mots, {passe['mots_min']} attendus"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(rendu, encoding="utf-8")
-    _effacer_manquant(type_, cle)
-    return f"fait  {nom} {cle} : {len(rendu.split())} mots"
+    out.write_text(json.dumps(rendu, ensure_ascii=False, indent=1) if forme else rendu, encoding="utf-8")
+    _effacer_manquant(type_, cle, nom)
+    return f"fait  {nom} {cle}" + ("" if forme else f" : {len(rendu.split())} mots")
 
 
-def ecrire_corps(chemin: Path, type_: str, passe: str, cle: str) -> bool:
-    """La réponse de la passe devient le corps de la fiche, sous son titre ; une fiche déjà écrite ne bouge pas."""
-    champs, _ = fiche.lire_fichier(chemin)
-    marque = f"{type_}:{passe}"
-    if champs.get("procede") == marque:
-        return False
+def _terminee(type_: str, passe: dict, cle: str) -> bool:
+    """Faite, ou refusée par le modèle."""
+    return _sortie_de(type_, passe, cle).exists() or passe["nom"] in manquants(type_).get(cle, {})
+
+
+def ecrire_corps(chemin: Path, type_: str, decl: dict, cle: str) -> bool:
+    """La fiche sous son titre : la réponse de la passe en corps, puis la section de chaque forme faite. Une fiche
+    déjà écrite ainsi ne bouge pas."""
+    champs, actuel = fiche.lire_fichier(chemin)
+    corps_ = next(p for p in decl["passes"] if p["sortie"] == "corps")
+    marque = f"{type_}:{corps_['nom']}"
+    sections = [sortie(type_, corps_["nom"], cle).read_text(encoding="utf-8").strip()]
+    for p in decl["passes"]:
+        f = _sortie_de(type_, p, cle)
+        if p["forme"] and f.exists():
+            sections.append(pf.rendre(p["forme"], json.loads(f.read_text(encoding="utf-8"))))
     tete = f"# {champs.get('title', chemin.stem)}\n\n*{champs.get('subtitle', '')} · {champs.get('author', '')}*\n\n"
-    corps = tete + sortie(type_, passe, cle).read_text(encoding="utf-8").strip() + "\n"
+    corps = tete + "\n\n".join(s for s in sections if s) + "\n"
+    if champs.get("procede") == marque and actuel.strip() == corps.strip():
+        return False
     champs = {k: v for k, v in champs.items() if k != "words"} | {"procede": marque}
     fiche.ecrire(chemin, champs, corps, strict=False)
     return True
 
 
+def reposer_lot(chemin: Path, type_: str, decl: dict) -> bool:
+    """Le lot de couche 2 déjà écrit de la fiche reprend les nœuds de ses formes."""
+    from newskit import extraire_concepts as ec_  # noqa: PLC0415
+
+    champs, _ = fiche.lire_fichier(chemin)
+    lot = ec_.LOTS / f"{ec_.identifiant_de_fiche(chemin, champs)}.json"
+    if not lot.exists():
+        return False
+    avant = json.loads(lot.read_text(encoding="utf-8"))
+    apres = pf.composer_lot(avant, chemin, champs, type_, decl)
+    if apres == avant:
+        return False
+    lot.write_text(json.dumps(apres, indent=1, ensure_ascii=False), encoding="utf-8")
+    return True
+
+
 def traiter(graphe: str, type_: str, decl: dict, chemin: Path) -> list[str]:
-    """Les passes de texte d'une fiche, dans l'ordre ; le corps écrit après sa passe ; le texte en cache effacé quand
-    toutes sont faites."""
+    """Les passes d'une fiche, dans l'ordre. Quand toutes sont terminées : la fiche écrite une fois, son lot repris,
+    le texte en cache effacé."""
     champs, _ = fiche.lire_fichier(chemin)
     cle = cle_de(champs[decl["contenu"]["champ"]])
-    lignes, du_texte = [], [p for p in decl["passes"] if p["sortie"]]
-    for p in du_texte:
-        lignes.append(passer(graphe, type_, decl, p, chemin, champs, cle))
-        if (
-            p["sortie"] == "corps"
-            and sortie(type_, p["nom"], cle).exists()
-            and ecrire_corps(chemin, type_, p["nom"], cle)
-        ):
-            lignes.append(f"fiche {cle} : corps écrit par {p['nom']}")
-    if all(sortie(type_, p["nom"], cle).exists() for p in du_texte):
-        _cache_texte(cle).unlink(missing_ok=True)
+    lignes = [passer(graphe, type_, decl, p, chemin, champs, cle) for p in decl["passes"]]
+    if not all(_terminee(type_, p, cle) for p in decl["passes"]):
+        return lignes
+    corps_ = [p for p in decl["passes"] if p["sortie"] == "corps"]
+    if corps_ and sortie(type_, corps_[0]["nom"], cle).exists() and ecrire_corps(chemin, type_, decl, cle):
+        lignes.append(f"fiche {cle} : écrite")
+    if reposer_lot(chemin, type_, decl):
+        lignes.append(f"lot {cle} : formes reposées")
+    _cache_texte(cle).unlink(missing_ok=True)
     return lignes
 
 
 def _faite(type_: str, decl: dict, cle: str) -> bool:
-    return all(sortie(type_, p["nom"], cle).exists() for p in decl["passes"] if p["sortie"])
+    return all(_terminee(type_, p, cle) for p in decl["passes"])
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -81,7 +81,7 @@ def test_sans_declaration_rien():
 
 def test_une_declaration_complete_se_lit_dans_l_ordre_des_passes(media):
     d = procedes.declaration(complet(), media)["papier"]
-    assert d["contenu"] == {"champ": "arxiv_id"}
+    assert d["nom"] == "papier" and d["contenu"] == {"champ": "arxiv_id"}
     assert d["texte"] == {"integral": True, "adresse": None, "mots_max": 45000}
     assert [p["nom"] for p in d["passes"]] == ["lecture", "procede", "architecture"]
     assert d["passes"][0] == {

@@ -179,6 +179,7 @@ def _type_de_contenu(nom, v, racine: Path) -> dict:
     if appel not in APPELS:
         raise ValueError(f"{nom}.appel : parmi {list(APPELS)}, lu {appel!r}")
     return {
+        "nom": nom,
         "contenu": {"champ": c["champ"]},
         "texte": {"integral": integral, "adresse": adresse, "mots_max": mots},
         "convention": conv,

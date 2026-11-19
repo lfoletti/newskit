@@ -636,6 +636,11 @@ def extraire(retard: list[tuple[Path, str]]) -> dict:
                     print(f"  !! {rel} : {diag}", file=sys.stderr)
                     continue
                 propre, ecartes = normaliser_extraction(ext, f, champs)
+                procede = procede_de(champs)
+                if procede:  # les nœuds des formes du procédé (procedes_formes), sans modèle
+                    from newskit import procedes_formes  # noqa: PLC0415
+
+                    propre = procedes_formes.composer_lot(propre, f, champs, procede["nom"], procede)
                 erreurs = valider(propre)
                 if erreurs or not propre["nodes"]:
                     echecs += 1

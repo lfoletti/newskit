@@ -37,6 +37,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 - La fiche s'écrit une fois, quand toutes ses passes sont faites ou refusées : la lecture en corps, puis la section de
   chaque forme. Le moteur tire de chaque forme, sans modèle, des nœuds reliés (procedure, step, variant, model,
   component) qui entrent dans le lot de couche 2 de la fiche. Un lot déjà écrit les reprend sans nouvel appel.
+- Les mentions sans modèle : `python3 -m newskit.procedes_mentions --graphe <g>`. Pour chaque fiche d'un type qui
+  déclare `mentions: true`, le lot reçoit `mentions` du document vers une notion canonique que son corps nomme et que
+  le lot n'a pas. Une étape reçoit `uses` vers une notion canonique que son texte nomme. Les notions canoniques sont
+  celles des lots du graphe, d'un type canonique de la convention, hors alias et mots vides. Un libellé se cherche à
+  partir de deux mots ; les `variantes` d'alias.json toujours. Un nouveau passage remplace le précédent.
 
 ## [0.1.81] - 2026-11-19
 

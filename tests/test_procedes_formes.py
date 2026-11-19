@@ -488,3 +488,12 @@ def test_une_fiche_aux_passes_faites_ou_refusees_n_est_plus_en_attente(media, mo
     monkeypatch.setattr(pp, "declaration_du_graphe", lambda graphe: {"papier": d})
     pp.main(["--graphe", "essai", "--type", "papier", "--etat"])
     assert "1 fiches, 1 faites, 0 en attente, 1 manquantes" in capsys.readouterr().out
+
+
+def test_la_commande_vise_le_graphe_avant_de_toucher_ses_lots(media, monkeypatch):
+    vises = []
+    monkeypatch.setattr(ec, "viser", lambda graphe: vises.append(graphe) or {})
+    monkeypatch.setattr(ec, "fiches_lues", lambda graphe=None: [])
+    monkeypatch.setattr(pp, "declaration_du_graphe", lambda graphe: {"papier": declaration(media)})
+    pp.main(["--graphe", "essai", "--type", "papier", "--etat"])
+    assert vises == ["essai"]

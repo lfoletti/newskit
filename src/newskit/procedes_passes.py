@@ -284,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plafond", type=int, default=10, help="fiches par passage")
     ap.add_argument("--etat", action="store_true", help="compter, sans appel")
     a = ap.parse_args(argv)
+    ec.viser(a.graphe)  # les lots que reprennent les formes sont ceux du graphe
     decls = declaration_du_graphe(a.graphe)
     if a.type_ not in decls:
         raise SystemExit(f"{a.graphe} : type de contenu non déclaré : {a.type_} (déclarés : {sorted(decls)})")

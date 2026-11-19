@@ -163,6 +163,8 @@ def sources_muettes(graphe: str, aujourd_hui=None, declaree_le=_declaree_le) -> 
     for s in cfg.toutes(graphe=graphe):
         if s.plateforme in SANS_ACTUALITE or (aujourd_hui - declaree_le(s)).days < FENETRE_MUETTE:
             continue
+        if not s.collecte:  # arrêtée au registre : son silence est voulu
+            continue
         recente = False
         for f in s.chemin.glob("*.md") if s.chemin.is_dir() else []:
             with f.open(encoding="utf-8", errors="replace") as h:

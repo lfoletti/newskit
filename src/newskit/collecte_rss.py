@@ -1374,6 +1374,17 @@ def traiter_source(src, limite: int, echecs: list[str], archive_depuis: str = ""
     return compte
 
 
+def sources_a_collecter(graphe: str | None = None, cle: str | None = None) -> list:
+    """Les sources que ce collecteur lit : celles de ses trois plateformes, hors celles dont la collecte est arrêtée
+    au registre (`collecte: false`), même nommées par `cle`."""
+    return [
+        s
+        for p in ("Flux RSS", "Plan de site", "Page de liste")
+        for s in cfg.toutes(p, graphe=graphe)
+        if s.collecte and (not cle or s.cle == cle)
+    ]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", help="ne traiter qu'une source du registre")
@@ -1391,12 +1402,7 @@ def main() -> int:
     if args.archive and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.archive):
         ap.error("--archive attend une date AAAA-MM-JJ")
 
-    sources = [
-        s
-        for p in ("Flux RSS", "Plan de site", "Page de liste")
-        for s in cfg.toutes(p, graphe=args.graphe)
-        if not args.source or s.cle == args.source
-    ]
+    sources = sources_a_collecter(args.graphe, args.source)
     if not sources:
         print("  aucune source « Flux RSS » au registre, rien à collecter.")
         return 0

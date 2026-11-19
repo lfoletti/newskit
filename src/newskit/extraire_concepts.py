@@ -199,53 +199,58 @@ def prompt_de(f: Path) -> tuple[dict, str]:
     return champs, prompt_pour(f, champs, corps)
 
 
-def fiches_en_retard() -> list[tuple[Path, str]]:
-    """(chemin, empreinte actuelle) des fiches denses nouvelles ou modifiées depuis la dernière extraction. Une fiche
-    refusée par le modèle n'est pas retentée tant que son texte ne change pas (couche2/refus.json)."""
-    connues = json.loads(EMPREINTES.read_text(encoding="utf-8")) if EMPREINTES.exists() else {}
-    connues = {**{k: v for k, v in refus_connus().items()}, **connues}
-    out = []
-    for d in cfg.dossiers_denses(GRAPHE):
+def fiches_lues(graphe: str | None = None) -> list[Path]:
+    """Les fiches que la couche 2 du graphe lit, sans regard à leur empreinte : les fiches denses de ses dossiers, ses
+    jalons arXiv et ses papiers de veille retenus par un thème après l'horizon des modèles. Les procédés d'ingestion
+    (procedes_passes) choisissent parmi elles."""
+    out: list[Path] = []
+    for d in cfg.dossiers_denses(graphe if graphe is not None else GRAPHE):
         for f in sorted(
             (RACINE / d).rglob("*.md")
         ):  # rglob : les textes de référence sont en sous-dossiers (09.10.2026)
-            if f.name.startswith("_"):
-                continue
-            _, corps = corps_de(f)
-            h = empreinte(corps)
-            if connues.get(str(f.relative_to(RACINE))) != h:
-                out.append((f, h))
+            if not f.name.startswith("_"):
+                out.append(f)
     # Les papiers arXiv n'entrent en couche 2 que s'ils sont des jalons du domaine
     # (choisir_jalons.py) : une référence très citée, ou citée par plusieurs articles
     # du graphe. L'extraction systématique des résumés noyait le graphe (02.10.2026).
     from newskit import choisir_jalons  # noqa: PLC0415
 
-    nom = GRAPHE or cfg.GRAPHE_PRINCIPAL
+    nom = graphe or GRAPHE or cfg.GRAPHE_PRINCIPAL
     for chemin in sorted(v["chemin"] for v in choisir_jalons.jalons_detailles(nom).values()):
         f = RACINE / chemin
-        if not f.exists():
-            continue
-        _, corps = corps_de(f)
-        h = empreinte(corps)
-        if connues.get(chemin) != h:
-            out.append((f, h))
+        if f.exists():
+            out.append(f)
     # Les papiers de veille postérieurs à l'horizon des modèles (04.10.2026, décision du porteur) :
     # c'est ce qu'un modèle ne peut pas savoir, donc là que le graphe prend son avance. Seulement
     # ceux qu'un thème du graphe a retenus, et seulement après l'horizon : la règle du 02.10 tient
     # pour tout le reste, qu'un modèle connaît déjà.
-    deja = {f for f, _ in out}
+    deja = set(out)
     for v in cfg.veilles_arxiv():
         if v["graphe"] != nom:
             continue
         for f in sorted((RACINE / "sources" / v["dossier"]).glob("*.md")):
             if f.name.startswith("_") or f in deja or f.name[:10] <= cfg.HORIZON_MODELE:
                 continue
-            champs, corps = corps_de(f)
+            champs, _ = fiche.lire_fichier(f)
             if "thème «" not in str(champs.get("source") or ""):
                 continue  # papier cité, pas retenu par un thème
-            h = empreinte(corps)
-            if connues.get(str(f.relative_to(RACINE))) != h:
-                out.append((f, h))
+            out.append(f)
+            deja.add(f)
+    return out
+
+
+def fiches_en_retard() -> list[tuple[Path, str]]:
+    """(chemin, empreinte actuelle) des fiches denses nouvelles ou modifiées depuis la dernière extraction. Une fiche
+    refusée par le modèle n'est pas retentée tant que son texte ne change pas (couche2/refus.json)."""
+    connues = json.loads(EMPREINTES.read_text(encoding="utf-8")) if EMPREINTES.exists() else {}
+    connues = {**{k: v for k, v in refus_connus().items()}, **connues}
+    out = []
+    for f in fiches_lues():
+        _, corps = corps_de(f)
+        h = empreinte(corps)
+        if connues.get(str(f.relative_to(RACINE))) != h:
+            out.append((f, h))
+    nom = GRAPHE or cfg.GRAPHE_PRINCIPAL
     # Les dernières arrivées d'abord (04.10.2026, demande du porteur) : sous un plafond, ce qui vient
     # d'entrer — collecte du jour, page trouvée par l'éclaireur, référence du canon — passe avant le
     # stock. La date de publication ne suffit pas : une page de 2019 trouvée ce matin attendrait derrière

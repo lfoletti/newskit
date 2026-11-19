@@ -14,7 +14,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   `composants`).
 - La convention du média est obligatoire : elle nomme les types de nœuds et les relations admis. Un procédé sans
   convention, ou dont une forme pose un type ou une relation absents de la convention, est refusé au chargement du
-  registre. Ce bloc ne fait encore rien : les passes viennent ensuite.
+  registre.
+- Les passes de texte d'un procédé tournent : `python3 -m newskit.procedes_passes --graphe <g> --type <t>`. Le
+  procédé choisit ses fiches parmi celles que lit la couche 2 du graphe, jalons compris. Il retient celles dont
+  l'en-tête porte le champ du type. Il lit le texte intégral à l'adresse déclarée (`texte.adresse`, remplie par
+  l'en-tête ; un champ `pdf` de la fiche l'emporte). Le PDF s'efface après lecture ; le texte reste en cache le temps
+  des passes.
+- Chaque passe à sortie envoie sa consigne et le texte à `claude -p`, au registre des coûts. Sa réponse se garde sous
+  `graphe/procedes/<type>/<passe>/` ; une passe faite ne repart pas. Une réponse sous `mots_min` mots ne se garde pas.
+- La passe `sortie: corps` devient le corps de la fiche, sous son titre : la fiche change d'empreinte et repasse en
+  couche 2. Un refus du modèle note la fiche dans `manquants.json` ; une passe réussie l'en retire. Les passes à forme
+  attendent leur forme.
+- `extraire_concepts.fiches_lues` donne les fiches que lit la couche 2, sans regard à leur empreinte.
 
 ## [0.1.81] - 2026-11-19
 

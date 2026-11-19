@@ -119,6 +119,7 @@ REECRIVAINS = {
     "fil": "réécrit l'en-tête d'une fiche existante (même chemin)",
     "recuperer_tronquee": "réécrit une fiche tronquée existante (même chemin)",
     "convertir_substack_page_text": "réécrit une fiche existante (même chemin)",
+    "procedes_passes": "réécrit le corps d'une fiche existante (même chemin)",
 }
 
 

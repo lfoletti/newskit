@@ -829,6 +829,7 @@ def _valider(d: dict, p: Path) -> dict:
             "partage",
             "rubriques",
             "tendances",
+            "dossiers",
             "fraicheur_lettre_jours",
             "fraicheur_min_rubrique",
             "lettre_nom",
@@ -952,6 +953,13 @@ def _valider(d: dict, p: Path) -> dict:
                 td.declaration(v["tendances"])
             except ValueError as e:
                 raise ConfigInvalide(f"{p.name} : graphes.{nom}.tendances : {e}") from e
+        if v.get("dossiers") is not None:
+            from newskit import dossiers as dos  # noqa: PLC0415
+
+            try:
+                dos.declaration(v["dossiers"], RACINE)
+            except ValueError as e:
+                raise ConfigInvalide(f"{p.name} : graphes.{nom}.dossiers : {e}") from e
         if v.get("procedes") is not None:
             from newskit import procedes as pr  # noqa: PLC0415
 

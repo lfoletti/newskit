@@ -1,9 +1,9 @@
 """Le cerveau mis en place accepte une écriture.
 
-`retirer_cjk` retire les index CJK d'un cerveau publié. CortexDB les recrée vides à l'ouverture et ne les remplit pas :
-la première réécriture d'un document échoue (« database disk image is malformed »). Un cerveau continu reçoit des
-écritures là où il est servi : il garde donc ses index, et la copie de travail d'un passage ne les fait remplir de
-nouveau que s'ils sont vides. La mise en place d'un cerveau prêt est une seule fonction, pour le gardien d'un graphe et
+Un cerveau publié garde ses index en trigrammes (« CJK ») : CortexDB y compte les termes d'une question pour le seuil
+de mots-clés, en toute écriture, et un index retiré revient vide à l'ouverture, où la première réécriture d'un document
+échoue (« database disk image is malformed »). Un cerveau publié avant cette règle les a perdus : la copie de travail
+d'un passage ne les fait remplir de nouveau que s'ils sont vides. La mise en place d'un cerveau prêt est une seule fonction, pour le gardien d'un graphe et
 pour l'aiguilleur."""
 
 from __future__ import annotations
@@ -147,19 +147,18 @@ def test_l_aiguilleur_passe_par_la_meme_mise_en_place(tmp_path, monkeypatch):
 def test_les_index_cjk_vides_se_reconnaissent(tmp_path):
     assert cc.index_cjk_vides(cerveau(tmp_path / "pleins.db")) is False
     assert cc.index_cjk_vides(cerveau(tmp_path / "sans.db", cjk=False)) is True
-    vides = cerveau(tmp_path / "vides.db")
-    cc.retirer_cjk(vides)
-    c = sqlite3.connect(vides)  # CortexDB les recrée vides à l'ouverture
+    vides = cerveau(tmp_path / "vides.db", cjk=False)
+    c = sqlite3.connect(vides)  # retirés par une publication d'avant, recréés vides par CortexDB à l'ouverture
     c.execute("CREATE VIRTUAL TABLE chunks_fts_cjk USING fts5(content, tokenize='trigram')")
     c.commit()
     c.close()
     assert cc.index_cjk_vides(vides) is True
 
 
-def test_un_cerveau_continu_publie_garde_ses_index_cjk(tmp_path):
+def test_tout_cerveau_publie_garde_ses_index_cjk(tmp_path):
     for publier in (cc.publier, cc.publier_en_place):
         neuf, cible = cerveau(tmp_path / "g.neuf.db"), tmp_path / "g.db"
-        publier(neuf, cible, garder_cjk=True)
+        publier(neuf, cible)
         assert objets_cjk(cible) == 2
         assert lire(cible, "SELECT count(*) FROM chunks_fts_cjk")[0][0] == 3
         assert lire(cible, "PRAGMA user_version")[0][0] == 1
@@ -167,29 +166,21 @@ def test_un_cerveau_continu_publie_garde_ses_index_cjk(tmp_path):
         cc.effacer(cible)
 
 
-def test_un_cerveau_continu_compacte_garde_ses_index_cjk(tmp_path, monkeypatch):
+def test_un_cerveau_compacte_garde_ses_index_cjk(tmp_path, monkeypatch):
     monkeypatch.setattr(cc, "pages_libres", lambda c: 1.0)
     neuf, cible = cerveau(tmp_path / "g.neuf.db"), tmp_path / "g.db"
-    assert cc.publier_en_place(neuf, cible, garder_cjk=True) is True
+    assert cc.publier_en_place(neuf, cible) is True
     assert objets_cjk(cible) == 2 and lire(cible, "PRAGMA user_version")[0][0] == 1
 
 
-def test_un_cerveau_non_continu_les_perd_comme_avant(tmp_path):
-    for publier in (cc.publier, cc.publier_en_place):
-        neuf, cible = cerveau(tmp_path / "g.neuf.db"), tmp_path / "g.db"
-        publier(neuf, cible)
-        assert objets_cjk(cible) == 0
-        cc.effacer(cible)
-
-
-def test_la_construction_garde_les_index_du_seul_graphe_continu(tmp_path, monkeypatch):
+def test_la_construction_garde_les_index_de_tout_graphe(tmp_path, monkeypatch):
     monkeypatch.setattr(cfg, "cerveau_continu", lambda g: g == "continu")
     monkeypatch.setattr(cc, "servi", lambda g: False)
-    for graphe, attendu in (("continu", 2), ("autre", 0)):
+    for graphe in ("continu", "autre"):
         for publier in (cc._publier_du_graphe, cc._publier_en_place_du_graphe):
             neuf, cible = cerveau(tmp_path / f"{graphe}.neuf.db"), tmp_path / f"{graphe}.db"
             publier(graphe, neuf, cible)
-            assert objets_cjk(cible) == attendu, (graphe, publier.__name__)
+            assert objets_cjk(cible) == 2, (graphe, publier.__name__)
             cc.effacer(cible)
 
 
@@ -201,8 +192,8 @@ def test_le_clone_ne_repart_de_zero_que_si_les_index_sont_vides(tmp_path):
     assert lire(tmp_path / "sans.neuf.db", "PRAGMA user_version")[0][0] == 0
 
 
-def test_un_passage_en_place_publie_par_la_regle_du_graphe(tmp_path, monkeypatch):
-    """`construire` publie le clone par la règle du graphe : celui d'un graphe continu garde ses index."""
+def test_un_passage_en_place_publie_le_clone_avec_ses_index(tmp_path, monkeypatch):
+    """`construire` publie le clone avec ses index, servi (graphe continu) ou non."""
     faux = type(
         "Faux",
         (),
@@ -251,4 +242,4 @@ def test_un_passage_en_place_publie_par_la_regle_du_graphe(tmp_path, monkeypatch
     monkeypatch.setattr(cfg, "cerveau_continu", lambda g: False)
     monkeypatch.setattr(cc, "servi", lambda g: False)
     cc.construire("g", force="en_place")
-    assert objets_cjk(tmp_path / "g.db") == 0
+    assert objets_cjk(tmp_path / "g.db") == 2

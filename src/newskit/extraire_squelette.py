@@ -503,7 +503,9 @@ def declarer_papiers(g: Squelette, fiches: dict[Path, dict]) -> None:
             )
 
 
-def declarer_fiche(g: Squelette, chemin: Path, f: dict, avertissements: list[str]) -> str:
+def declarer_fiche(
+    g: Squelette, chemin: Path, f: dict, avertissements: list[str], libelles: dict[str, str] | None = None
+) -> str:
     """Le nœud d'une fiche, ses auteurs et sa publication. Rend son identifiant."""
     c, rel, aid = f["champs"], f["rel"], f["id"]
     titre = c.get("title") or chemin.stem
@@ -564,6 +566,10 @@ def declarer_fiche(g: Squelette, chemin: Path, f: dict, avertissements: list[str
             make_id("publication", pub), pub, "concept", "publication", rel, plateforme=c.get("plateforme", "")
         )
         g.arete(aid, nid, "publie_dans", rel, 1)
+    # Les dossiers transversaux (newskit.dossiers, 20.11.2026) : un nœud par dossier, nommé par la déclaration du média.
+    for cle in c.get("dossiers") or []:
+        nid = g.noeud(make_id("dossier", str(cle)), (libelles or {}).get(str(cle), str(cle)), "concept", "dossier", rel)
+        g.arete(aid, nid, "dans_le_dossier", rel, 1)
     return aid
 
 
@@ -668,11 +674,14 @@ def construire(graphe: str | None = None) -> tuple[dict, dict, list[str]]:
     index = construire_index(fiches)
     promo, citants = compter_citations(fiches)
 
+    from newskit import dossiers as dos  # noqa: PLC0415
+
+    libelles = dos.libelles(graphe)
     g = Squelette()
     g.stats["url_promo_recurrentes"] = len(promo)
     declarer_papiers(g, fiches)
     for chemin, f in fiches.items():
-        aid = declarer_fiche(g, chemin, f, avertissements)
+        aid = declarer_fiche(g, chemin, f, avertissements, libelles)
         relier_liens(g, f, aid, index, promo, citants)
     if graphe == cfg.GRAPHE_PRINCIPAL:
         ajouter_who_is_who(g)

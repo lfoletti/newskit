@@ -94,6 +94,7 @@ def _champs(F: dict) -> list[dict]:
             "editeur": (b.get("source") or {}).get("editeur", ""),
             "date": b.get("date", ""),
             "ajoute": b.get("ajoute", ""),
+            "dossiers": list(b.get("dossiers") or []),
             "langue": b.get("langue", ""),
             "fiche": (b.get("fiche") or {}).get("texte", "") if (b.get("fiche") or {}).get("tenu") is True else "",
             **anglais(b),

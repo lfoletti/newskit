@@ -4,6 +4,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- Un graphe déclare des dossiers transversaux (`graphes.<g>.dossiers: {fichier: dossiers.yaml}`) : chaque dossier a
+  une clé, des libellés `fr` et `en`, un critère écrit et une date de départ facultative (`depuis`). Un billet garde sa
+  rubrique et entre dans zéro, un ou plusieurs dossiers. Le tri du fil rend les dossiers dans l'appel qui donne la
+  rubrique. La liste s'écrit dans l'en-tête de la fiche (`dossiers`). Le squelette en fait un nœud par dossier
+  (`kind: dossier`), relié à chaque article par une arête `dans_le_dossier`. La page publique du fil porte la liste.
+- `python -m newskit.dossiers --graphe <g> [--compter] [--max N]` reclasse les nouvelles déjà au fil (billets, pile,
+  archive) par lots. Chaque nouvelle garde une empreinte par dossier : un dossier ajouté, ou dont le critère ou la
+  date change, est seul jugé à nouveau ; les autres gardent leur verdict. Un dossier retiré de la déclaration quitte
+  les nouvelles.
+
 ## [0.1.83] - 2026-11-20
 
 ### Ajouté

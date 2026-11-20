@@ -30,6 +30,7 @@ from pathlib import Path
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines (NEWSKIT.md, N1)
 from newskit import config_sources as cfg  # noqa: E402
 from newskit import couts  # noqa: E402
+from newskit import dossiers as dos  # noqa: E402
 from newskit import lettre as lt  # noqa: E402
 from newskit import nouvelles as nv  # noqa: E402
 from newskit import refus_frequents as rf  # noqa: E402
@@ -63,7 +64,7 @@ CONSIGNE = """Tu écris les billets du fil d'actualité d'une veille sur {nom}, 
   récent (une décision prise, une réaction officielle datée, un chiffre publié ensuite) : ce fait, en une phrase. Le
   titre et le texte disent alors ce fait neuf d'abord. Une fiche qui redit le billet récent a un developpement vide.
 - rubrique : celle du fait, exactement un de ces noms : {rubriques}.
-Le titre et le texte suivent les règles de la lettre d'information, qui reprend ces billets :
+{dossiers}Le titre et le texte suivent les règles de la lettre d'information, qui reprend ces billets :
 {regles}Rends l'objet {{"billets": [...]}}.
 
 Récents :
@@ -198,6 +199,7 @@ SCHEMA = {
                     "doublon_de": {"type": "integer"},
                     "developpement": {"type": "string"},
                     "rubrique": {"type": "string"},
+                    "dossiers": dos.PROPRIETE,
                 },
             },
         }
@@ -221,7 +223,7 @@ CONSIGNE_TRI = """Tu tries les fiches d'une veille sur {nom} pour son fil d'actu
   récent (une décision prise, une réaction officielle datée, un chiffre publié ensuite) : ce fait, en une phrase. Une
   fiche qui redit le billet récent a un developpement vide.
 - rubrique : celle du fait, exactement un de ces noms : {rubriques}.
-Rends l'objet {{"billets": [...]}}.
+{dossiers}Rends l'objet {{"billets": [...]}}.
 
 Récents :
 {recents}
@@ -243,6 +245,7 @@ SCHEMA_TRI = {
                     "doublon_de": {"type": "integer"},
                     "developpement": {"type": "string"},
                     "rubrique": {"type": "string"},
+                    "dossiers": dos.PROPRIETE,
                 },
             },
         }
@@ -1125,6 +1128,7 @@ def rediger(lot: list[dict], recents: list[dict], graphe: str) -> tuple[list[dic
         nom=nom,
         regles="" if tri else lt.regles(graphe) + rf.consigne(graphe),  # les refus fréquents dès la première rédaction
         rubriques=", ".join(r["nom"] for r in cfg.rubriques(graphe) or []) or "(aucune)",
+        dossiers=dos.consigne(dos.du_graphe(graphe)),
         recents="\n".join(
             f"{i}. {b['titre']} — {str(b.get('descriptif') or '')[:RECENT_MAX]}" for i, b in enumerate(recents)
         )
@@ -1945,6 +1949,7 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
         print(f"plafond du jour atteint ({plafond(jour, graphe)} $) ou limite d'usage : rien de rédigé" + etat)
         return len(cands)
     rubs = cfg.rubriques(graphe)
+    dossiers = dos.du_graphe(graphe)
     lues_serie, hors_theme, cout = fil_serie.passer(series_dues, en_serie, F, graphe, maintenant(), rubs)
     cands = hors_theme + cands  # hors du thème de sa série : la voie ordinaire, dans ce passage
     lot = cands[:PAR_PASSAGE]
@@ -1999,6 +2004,8 @@ def passer(graphe: str, sans_modele: bool = False, hors_plafond: bool = False) -
                 **suite,
             }
         )
+        if dossiers:  # le même appel que la rubrique ; la fiche porte la liste, le squelette en fait des arêtes
+            dos.ecrire_dans_la_fiche(f["chemin"], dos.poser(neufs[-1], r.get("dossiers"), dossiers))
     ecrits = [b for b in neufs if not b.get("tri")]  # un billet trié n'a pas de texte à relire : la fiche l'écrira
     anciens = anciens[: max(0, RELUS_PAR_PASSAGE - len(ecrits))]
     cout += relire(ecrits + anciens, graphe)  # avant le complément : il part du billet relu

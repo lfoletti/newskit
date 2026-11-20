@@ -87,8 +87,10 @@ def _bloc(texte: str, mots_max: int) -> dict:
     return {"type": "text", "text": f"<document>\n{corps}\n</document>\n", "cache_control": {"type": "ephemeral"}}
 
 
-def _requete(cid: str, bloc: dict, consigne: str, jetons: int, modele: str, schema: dict | None) -> dict:
-    sortie = {"effort": EFFORT} | ({"format": {"type": "json_schema", "schema": schema}} if schema else {})
+def _requete(
+    cid: str, bloc: dict, consigne: str, jetons: int, modele: str, schema: dict | None, effort: str | None = None
+) -> dict:
+    sortie = {"effort": effort or EFFORT} | ({"format": {"type": "json_schema", "schema": schema}} if schema else {})
     params = {
         "model": modele,
         "max_tokens": jetons,
@@ -128,7 +130,7 @@ def requetes(graphe: str, type_: str, decl: dict, plafond: int) -> tuple[list[di
                 schema = pf.SCHEMAS[p["forme"]] if p["forme"] else None
                 jetons = JETONS["forme" if p["forme"] else "sortie"]
                 consigne = p["consigne"].read_text(encoding="utf-8")
-                req = _requete(cid, bloc, consigne, jetons, pp.media.modele("extraction"), schema)
+                req = _requete(cid, bloc, consigne, jetons, pp.media.modele("extraction"), schema, p["effort"])
             reqs.append(req)
             cles[cid] = {"chemin": str(Path(chemin).relative_to(pp.RACINE)), "cle": cle, "passe": p["nom"], "tri": tri}
     return reqs, cles

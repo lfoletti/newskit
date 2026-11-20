@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- Une passe d'un procédé déclare l'effort du modèle (`effort: low`, `medium`, `high` ou `max`). Il vaut pour l'appel
+  de la passe, par les lots comme par `claude -p`, pas pour son tri. Sans lui, les lots gardent `medium` et
+  `claude -p` son effort par défaut. Un autre effort est refusé au chargement du registre.
+
 ## [0.1.82] - 2026-11-20
 
 ### Ajouté

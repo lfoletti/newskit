@@ -16,6 +16,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   date change, est seul jugé à nouveau ; les autres gardent leur verdict. Un dossier retiré de la déclaration quitte
   les nouvelles.
 
+### Changé
+
+- Tout cerveau publié garde ses index en trigrammes (« CJK »), plus seulement celui d'un graphe continu :
+  `cerveau_cortexdb.publier` et `publier_en_place` ne les retirent plus, le paramètre `garder_cjk` disparaît avec
+  `retirer_cjk`. CortexDB compte dans `chunks_fts_cjk` les termes d'une question pour son seuil de mots-clés, en toute
+  écriture (liliang-cn/cortexdb#227) : 0,65 s par question sans l'index sur un cerveau de 270 000 morceaux, 0,08 s
+  avec. L'index pèse 8 % du fichier. Un cerveau publié avant, aux index vides, les fait remplir à sa prochaine
+  construction (la copie de travail repart de `user_version` 0).
+
 ## [0.1.83] - 2026-11-20
 
 ### Ajouté

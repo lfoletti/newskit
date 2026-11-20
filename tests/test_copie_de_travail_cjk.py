@@ -1,5 +1,6 @@
-"""La copie de travail d'un passage en place fait remplir à CortexDB ses index CJK. `retirer_cjk` les retire du cerveau
-publié ; CortexDB les recrée vides à l'ouverture et ne les remplit pas, car `PRAGMA user_version` dit qu'il l'a déjà fait.
+"""La copie de travail d'un passage en place fait remplir à CortexDB ses index CJK. Un cerveau publié avant que newskit
+les garde les a perdus ; CortexDB les recrée vides à l'ouverture et ne les remplit pas, car `PRAGMA user_version` dit
+qu'il l'a déjà fait.
 Le déclencheur d'une réécriture efface alors d'un index vide : « database disk image is malformed » au premier document
 remplacé (17.11.2026, sur le Mac et au VPS). La copie repart de user_version 0 ; le cerveau publié garde le sien."""
 

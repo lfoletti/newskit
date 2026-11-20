@@ -15,7 +15,7 @@ contenu :
         convention: ontologie.yaml               # obligatoire : types de nœuds et relations admis
         passes:                                  # dans l'ordre d'exécution
           lecture: {consigne: procedes/lecture.txt, sortie: corps, mots_min: 500}  # la réponse devient le corps
-          procede: {consigne: procedes/procede.txt, forme: etapes}       # la réponse suit une forme du moteur
+          procede: {consigne: procedes/procede.txt, forme: etapes, effort: high}  # une forme du moteur ; effort du modèle
           architecture: {consigne: procedes/archi.txt, forme: composants, tri: procedes/tri.txt}
         extraction: {volume: procedes/volume.txt}  # la consigne de volume de la couche 2 pour ce contenu
         mentions: true                           # les mentions sans modèle
@@ -47,7 +47,10 @@ FORMES = {
 MENTIONS = ("mentions", "uses")  # du document, d'une étape, vers une notion canonique que son texte nomme
 NOM = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")  # un type de contenu, une passe, un type ou une relation
 CHAMPS = {"contenu", "texte", "convention", "passes", "extraction", "mentions", "appel"}
-PASSE = {"consigne", "sortie", "forme", "tri", "mots_min"}
+PASSE = {"consigne", "sortie", "forme", "tri", "mots_min", "effort"}
+# L'effort du modèle pour l'appel de la passe (pas pour son tri) ; sans lui, celui du moteur. Mainteneur, 20.11.2026 :
+# « high pour les procédés seulement » (essai de dix papiers : 81 procédés contre 56 en medium).
+EFFORTS = ("low", "medium", "high", "max")
 
 
 def _fichier(racine: Path, chemin, ou: str) -> Path:
@@ -121,6 +124,8 @@ def _passe(nom, p, racine: Path, ou: str) -> dict:
     mots_min = p.get("mots_min", 1)
     if isinstance(mots_min, bool) or not isinstance(mots_min, int) or mots_min < 0:
         raise ValueError(f"{ou}.mots_min : un entier positif ou nul, lu {mots_min!r}")
+    if "effort" in p and p["effort"] not in EFFORTS:
+        raise ValueError(f"{ou}.effort : parmi {list(EFFORTS)}, lu {p['effort']!r}")
     return {
         "nom": nom,
         "consigne": _fichier(racine, p.get("consigne"), f"{ou}.consigne"),
@@ -128,6 +133,7 @@ def _passe(nom, p, racine: Path, ou: str) -> dict:
         "sortie": p.get("sortie"),
         "forme": p.get("forme"),
         "tri": _fichier(racine, p["tri"], f"{ou}.tri") if "tri" in p else None,
+        "effort": p.get("effort"),
     }
 
 

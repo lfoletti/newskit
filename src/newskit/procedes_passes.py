@@ -155,16 +155,23 @@ def invite(consigne: str, texte_: str, mots_max: int) -> str:
 
 
 def appeler(
-    invite_: str, graphe: str, note: str, schema: dict | None = None, role: str = "extraction"
+    invite_: str,
+    graphe: str,
+    note: str,
+    schema: dict | None = None,
+    role: str = "extraction",
+    effort: str | None = None,
 ) -> tuple[str | dict | None, str]:
     """(réponse, diagnostic) d'un appel à `claude -p`, consigné au registre des coûts : le texte, ou avec `schema` le
-    JSON structuré."""
+    JSON structuré. `effort` : celui que la passe déclare, sinon celui de `claude -p`."""
     if couts.en_limite():
         return None, LIMITE
     modele = media.modele(role)
     args = [*couts.CLAUDE_P, "--no-session-persistence", "--tools", "", "--output-format", "json", "--model", modele]
     if schema:
         args += ["--json-schema", json.dumps(schema)]
+    if effort:
+        args += ["--effort", effort]
     t0 = time.time()
     try:
         r = subprocess.run(args, input=invite_, capture_output=True, text=True, timeout=DELAI, cwd=RACINE)
@@ -234,7 +241,7 @@ def passer(graphe: str, type_: str, decl: dict, passe: dict, chemin: Path, champ
             return f"écartée {nom} {cle} : le tri ne la retient pas"
     consigne = passe["consigne"].read_text(encoding="utf-8")
     schema = pf.SCHEMAS[forme] if forme else None
-    rendu, diag = appeler(invite(consigne, t, decl["texte"]["mots_max"]), graphe, note, schema)
+    rendu, diag = appeler(invite(consigne, t, decl["texte"]["mots_max"]), graphe, note, schema, effort=passe["effort"])
     if rendu is None:
         if diag == REFUS:
             noter_manquant(type_, cle, nom, REFUS)

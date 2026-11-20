@@ -117,6 +117,17 @@ def test_chaque_requete_a_son_modele_ses_jetons_et_son_schema(media, api):  # no
     assert lecture["thinking"] == {"type": "adaptive"}
 
 
+def test_l_effort_declare_d_une_passe_vaut_pour_sa_requete_pas_pour_son_tri(media, api):  # noqa: F811
+    papier(media)
+    d = declaration(media)
+    d["passes"][1]["effort"] = d["passes"][2]["effort"] = "high"
+    soumettre(media, d)
+    r = requetes(api)
+    assert r[cid(api, "procede")]["output_config"]["effort"] == "high"
+    assert r[cid(api, "lecture")]["output_config"]["effort"] == pl.EFFORT
+    assert r[cid(api, "architecture", True)]["output_config"]["effort"] == pl.EFFORT
+
+
 def test_l_identifiant_d_une_requete_suit_le_format_de_l_api(media, api):  # noqa: F811
     papier(media)
     soumettre(media)

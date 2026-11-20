@@ -123,9 +123,10 @@ class Claude:
     """Un faux `claude -p` : une réponse par consigne (le début de l'invite), en texte ou en JSON structuré."""
 
     def __init__(self, **reponses):
-        self.reponses, self.appels = reponses, []
+        self.reponses, self.appels, self.args = reponses, [], []
 
     def __call__(self, args, input=None, **k):
+        self.args.append(args)
         nom = input.split(".")[0].split()[-1]
         schema = json.loads(args[args.index("--json-schema") + 1]) if "--json-schema" in args else None
         self.appels.append((nom, schema, args[args.index("--model") + 1], len(input.split())))
@@ -321,6 +322,22 @@ def test_le_tri_qui_retient_laisse_lire_le_texte_entier(media, monkeypatch):
     assert pp.passer("essai", "papier", d, d["passes"][2], p, champs, "1810.04805").startswith("fait")
     assert [a[0] for a in claude.appels] == ["tri", "composants"]
     assert claude.appels[1][3] > pp.MOTS_TRI
+
+
+def _effort(args: list[str]) -> str | None:
+    return args[args.index("--effort") + 1] if "--effort" in args else None
+
+
+def test_l_effort_declare_d_une_passe_vaut_pour_son_appel_pas_pour_son_tri(media, monkeypatch):
+    claude = Claude(tri={"retenu": True}, composants=COMPOSANTS)
+    monkeypatch.setattr(pp.subprocess, "run", claude)
+    p = papier(media)
+    d = declaration(media)
+    d["passes"][2]["effort"] = "high"
+    champs, _ = fiche.lire_fichier(p)
+    pp.passer("essai", "papier", d, d["passes"][0], p, champs, "1810.04805")
+    assert pp.passer("essai", "papier", d, d["passes"][2], p, champs, "1810.04805").startswith("fait")
+    assert [_effort(a) for a in claude.args] == [None, None, "high"]
 
 
 def test_un_tri_sans_reponse_ne_decide_rien(media, monkeypatch):

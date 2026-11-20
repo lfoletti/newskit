@@ -91,6 +91,7 @@ def test_une_declaration_complete_se_lit_dans_l_ordre_des_passes(media):
         "sortie": "corps",
         "forme": None,
         "tri": None,
+        "effort": None,
     }
     assert d["passes"][2]["tri"] == media / "procedes/tri.txt"
     assert d["passes"][1]["forme"] == "etapes" and d["passes"][1]["sortie"] is None
@@ -212,6 +213,20 @@ def test_une_passe_ecrit_la_fiche_ou_suit_une_forme(media, passe):
     decl = complet()
     decl["papier"]["passes"]["lecture"] = passe
     refuse(decl, media, "passes.lecture")
+
+
+def test_l_effort_d_une_passe_se_declare(media):
+    decl = complet()
+    decl["papier"]["passes"]["procede"]["effort"] = "high"
+    d = procedes.declaration(decl, media)["papier"]
+    assert [p["effort"] for p in d["passes"]] == [None, "high", None]
+
+
+@pytest.mark.parametrize("effort", ["haut", "", 3, None, "HIGH"])
+def test_l_effort_d_une_passe_parmi_ceux_du_modele(media, effort):
+    decl = complet()
+    decl["papier"]["passes"]["procede"]["effort"] = effort
+    refuse(decl, media, "passes.procede.effort")
 
 
 @pytest.mark.parametrize("nom", ["Lecture", "", "deux mots"])

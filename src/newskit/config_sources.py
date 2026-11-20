@@ -763,6 +763,27 @@ def _valider(d: dict, p: Path) -> dict:
         vus_dossiers.add(v["dossier"])
         vus_themes |= set(v["themes"] or [])
 
+    # Les listes de sélection d'un graphe (mainteneur, 20.11.2026) : {graphe: [{url, depuis?}]} ; `depuis` en AAAA-MM.
+    listes = (veille.get("jalons") or {}).get("listes")
+    if listes is not None:
+        ok = isinstance(listes, dict) and all(
+            NOM_DE_GRAPHE.match(str(g))
+            and isinstance(ls, list)
+            and all(
+                isinstance(x, dict)
+                and set(x) <= {"url", "depuis"}
+                and isinstance(x.get("url"), str)
+                and re.match(r"^https?://\S+$", x["url"])
+                and ("depuis" not in x or re.match(r"^\d{4}-(0[1-9]|1[0-2])$", str(x["depuis"])))
+                for x in ls
+            )
+            for g, ls in listes.items()
+        )
+        if not ok:
+            raise ConfigInvalide(
+                f"{p.name} : veille_arxiv.jalons.listes : {{graphe: [{{url: http(s)://…, depuis: AAAA-MM}}]}}"
+            )
+
     # Les graphes : libellé et domaine (la phrase qui oriente la couche 2), par nom.
     # Facultatif ; un graphe nommé par une source sans entrée ici prend des défauts.
     graphes_decl = d.get("graphes") or {}

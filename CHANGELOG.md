@@ -6,6 +6,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Ajouté
 
+- Un graphe déclare des listes de sélection : une page publique dont les liens nomment des papiers arXiv, choisis par
+  des humains (`veille_arxiv.jalons.listes.<graphe>: [{url, depuis}]`). Leurs papiers valent des papiers choisis à la
+  main : jalons d'office, collectés s'ils manquent. `depuis` (AAAA-MM) écarte les papiers soumis avant ce mois.
+  Chaque liste se relit à chaque sélection des jalons ; injoignable, sa dernière copie sert.
 - Une passe d'un procédé déclare l'effort du modèle (`effort: low`, `medium`, `high` ou `max`). Il vaut pour l'appel
   de la passe, par les lots comme par `claude -p`, pas pour son tri. Sans lui, les lots gardent `medium` et
   `claude -p` son effort par défaut. Un autre effort est refusé au chargement du registre.

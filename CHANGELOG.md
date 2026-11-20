@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.83] - 2026-11-20
+
 ### Ajouté
 
 - Un graphe déclare des listes de sélection : une page publique dont les liens nomment des papiers arXiv, choisis par

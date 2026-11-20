@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.84] - 2026-11-20
+
 ### Ajouté
 
 - Un graphe déclare des dossiers transversaux (`graphes.<g>.dossiers: {fichier: dossiers.yaml}`) : chaque dossier a

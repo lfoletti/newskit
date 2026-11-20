@@ -28,7 +28,9 @@ Usage :
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -73,8 +75,9 @@ def jalons_detailles(graphe: str) -> dict[str, dict]:
     return json.loads(p.read_text(encoding="utf-8")).get("papiers", {}) if p.exists() else {}
 
 
-def choisis_a_la_main(graphe: str | None = None) -> list[str]:
-    """Les papiers nommés au registre (`veille_arxiv.jalons.choisis`) : jalons d'office.
+def choisis_a_la_main(graphe: str | None = None, sans_reseau: bool = False) -> list[str]:
+    """Les papiers nommés au registre (`veille_arxiv.jalons.choisis`) et ceux de ses listes de sélection
+    (`veille_arxiv.jalons.listes`) : jalons d'office.
 
     Une liste vaut pour le graphe principal ; un dictionnaire les range par graphe.
     """
@@ -88,7 +91,48 @@ def choisis_a_la_main(graphe: str | None = None) -> list[str]:
     # et vérifiés, ils valent un choix. Ils vivent dans graphe/<nom>/canon.json, pas au registre.
     from newskit import combler_canon  # noqa: PLC0415
 
-    return list(dict.fromkeys(registre + combler_canon.papiers_du_canon(nom)))
+    return list(dict.fromkeys(registre + papiers_des_listes(nom, sans_reseau) + combler_canon.papiers_du_canon(nom)))
+
+
+# Les listes de sélection (mainteneur, 20.11.2026 : « oui c'est une source ») : une page publique dont les liens
+# nomment des papiers arXiv, choisis par des humains. Un lien nomme un papier quand son chemin finit par un
+# identifiant arXiv (arxiv.org/abs/2611.08615v2, …/papers/un-titre-2611.08615).
+LIEN_ARXIV = re.compile(r"https?://[^\s)\]|>\"']*?[/-](\d{4}\.\d{4,5})(?:v\d+)?(?:\.pdf)?(?=[)\]\s|>\"'#?]|$)")
+LISTES = "listes_jalons"  # sous cache/ : la dernière copie lue de chaque liste
+
+
+def ids_d_une_liste(texte: str, depuis: str | None = None) -> list[str]:
+    """Les papiers que nomment les liens d'une page, une fois chacun, dans l'ordre ; `depuis` (AAAA-MM) écarte ceux
+    soumis avant ce mois (l'identifiant commence par AAMM)."""
+    seuil = f"{depuis[2:4]}{depuis[5:7]}" if depuis else "0000"
+    ids = (m.group(1) for m in LIEN_ARXIV.finditer(texte))
+    return list(dict.fromkeys(i for i in ids if i[:4] >= seuil))
+
+
+def lire_liste(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": f"{cfg.edition()['nom']}/1.0 (mailto:{contact()})"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read().decode("utf-8", errors="replace")
+
+
+def papiers_des_listes(graphe: str, sans_reseau: bool = False) -> list[str]:
+    """Les papiers des listes de sélection du graphe (`veille_arxiv.jalons.listes.<graphe>`). Chaque liste se lit
+    sur le réseau et se garde ; injoignable, ou `sans_reseau`, sa dernière copie sert."""
+    out: list[str] = []
+    for liste in ((cfg.veille_arxiv().get("jalons") or {}).get("listes") or {}).get(graphe) or []:
+        copie = RACINE / "cache" / LISTES / f"{hashlib.sha256(liste['url'].encode()).hexdigest()[:16]}.txt"
+        texte = None
+        if not sans_reseau:
+            try:
+                texte = lire_liste(liste["url"])
+                copie.parent.mkdir(parents=True, exist_ok=True)
+                copie.write_text(texte, encoding="utf-8")
+            except (urllib.error.URLError, TimeoutError) as e:
+                print(f"  !! liste de sélection injoignable ({liste['url']}) : {e} ; dernière copie", file=sys.stderr)
+        if texte is None and copie.exists():
+            texte = copie.read_text(encoding="utf-8")
+        out += ids_d_une_liste(texte or "", liste.get("depuis"))
+    return list(dict.fromkeys(out))
 
 
 def papiers_du_graphe(graphe: str) -> dict[str, dict]:
@@ -200,7 +244,7 @@ def choisir(graphe: str, ecrire: bool = True, sans_reseau: bool = False) -> dict
     r = regle()
     cit = citations(list(papiers), sans_reseau)
     citantes = fiches_citantes(graphe)
-    choisis = set(choisis_a_la_main(graphe))
+    choisis = set(choisis_a_la_main(graphe, sans_reseau))
     retenus = {}
     for aid, p in papiers.items():
         n, m = cit.get(aid, 0), citantes.get(aid, 0)

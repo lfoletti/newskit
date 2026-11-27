@@ -106,13 +106,52 @@ def lire(chemin: Path) -> nx.Graph:
         if d["node_type"] in FICHES:
             for k, v in en_tetes.get(str(d.get("_source") or ""), {}).items():
                 d.setdefault(k, v)
+    fondre_par_identifiant(G)
     return G
+
+
+def fondre_par_identifiant(G: nx.Graph) -> int:
+    """Fond en une entité celles qui portent le même ancien identifiant (`newskit_id`) : deux lots donnent parfois le
+    même identifiant sous deux libellés, que la composition fondait et que le cerveau garde à part. La plus reliée
+    (à égalité, le premier identifiant) garde son nom et ce qu'elle porte ; les autres noms vont sous `aliases`, ce
+    qu'elle n'a pas lui vient des autres, leurs relations la rejoignent. Rend le nombre d'entités fondues."""
+    groupes: dict[str, list[str]] = {}
+    for n, d in G.nodes(data=True):
+        if d.get("newskit_id"):
+            groupes.setdefault(d["newskit_id"], []).append(n)
+    fondues = 0
+    for ns in groupes.values():
+        garde = min(ns, key=lambda n: (-G.degree(n), n))
+        d = G.nodes[garde]
+        noms = list(d.get("aliases") or [])
+        for autre in sorted(n for n in ns if n != garde):
+            a = G.nodes[autre]
+            for nom in [a.get("name"), *(a.get("aliases") or [])]:
+                if nom and nom != d.get("name") and nom not in noms:
+                    noms.append(nom)
+            for k, v in a.items():
+                d.setdefault(k, v)
+            for v, e in G[autre].items():
+                if v != garde and not G.has_edge(garde, v):
+                    G.add_edge(garde, v, **e)
+            G.remove_node(autre)
+            fondues += 1
+        if noms:
+            d["aliases"] = noms
+    return fondues
 
 
 def _par_cle(G: nx.Graph) -> dict[str, str]:
     """Clé d'une table → entité : son identifiant au cerveau, ou l'ancien (`newskit_id`), sous lequel la composition
     écrit encore ses tables jusqu'à son retrait (K3, étape 3)."""
     return {**{d["newskit_id"]: n for n, d in G.nodes(data=True) if d.get("newskit_id")}, **{n: n for n in G}}
+
+
+def sous_anciennes_cles(G: nx.Graph) -> nx.Graph:
+    """Le graphe où chaque entité qui porte un ancien identifiant (`newskit_id`) est rangée sous lui, comme la
+    composition rangeait ses nœuds : la pyramide garde ces clés jusqu'à l'étape 3 de K3, où elles changent avec le
+    versement. Le chargeur a fondu les entités d'un même identifiant (`fondre_par_identifiant`) : une clé, une entité."""
+    return nx.relabel_nodes(G, {n: d["newskit_id"] for n, d in G.nodes(data=True) if d.get("newskit_id")}, copy=False)
 
 
 def appliquer_anglais(G: nx.Graph, anglais: dict[str, str]) -> int:

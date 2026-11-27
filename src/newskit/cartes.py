@@ -242,7 +242,7 @@ def notions_du_sujet(
     puis les plus proches par l'encodeur (cosinus) et par les mots du sujet, jusqu'à `combien`."""
     # Une notion de la pyramide peut manquer au graphe (graphe reconstruit après elle) : elle garde son seul libellé.
     formes = {
-        n: [ig._plier(v["label"]), *(ig._plier(a) for a in ((G.nodes[n].get("aussi") or []) if n in G else []))]
+        n: [ig._plier(v["label"]), *(ig._plier(a) for a in (ig.autres_noms(G, n) if n in G else []))]
         for n, v in notions.items()
     }
     canon: list[str] = []

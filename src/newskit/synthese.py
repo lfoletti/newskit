@@ -150,7 +150,11 @@ def dossier(graphe: str) -> Path:
 
 
 def charger_graphe(graphe: str):
-    return ig.charger(graphe)
+    """Le graphe du cerveau sous les anciens identifiants (`gc.sous_anciennes_cles`) : la pyramide range ses synthèses
+    sous eux jusqu'à l'étape 3 de K3, où ses clés changent avec le versement."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    return gc.sous_anciennes_cles(ig.charger(graphe))
 
 
 def mots(texte: str) -> set[str]:
@@ -444,9 +448,11 @@ def _preuves_de_reference(G, graphe: str | None, n: str, f: str) -> list[dict]:
     (le `rationale` de son lot, avec ses dates), puis les deux premiers paragraphes de l'article (09.10.2026)."""
     out: list[dict] = []
     d = _fiche_de(G, f)
-    if graphe and d.get("_id"):
+    # Le lot de couche 2 porte l'ancien identifiant de la fiche, que le cerveau garde sous `newskit_id`.
+    cle = d.get("newskit_id") or d.get("_id")
+    if graphe and cle:
         for g in [graphe, *cfg.graphes_inclus(graphe)]:
-            lot = cfg.chemins_du_graphe(g)["couche2"] / "fiches" / f"{d['_id']}.json"
+            lot = cfg.chemins_du_graphe(g)["couche2"] / "fiches" / f"{cle}.json"
             if lot.exists():
                 try:
                     noeud = next(
@@ -477,16 +483,16 @@ def preuves_de(G, n, graphe: str | None = None) -> list[dict]:
     entre deux versions d'un texte, les fiches de référence viennent d'abord, par partie puis par version, pour que
     la synthèse puisse décrire le changement (diachronie, 09.10.2026)."""
     label = ig._label(G, n)
-    # Les libellés fondus dans ce nœud (alias de langue ou de sigle, `aussi`) attestent la notion autant que le
+    # Les noms fondus dans ce nœud (alias de langue ou de sigle, `aussi` et `aliases`) attestent la notion autant que le
     # canonique : « Minimisation des données » dans une fiche française prouve « Data minimization » (09.10.2026).
-    formes = [label, *(G.nodes[n].get("aussi") or [])]
+    formes = [label, *ig.autres_noms(G, n)]
     motif = re.compile(r"(?<![\w])(?:" + "|".join(re.escape(ig._plier(f)) for f in formes if f) + r")(?![\w])")
     fiches: list[str] = []
     for v in G.neighbors(n):
-        f = str((G.get_edge_data(n, v) or {}).get("source_file") or "")
+        f = str((G.get_edge_data(n, v) or {}).get("_source") or "")
         if f and f not in fiches:
             fiches.append(f)
-    f0 = str(G.nodes[n].get("source_file") or "")
+    f0 = str(G.nodes[n].get("_source") or "")
     if f0 and f0 not in fiches:
         fiches.insert(0, f0)
     evolue = bool((G.nodes[n].get("actualite") or {}).get("evolue"))
@@ -550,7 +556,7 @@ def preuves_de(G, n, graphe: str | None = None) -> list[dict]:
         if len(en_plus) >= plafond_ref:
             break
     out.extend(en_plus[:plafond_ref])
-    pourquoi = str(G.nodes[n].get("rationale") or "").strip()
+    pourquoi = str(G.nodes[n].get("description") or "").strip()
     if pourquoi and f0:
         out.append({"fiche": f0, "ligne": 0, "texte": pourquoi[:LONGUEUR_PREUVE], "pourquoi": True})
     return [annoter_preuve(G, p) for p in out]
@@ -592,7 +598,7 @@ def matiere_de(G, n, preuves: list[dict]) -> str:
     (statut et nom du texte de référence, que le rédacteur voit), et le libellé de la notion avec ses alias. Le
     11.10.2026, « Article 64 GDPR » était retiré pour « 64 » et « RGPD », « Cyber Resilience Act » pour le nom du
     texte lu dans l'étiquette : le contrôle ne doit pas ignorer ce que la consigne montre."""
-    formes = [ig._label(G, n), *(G.nodes[n].get("aussi") or [])] if n in G else [str(n)]
+    formes = [ig._label(G, n), *ig.autres_noms(G, n)] if n in G else [str(n)]
     return " ".join([*(p["texte"] + dates_de(p) + " " + etiquette_preuve(p) for p in preuves), *formes])
 
 
@@ -613,7 +619,7 @@ def choisir_notions(G, combien: int) -> list[str]:
 
 
 def nombre_de_fiches(G, n) -> int:
-    return len({str((G.get_edge_data(n, v) or {}).get("source_file") or "") for v in G.neighbors(n)} - {""})
+    return len({str((G.get_edge_data(n, v) or {}).get("_source") or "") for v in G.neighbors(n)} - {""})
 
 
 def notions_suivantes(G, deja: set[str], combien: int) -> list[str]:
@@ -899,20 +905,18 @@ def entrelacer_rares(G, notions: dict, neuves: list[str], graphe: str | None = N
     for n in notions:
         if n in G:
             for v in G.neighbors(n):
-                f = str((G.get_edge_data(n, v) or {}).get("source_file") or "")
+                f = str((G.get_edge_data(n, v) or {}).get("_source") or "")
                 if f:
                     couverture[f] = couverture.get(f, 0) + 1
 
     def rarete(n: str) -> int:
-        fiches = {str((G.get_edge_data(n, v) or {}).get("source_file") or "") for v in G.neighbors(n)} - {""}
+        fiches = {str((G.get_edge_data(n, v) or {}).get("_source") or "") for v in G.neighbors(n)} - {""}
         return min((couverture.get(f, 0) for f in fiches), default=10**6)
 
     def du_domaine(n: str) -> bool:
         if not propres:
             return True
-        return any(
-            str((G.get_edge_data(n, v) or {}).get("source_file") or "").startswith(propres) for v in G.neighbors(n)
-        )
+        return any(str((G.get_edge_data(n, v) or {}).get("_source") or "").startswith(propres) for v in G.neighbors(n))
 
     rares = sorted((n for n in neuves if du_domaine(n)), key=lambda n: (rarete(n), -G.degree(n)))
     out, vus = [], set()
@@ -922,6 +926,28 @@ def entrelacer_rares(G, notions: dict, neuves: list[str], graphe: str | None = N
                 vus.add(n)
                 out.append(n)
     return out + [n for n in neuves if n not in vus]
+
+
+# La lecture du graphe sous laquelle les empreintes ont été posées (K3, 27.11.2026 : le cerveau).
+LECTURE = "cerveau"
+
+
+def reancrer(G, etat: dict, graphe: str) -> int:
+    """Pose sur chaque synthèse, et sur chaque échec, l'empreinte que le cerveau donne à ses preuves, sans rien
+    réécrire : la composition et le cerveau ne gardent pas la même description quand plusieurs lots décrivent une
+    notion, et l'empreinte changeait pour plus de la moitié des synthèses sans qu'une fiche ait changé (mesuré le
+    27.11.2026). Une synthèse sans preuve garde la sienne, et reste à réécrire. Rend le nombre d'empreintes changées."""
+    changees = 0
+    for groupe in (etat["notions"], etat.get("echecs") or {}):
+        for n, v in groupe.items():
+            if n not in G or "empreinte" not in v:
+                continue
+            pr = preuves_de(G, n, graphe)
+            if pr and (e := empreinte_de(G, n, pr)) != v["empreinte"]:
+                v["empreinte"] = e
+                changees += 1
+    etat["lecture"] = LECTURE
+    return changees
 
 
 def mettre_a_jour(
@@ -938,6 +964,13 @@ def mettre_a_jour(
     etat = json.loads(p_n.read_text(encoding="utf-8"))
     notions = etat["notions"]
     G = charger_graphe(graphe)
+    if etat.get("lecture") != LECTURE:
+        reancrees = reancrer(G, etat, graphe)
+        p_n.write_text(json.dumps(etat, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(
+            f"  {graphe} : première tenue sur le cerveau, {reancrees} empreinte(s) réancrée(s), aucune synthèse réécrite",
+            flush=True,
+        )
     parties = [n for n in notions if n not in G]
     for n in parties:
         del notions[n]
@@ -976,10 +1009,10 @@ def mettre_a_jour(
         # Rattrapage ciblé par expression sur le libellé (12.10.2026, notions de l'article 5(1)(h) : présentes au graphe
         # avec leurs preuves, pas encore atteintes par la file) : hors plafond, mais jamais hors éligibilité.
         motif = re.compile(seulement, re.I)
-        a_rediger = [n for n in perimees + neuves if motif.search(str(G.nodes[n].get("label") or n))]
+        a_rediger = [n for n in perimees + neuves if motif.search(str(G.nodes[n].get("name") or n))]
         print(
             f"  --notions « {seulement} » : {len(a_rediger)} notion(s) éligible(s) retenue(s) — "
-            + ", ".join(str(G.nodes[n].get("label"))[:50] for n in a_rediger[:6]),
+            + ", ".join(str(G.nodes[n].get("name"))[:50] for n in a_rediger[:6]),
             flush=True,
         )
         if not a_rediger:
@@ -1309,9 +1342,9 @@ def indexer(graphe: str) -> None:
     ids, textes = [], []
     for f in sorted(
         {
-            str(d["source_file"])
+            str(d["_source"])
             for _, d in G.nodes(data=True)
-            if d.get("kind") in ("article", "papier") and d.get("source_file")
+            if d.get("node_type") in ("article", "papier") and d.get("_source")
         }
     ):
         for ligne, texte in ig._paragraphes(RACINE / f):
@@ -1538,19 +1571,17 @@ def passages_pour(
     noms = sorted({f for f in faits(question) if not f.replace(".", "").isdigit()})
     G = G if G is not None else charger_graphe(graphe)
     fiches = {
-        str(d["source_file"])
+        str(d["_source"])
         for _, d in G.nodes(data=True)
-        if d.get("kind") in ("article", "papier") and d.get("source_file")
+        if d.get("node_type") in ("article", "papier") and d.get("_source")
     }
     remplacees = {
-        str(d["source_file"])
-        for _, d in G.nodes(data=True)
-        if d.get("statut") == diachronie.REMPLACEE and d.get("source_file")
+        str(d["_source"]) for _, d in G.nodes(data=True) if d.get("statut") == diachronie.REMPLACEE and d.get("_source")
     }
     # Les textes de référence (1 200 paragraphes de loi pour un graphe de conformité, 09.10.2026) répondent aux mêmes mots que
     # les commentaires et les évinçaient des passages rendus (banc par sujet : 5 questions perdues sur 78). Sauf quand
     # la question nomme un article ou une annexe, au plus un passage vient d'un texte de loi.
-    references = {str(d["source_file"]) for _, d in G.nodes(data=True) if d.get("statut") and d.get("source_file")}
+    references = {str(d["_source"]) for _, d in G.nodes(data=True) if d.get("statut") and d.get("_source")}
     nomme_article = re.search(r"(?i)\b(art(?:icle|\.)?\s*\d+|annexe?\s+[ivx\d]+|§\s*\d+)", question) is not None
     # Au moins un passage de commentaire, le reste peut venir de la loi (17:36 : un plafond de 1 perdait les quatre
     # fonctions du NIST AI RMF, texte de référence sans article nommé) ; article nommé : pas de plafond.

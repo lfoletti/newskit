@@ -107,8 +107,34 @@ def passage_court(argv: list[str] | None = None) -> bool:
     return bool(a.sans_collecte and a.plafond)
 
 
+def alias_sans_cible(g: str) -> list[str]:
+    """Les alias de la table (`alias.json`) dont la cible finale n'est pas au cerveau : rien ne se fond dans le vide,
+    et le journal le dit (06.11.2026 ; la composition le disait, le cerveau le dit depuis K3). Une chaîne mène à son
+    dernier canonique ; une boucle n'a pas de cible."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    p = cfg.chemins_du_graphe(g)["base"] / "alias.json"
+    alias = (json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}).get("alias") or {}
+    if not alias:
+        return []
+    try:
+        G = gc.charger(g)
+    except gc.CerveauAbsent:
+        return []
+    presents = set(G) | {d["newskit_id"] for _, d in G.nodes(data=True) if d.get("newskit_id")}
+    out = []
+    for perdu in alias:
+        cible, vus = alias[perdu], {perdu}
+        while cible in alias and cible not in vus:
+            vus.add(cible)
+            cible = alias[cible]
+        if cible in vus or cible not in presents:
+            out.append(perdu)
+    return sorted(out)
+
+
 def cerveau_cortexdb(j: Journal, g: str, etiquette: str, court: bool | None = None) -> None:
-    """Le cerveau CortexDB du graphe, reconstruit après la composition, l'index, la pyramide et les cartes (CortexDB est la base du moteur,
+    """Le cerveau CortexDB du graphe, reconstruit après l'index, la pyramide et les cartes (CortexDB est la base du moteur,
     22.10.2026) : lots et synthèses versés tels quels, vecteurs repris ou encodés en local, aucun appel au modèle.
     Seulement pour un graphe engagé au registre (`graphes.<nom>.cortexdb: true`)."""
     if not cfg.verse_cortexdb(g):
@@ -121,6 +147,8 @@ def cerveau_cortexdb(j: Journal, g: str, etiquette: str, court: bool | None = No
     ok, _ = lancer(
         j, f"cerveau CortexDB{etiquette}", ["scripts/cerveau_cortexdb.py", "--graphe", g], garder=1, delai=5 * 3600
     )  # 3 h d'attente d'un encodeur au plus
+    if ok and (perdus := alias_sans_cible(g)):
+        j.signal(f"cerveau CortexDB{etiquette} : {len(perdus)} alias sans cible ({', '.join(perdus[:10])})")
     if continu and ok:
         from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
 
@@ -135,13 +163,9 @@ def cerveau_cortexdb(j: Journal, g: str, etiquette: str, court: bool | None = No
             )
 
 
-def composer_et_lire(j: Journal, g: str, etiquette: str) -> None:
-    """La composition, puis les premiers lecteurs du graphe : tendances, passe-partout, carte. Ils lisent le cerveau
-    (`premier_cerveau`)."""
-    _, sortie_c = lancer(j, f"composition{etiquette}", ["scripts/fusionner_graphe.py", "--graphe", g], garder=3)
-    for ligne_c in sortie_c.splitlines():  # un alias sans cible se relit : il est dit au rapport (06.11.2026)
-        if "alias sans cible" in ligne_c:
-            j.signal(f"composition{etiquette} : {ligne_c.strip()}")
+def premiers_lecteurs(j: Journal, g: str, etiquette: str) -> None:
+    """Les premiers lecteurs du graphe : tendances, passe-partout, carte. Ils lisent le cerveau (`premier_cerveau`) ;
+    la nuit ne compose plus de graphe (K3, étape 3, 27.11.2026)."""
     premier_cerveau(j, g, etiquette)
     tendances(j, g, etiquette)
     # Le passe-partout de chaque source (paragraphes répétés d'une fiche à l'autre), recalculé sur le corpus du jour et
@@ -1728,7 +1752,7 @@ def main() -> int:
                 garder=3,
                 modele=True,
             )
-        composer_et_lire(j, g, etiquette)
+        premiers_lecteurs(j, g, etiquette)
         # L'index des paragraphes (mots et vecteurs, synthese.py indexer) se rafraîchit chaque nuit là où il existe : une
         # vingtaine de minutes de calcul local pour un graphe de conformité, aucun appel. Il se crée à la main la première fois.
         if (cfg.chemins_du_graphe(g)["base"] / "synthese" / "vecteurs.npy").exists() and not inactive(

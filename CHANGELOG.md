@@ -21,8 +21,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   entités, 12 s contre 1 061 s par le serveur. Un schéma de CortexDB inconnu est refusé (`SchemaInconnu`). Premier pas
   du retrait de `graphe.json` : aucun module ne l'appelle encore.
 
+### Retiré
+
+- La composition (`fusionner_graphe`, `composition`) et `graphe.json` : la nuit ne compose plus, le cerveau est le graphe
+  (K3, étape 3). Le contrôle du schéma des extractions passe à `validation` ; les fonctions de couche 1 du versement
+  (`nettoyer_titres`, `fondre_doublons_de_fiche`) à `puits_cortexdb`. Un graphe sans couche 1 ne lit plus
+  `graphe.json` au versement.
+
 ### Changé
 
+- La nuit dit les alias sans cible après la reconstruction du cerveau (`alias_sans_cible`), comme la composition le
+  disait. Le chargeur donne à une entité dont la fiche est retirée la fiche d'une relation qui l'atteste encore.
+  Les anticorps des débris et des alias du témoin lisent le cerveau.
 - L'élagage et le semis de la pyramide (`partage_graphe --elaguer`, `--pyramide`) lisent les fiches et les entités du
   cerveau ; le contrôle d'un nouveau graphe attend son premier cerveau, plus son premier `graphe.json`.
 - La traduction française (`francais`) et les doublons de notions (`fondre_doublons`, `banc_decision`) lisent le graphe

@@ -222,3 +222,28 @@ def test_sans_table_le_graphe_reste_tel_que_le_cerveau_le_porte(tmp_path, monkey
     monkeypatch.setattr("newskit.config_sources.graphes_inclus", lambda g: [])
     G = gc.charger("g")
     assert G.nodes["entity:deployeur"]["name"] == "Betreiber" and "name_fr" not in G.nodes["entity:deployeur"]
+
+
+def test_une_entite_dont_la_fiche_est_retiree_prend_la_fiche_qui_l_atteste_encore(tmp_path):
+    noeuds = [
+        *NOEUDS,
+        ("entity:sou", "concept", {"name": "Sou", "_source": "sources/blogs/retiree.md"}),
+        ("entity:seule", "concept", {"name": "Seule", "_source": "sources/blogs/retiree.md"}),
+    ]
+    aretes = [*ARETES, ("entity:sou", "entity:fournisseur", "relates_to", {"_source": BILLET})]
+    G = gc.lire(_cerveau(tmp_path / "g.db", noeuds, aretes))
+    assert G.nodes["entity:sou"]["_source"] == BILLET
+    assert G.nodes["entity:seule"]["_source"] == "sources/blogs/retiree.md"  # rien d'autre ne l'atteste
+    assert G.nodes["entity:fournisseur"]["_source"] == BILLET  # une fiche présente reste
+
+
+def test_entre_plusieurs_fiches_qui_attestent_encore_la_premiere_presente(tmp_path):
+    noeuds = [*NOEUDS, ("entity:sou", "concept", {"name": "Sou", "_source": "sources/blogs/retiree.md"})]
+    aretes = [
+        *ARETES,
+        ("entity:sou", "entity:titre", "relates_to", {"_source": "sources/aaa/absente.md"}),
+        ("entity:sou", "entity:fournisseur", "relates_to", {"_source": LOI}),
+        ("entity:sou", "entity:art_5", "relates_to", {"_source": BILLET}),
+    ]
+    G = gc.lire(_cerveau(tmp_path / "g.db", noeuds, aretes))
+    assert G.nodes["entity:sou"]["_source"] == BILLET

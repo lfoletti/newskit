@@ -1,11 +1,12 @@
-"""Le témoin absurde, anticorps 4 sur 10 : le graphe composé sans débris (CHANTIER_GENERIQUE.md § 4.3,
+"""Le témoin absurde, anticorps 4 sur 10 : le cerveau sans débris (CHANTIER_GENERIQUE.md § 4.3,
 test_graphe_compose_sans_debris).
 
 Un premier passage rejoue la routine entière. Puis deux débris sont semés : une fiche retirée (son original et sa
 copie collectée ; son lot de couche 2 reste), un intertitre en gras ajouté à une autre fiche. Le second passage,
-marque de limite posée (rien ne redemande le modèle), recompose : aucune arête ne cite une fiche absente, rien ne
-nomme la fiche retirée, aucun libellé ne garde son balisage. Défaut trouvé le 06.11.2026 : le lot d'une fiche retirée
-revenait dans le graphe (fusionner_graphe.lot_orphelin ne lisait pas les chemins absolus, voir test_lot_orphelin.py).
+marque de limite posée (rien ne redemande le modèle), reverse : aucune arête du cerveau ne cite une fiche absente, rien
+ne nomme la fiche retirée, aucun nom ne garde son balisage. Le cerveau est le graphe (K3, 27.11.2026) : l'anticorps le
+lit, plus `graphe.json`. Défaut trouvé le 06.11.2026 : le lot d'une fiche retirée
+revenait dans le graphe composé (la composition est retirée depuis, K3).
 Reste hors du témoin : soumettre les paires « X (…) » / « X » au juge (un appel au modèle).
 """
 
@@ -21,6 +22,7 @@ from pathlib import Path
 
 import pytest
 
+from newskit import graphe_cerveau as gc  # noqa: E402
 from newskit import temoin  # noqa: E402
 
 RETIREE = "vol-de-ruche"
@@ -61,26 +63,23 @@ def recompose(tmp_path_factory):
         time.strftime("%Y-%m-%d %H:%M:%S") + " témoin\n", encoding="utf-8"
     )
     r2 = _passe(t)
-    g = json.load(gzip.open(t.donnees / "graphe" / "graphe.json.gz"))
-    return t, r2, g
+    return t, r2, gc.lire(t.donnees / "cache" / "cortexdb" / f"{temoin.GRAPHE}.db")
 
 
 def test_aucune_arete_ne_cite_une_fiche_absente(recompose):
     t, r, g = recompose
     assert r.returncode == 0, r.stdout[-1500:]
-    absentes = [
-        l["source_file"] for l in g["links"] if l.get("source_file") and not (t.donnees / l["source_file"]).exists()
-    ]
-    assert absentes == []
+    sources = {str(d.get("_source") or "") for *_, d in g.edges(data=True)} - {""}
+    assert sources and [s for s in sources if not (t.donnees / s).exists()] == []
 
 
 def test_rien_ne_nomme_la_fiche_retiree(recompose):
     _, _, g = recompose
-    assert [x.get("label") for x in g["nodes"] if RETIREE in json.dumps(x, ensure_ascii=False)] == []
+    assert [d.get("name") for _, d in g.nodes(data=True) if RETIREE in json.dumps(d, ensure_ascii=False)] == []
 
 
 def test_aucun_libelle_de_balisage(recompose):
     _, _, g = recompose
-    balises = [x["label"] for x in g["nodes"] if re.search(r"\*\*|__|`|^\s*#|^\W*$", x.get("label") or "")]
-    assert balises == []
-    assert any(x.get("label") == "Le registre des marques" for x in g["nodes"])  # nettoyé, pas perdu
+    noms = [str(d.get("name") or "") for _, d in g.nodes(data=True) if d.get("name")]
+    assert [x for x in noms if re.search(r"\*\*|__|`|^\s*#|^\W*$", x)] == []
+    assert "Le registre des marques" in noms  # nettoyé, pas perdu

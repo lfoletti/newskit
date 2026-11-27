@@ -35,24 +35,20 @@ def test_un_cerveau_present_ou_un_graphe_non_engage_n_est_pas_construit_d_avance
     assert construits == []
 
 
-def test_le_premier_cerveau_vient_apres_la_composition_et_avant_tous_les_lecteurs(construits, monkeypatch):
+def test_le_premier_cerveau_vient_avant_tous_les_lecteurs_sans_composition(construits, monkeypatch):
     ordre = []
-    monkeypatch.setattr(
-        rh, "lancer", lambda j, libelle, args, **k: ordre.append(args[0]) or (True, "2 alias sans cible\nfin")
-    )
+    monkeypatch.setattr(rh, "lancer", lambda j, libelle, args, **k: ordre.append(args[0]) or (True, ""))
     monkeypatch.setattr(rh, "cerveau_cortexdb", lambda j, g, etiquette, court=None: ordre.append("cerveau"))
     monkeypatch.setattr(rh, "tendances", lambda j, g, etiquette: ordre.append("tendances"))
     j = rh.Journal()
-    rh.composer_et_lire(j, "neuf", "")
+    rh.premiers_lecteurs(j, "neuf", "")
     assert ordre == [
-        "scripts/fusionner_graphe.py",
         "cerveau",
         "tendances",
         "scripts/passe_partout.py",
         "scripts/digerer_graphe.py",
     ]
-    assert any("composition : 2 alias sans cible" in s for s in j.lignes)
 
 
-def test_la_nuit_compose_et_lit_par_composer_et_lire():
-    assert "composer_et_lire(j, g, etiquette)" in inspect.getsource(rh.main)
+def test_la_nuit_lit_par_premiers_lecteurs():
+    assert "premiers_lecteurs(j, g, etiquette)" in inspect.getsource(rh.main)

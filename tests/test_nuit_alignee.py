@@ -219,16 +219,14 @@ def test_la_nuit_compte_les_aretes_ecartees_et_la_couche_1_sans_document(depot, 
     assert (bilan["couche1_fiche_hors_depot"], bilan["couche1_boucle"]) == (1, 0)
 
 
-def test_sans_couche_1_la_nuit_lit_encore_le_graphe_compose(depot, monkeypatch, capsys):
-    """Un graphe sans couche 1 n'a pas de squelette au cerveau : ses fiches sans lot se lisent au graphe composé."""
+def test_sans_couche_1_la_nuit_ne_verse_que_les_fiches_d_un_lot(depot, monkeypatch, capsys):
+    """Un graphe sans couche 1 n'a pas de squelette au cerveau ; plus de graphe composé non plus (K3, étape 3) : seules
+    ses fiches qui ont un lot se versent. Les graphes versés ont tous la couche 1."""
     monkeypatch.setattr(pc, "squelette_du_graphe", lambda g: pytest.fail("pas de squelette sans couche 1"))
     compose = {"nodes": [SQUELETTE["nodes"][2]], "links": []}
     (depot / "graphe" / "g" / "graphe.json").write_text(json.dumps(compose), encoding="utf-8")
     code, bilan, recus = nuit(depot, monkeypatch, capsys)
-    assert code == 0 and set(recus) == {A, B} and bilan["couche1_relations"] == 0
-    (depot / "graphe" / "g" / "graphe.json").unlink()
-    code, bilan, recus = nuit(depot, monkeypatch, capsys)
-    assert code == 0 and set(recus) == {A}
+    assert code == 0 and set(recus) == {A} and bilan["couche1_relations"] == 0  # graphe.json n'est plus lu
 
 
 # --- un seul calcul du squelette et de la structure pour les deux passages

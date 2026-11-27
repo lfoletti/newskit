@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Doublons de notions : la même chose sous plusieurs libellés (traduction, sigle, variante), fondue à la composition.
+"""Doublons de notions : la même chose sous plusieurs libellés (traduction, sigle, variante), fondue au versement du cerveau.
 
 Pourquoi (mesure du 09.10.2026, un graphe de conformité) : la consigne d'extraction gardait la langue du document, l'identifiant
 d'un nœud est le slug de son libellé, et la composition ne fond que les libellés strictement égaux. « Data
@@ -15,8 +15,8 @@ Comment :
   3. mémoire dans graphe/<nom>/alias.json : `alias` (identifiant secondaire → canonique), `refuses` (paires tranchées
      non, jamais redemandées), `libelles`. Le canonique est le libellé anglais quand l'autre est français (la consigne
      d'extraction est passée à l'anglais le 09.10.2026), sinon le plus relié, sinon le plus court.
-  4. `fusionner_graphe.py` applique la table à chaque composition : les arêtes du secondaire passent au canonique, qui
-     garde les autres libellés sous `aussi` (la recherche les voit).
+  4. le versement du cerveau applique la table (`puits_cortexdb`) : les relations du secondaire passent au canonique,
+     qui garde les autres noms (K3, 27.11.2026 : plus de composition).
 
     python3 -m newskit.fondre_doublons --graphe <graphe>              # un passage (PLAFOND paires au plus)
     python3 -m newskit.fondre_doublons --graphe <graphe> --controle   # les candidats, sans appel
@@ -543,7 +543,7 @@ def passage(graphe: str, controle: bool, plafond: int) -> int:
     print(
         f"  {graphe} : {fusions} alias ajouté(s), {sum(1 for k in verdicts if not verdicts[k])} paire(s) refusée(s), "
         f"{len(paires) - len(verdicts)} non tranchée(s) ; table : {len(memo['alias'])} alias. "
-        f"Appliqués à la prochaine composition (fusionner_graphe.py)."
+        f"Appliqués au prochain versement du cerveau."
     )
     return 0
 

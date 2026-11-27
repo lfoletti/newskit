@@ -4,6 +4,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Changé
+
+- Le passage du cerveau choisit sa voie par son coût prévu, plus par un seuil d'effacements. Avant de cloner, il dresse
+  un plan (`cerveau_cortexdb.plan_du_passage`) : la durée prévue en place (documents relus, documents écrits,
+  effacements) et celle d'une reconstruction complète. Il reste en place sauf si la reconstruction est prévue plus
+  courte ; les cas où elle s'impose (aucun cerveau précédent, relevé absent, couche 1 changée, binaire trop ancien,
+  demande) ne changent pas. Le journal dit le plan ; le bilan garde le plan (`plan`), la durée prévue (`prevu_s`),
+  l'écart (`ecart_au_plan`) et les coûts mesurés du graphe (`mesures`), qui servent au passage suivant. Au-delà de 15 %
+  d'écart, le journal demande un contrôle. Le cas qui l'a montré : 3 307 documents à remplacer sur 23 017 lançaient une
+  reconstruction de 3 h 15 ; le plan prévoit environ 2 h 35 en place, contre 3 h 30 pour la reconstruction.
+  Les constantes `EFFACEMENTS_MAX` et `EFFACEMENTS_MAX_INDEXES` disparaissent, avec `plafond_effacements` et
+  `mode_selon_effacements`.
+- Un passage qui remplacerait plus de 10 % du cerveau le signale : si les fiches n'ont pas changé, une version a
+  changé la forme du versement.
+
+### Ajouté
+
+- `puits_cortexdb.FORMES_PRECEDENTES` : un changement voulu de la forme d'un versement se livre avec la fonction qui
+  rend sa forme d'avant. Le passage reconnaît alors l'ancienne empreinte au relevé, y écrit la nouvelle et n'écrit
+  rien au cerveau (compte `migres` au bilan). Un document du cerveau se réécrit seulement si le contenu de sa fiche
+  change.
+- `tests/test_empreintes_stables.py` et `tests/empreintes_de_reference.json` : une version qui change l'empreinte d'un
+  versement inchangé fait tomber le test, qui dit quoi livrer.
+
 ## [0.1.85] - 2026-11-27
 
 ### Changé

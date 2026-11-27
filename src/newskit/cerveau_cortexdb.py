@@ -56,21 +56,24 @@ EN_PLACE_DES = (
 # nécessaire et elle est coûteuse en temps ») : la durée prévue de chaque voie, et la moins coûteuse. Coûts de départ,
 # mesurés sur un graphe de gouvernance ; chaque passage met à jour ceux de son graphe au bilan (`mesures_apres`).
 # - Reconstruction complète du 19.11.2026 : 21 406 documents en 11 638 s, vecteurs repris de l'ancien cerveau, dont
-#   une part fixe (serveur, encodeur, contrôle, compactage) prise égale à celle d'un passage en place, faute de mesure.
+#   Sa part fixe (serveur, encodeur, contrôle) n'est pas mesurée : 320 s, à vue de nez.
 S_PAR_DOCUMENT = 0.53
 S_FIXE_COMPLET = 320.0
 # - Passages en place du 19.11.2026 (87 documents écrits, 28 effacements, 522 s) et du 27.11.2026 (830 écrits, 682
-#   effacements, 2 325 s) : un document écrit en place s'encode, 2,3 s ; la part fixe (comptage, clone, ouverture avec
-#   l'encodeur, contrôle) fait 320 s.
+#   effacements, 2 325 s) : leur écart donne 2,3 s par document écrit, encodage compris. Passage en place du 27.11.2026
+#   à 9 h 59, newskit 0.1.85 (21 écrits, 19 effacements, 292 alias fondus, 1 145 s) : le reste (comptage, clone,
+#   encodeur, relecture des documents, fusion des alias, contrôle) fait 1 100 s pour 23 017 documents. Il croît avec
+#   la taille du cerveau : 0,048 s par document. Un passage qui n'écrit rien coûte ainsi toujours moins qu'une
+#   reconstruction, quelle que soit la taille du cerveau.
 S_PAR_ECRIT_EN_PLACE = 2.3
-S_FIXE_EN_PLACE = 320.0
+S_PAR_DOCUMENT_EN_PLACE = 0.048
 # - Un effacement : un remplacement est un appel à delete_document_graph, un retrait deux (avec knowledge_delete).
 #   Avant CortexDB v2.154.0, chacun lit tout le graphe : 4,0 s (14.11.2026, 972 appels). Depuis, des index de
 #   provenance (liliang-cn/cortexdb#190) : 0,19 s au pire mesuré (copie du même graphe, 16.11.2026).
 INDEX_PROVENANCE_DES = (2, 154, 0)
 S_PAR_EFFACEMENT = 4.0
 S_PAR_EFFACEMENT_INDEXES = 0.19
-ECRITS_POUR_MESURER = 100  # en dessous, un passage en place mesure sa part fixe, pas le coût d'un document écrit
+ECRITS_POUR_MESURER = 100  # en dessous, un passage en place mesure le coût d'un document relu, pas d'un écrit
 PART_REECRITE = 0.1  # part du cerveau à remplacer au-delà de laquelle le plan le signale
 DEPASSEMENT = 0.15  # écart à la durée prévue au-delà duquel le bilan demande un contrôle (mainteneur, 02.11.2026)
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
@@ -110,7 +113,7 @@ def couts(mesures: dict, version: tuple[int, ...]) -> dict:
     return {
         "s_par_document": mesures.get("s_par_document", S_PAR_DOCUMENT),
         "s_par_ecrit_en_place": mesures.get("s_par_ecrit_en_place", S_PAR_ECRIT_EN_PLACE),
-        "fixe_en_place_s": mesures.get("fixe_en_place_s", S_FIXE_EN_PLACE),
+        "s_par_document_en_place": mesures.get("s_par_document_en_place", S_PAR_DOCUMENT_EN_PLACE),
         "s_par_effacement": S_PAR_EFFACEMENT_INDEXES if version >= INDEX_PROVENANCE_DES else S_PAR_EFFACEMENT,
     }
 
@@ -132,7 +135,9 @@ def plan_du_passage(compte: dict, mesures: dict, version: tuple[int, ...]) -> di
         "ecrits": ecrits,
         "effacements": effacements,
         "en_place_s": round(
-            c["fixe_en_place_s"] + ecrits * c["s_par_ecrit_en_place"] + effacements * c["s_par_effacement"]
+            documents * c["s_par_document_en_place"]
+            + ecrits * c["s_par_ecrit_en_place"]
+            + effacements * c["s_par_effacement"]
         ),
         "complet_s": round(S_FIXE_COMPLET + documents * c["s_par_document"]),
     }
@@ -179,7 +184,7 @@ def ecart_au_plan(prevu: float | None, fait: float) -> float | None:
 
 def mesures_apres(mesures: dict, mode: str, compte: dict, duree: float, version: tuple[int, ...]) -> dict:
     """Les coûts du graphe après ce passage : une reconstruction mesure le coût d'un document ; un passage en place
-    mesure le coût d'un document écrit quand il en écrit assez, sinon sa part fixe."""
+    mesure le coût d'un document écrit quand il en écrit assez, sinon celui d'un document relu."""
     m = dict(mesures)
     c = couts(m, version)
     if mode == "complet":
@@ -188,10 +193,13 @@ def mesures_apres(mesures: dict, mode: str, compte: dict, duree: float, version:
         return m
     plan = plan_du_passage(compte, m, version)
     reste = duree - plan["effacements"] * c["s_par_effacement"]
+    relus = plan["documents"] * c["s_par_document_en_place"]
     if plan["ecrits"] >= ECRITS_POUR_MESURER:
-        m["s_par_ecrit_en_place"] = round(max(0.0, (reste - c["fixe_en_place_s"]) / plan["ecrits"]), 3)
-    else:
-        m["fixe_en_place_s"] = round(max(0.0, reste - plan["ecrits"] * c["s_par_ecrit_en_place"]), 1)
+        m["s_par_ecrit_en_place"] = round(max(0.0, reste - relus) / plan["ecrits"], 3)
+    elif plan["documents"]:
+        m["s_par_document_en_place"] = round(
+            max(0.0, reste - plan["ecrits"] * c["s_par_ecrit_en_place"]) / plan["documents"], 4
+        )
     return m
 
 

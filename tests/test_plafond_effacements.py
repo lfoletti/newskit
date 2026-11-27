@@ -121,8 +121,8 @@ def poste(tmp_path, monkeypatch):
     return p
 
 
-PEU = {"remplaces": 10, "retires": 0, "ajoutes": 0, "inchanges": 5000}  # en place : 345 s, contre 2 975 s
-TROP = {"remplaces": 5000, "retires": 0, "ajoutes": 0, "inchanges": 0}  # en place : 12 770 s, contre 2 970 s
+PEU = {"remplaces": 10, "retires": 0, "ajoutes": 0, "inchanges": 5000}  # en place : 265 s, contre 2 975 s
+TROP = {"remplaces": 5000, "retires": 0, "ajoutes": 0, "inchanges": 0}  # en place : 12 690 s, contre 2 970 s
 
 
 @pytest.mark.parametrize("compte, en_place", [(PEU, True), (TROP, False)])
@@ -281,7 +281,12 @@ def test_la_place_libre_est_celle_du_dossier_des_cerveaux(tmp_path):
 # CortexDB v2.154.0 (liliang-cn/cortexdb#190) trouve ce qu'un document a mis dans le graphe par des index de provenance :
 # une suppression ne lit plus tout le graphe. Copie du graphe de gouvernance, 16.11.2026 : 0,04 à 0,19 s par
 # delete_document_graph, contre 0,9 à 1,2 s en v2.147.0. Le coût d'un effacement suit le binaire qui versera.
-MOYEN = {"remplaces": 600, "retires": 0, "ajoutes": 0, "inchanges": 5000}  # en place : 1 814 s, ou 4 100 s sans index
+MOYEN = {
+    "remplaces": 600,
+    "retires": 0,
+    "ajoutes": 0,
+    "inchanges": 5000,
+}  # en place : 1 763 s, ou 4 049 s sans index ; reconstruction 3 288 s
 
 
 @pytest.mark.parametrize("version, en_place", [((2, 154, 6), True), ((2, 153, 9), False)])

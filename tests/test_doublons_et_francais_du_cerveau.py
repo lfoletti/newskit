@@ -131,3 +131,75 @@ def test_garder_le_francais_prend_l_original_francais_d_un_nom_traduit():
     table = {"libelles": {}, "textes": {}}
     assert fr.garder_le_francais([n], table) == 1
     assert table["libelles"]["concept_a"] == ["Droit des ruchers", fr.empreinte("Beekeeping law")]
+
+
+def test_un_alias_dont_la_cible_n_est_pas_au_cerveau_est_dit(monkeypatch, tmp_path):
+    import json
+
+    from newskit import routine_hebdo as rh
+
+    (tmp_path / "alias.json").write_text(
+        json.dumps(
+            {
+                "alias": {
+                    "concept_x": "concept_b",
+                    "concept_y": "concept_x",
+                    "concept_z": "absente",
+                    "concept_w": "concept_w2",
+                    "concept_w2": "concept_w",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("newskit.config_sources.chemins_du_graphe", lambda g: {"base": tmp_path})
+    monkeypatch.setattr(gc, "charger", lambda g: _cerveau())
+    assert rh.alias_sans_cible("g") == ["concept_w", "concept_w2", "concept_z"]  # une boucle n'a pas de cible
+    (tmp_path / "alias.json").unlink()
+    assert rh.alias_sans_cible("g") == []
+
+
+def test_la_nuit_dit_les_alias_sans_cible_apres_le_cerveau(monkeypatch):
+    from newskit import routine_hebdo as rh
+
+    monkeypatch.setattr(rh.cfg, "verse_cortexdb", lambda g: True)
+    monkeypatch.setattr(rh.cfg, "cerveau_continu", lambda g: False)
+    monkeypatch.setattr(rh, "lancer", lambda *a, **k: (True, ""))
+    monkeypatch.setattr(rh, "alias_sans_cible", lambda g: ["concept_z"])
+    j = rh.Journal()
+    rh.cerveau_cortexdb(j, "g", "")
+    assert any("cerveau CortexDB : 1 alias sans cible (concept_z)" in s for s in j.lignes)
+
+
+def test_une_boucle_d_alias_entre_entites_presentes_reste_sans_cible(monkeypatch, tmp_path):
+    import json
+
+    from newskit import routine_hebdo as rh
+
+    (tmp_path / "alias.json").write_text(
+        json.dumps({"alias": {"concept_a": "concept_b", "concept_b": "concept_a", "concept_x": "entity:c"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("newskit.config_sources.chemins_du_graphe", lambda g: {"base": tmp_path})
+    monkeypatch.setattr(gc, "charger", lambda g: _cerveau())
+    assert rh.alias_sans_cible("g") == ["concept_a", "concept_b"]  # entity:c : un identifiant du cerveau suffit
+
+    def absent(g):
+        raise gc.CerveauAbsent("x")
+
+    monkeypatch.setattr(gc, "charger", absent)
+    assert rh.alias_sans_cible("g") == []
+
+
+def test_les_fonctions_de_couche_1_du_versement():
+    from newskit import puits_cortexdb as pc
+
+    st = {"nodes": [{"id": "t", "label": "**Le registre**"}, {"id": "n", "label": None}]}
+    assert pc.nettoyer_titres(st) == 1 and st["nodes"][0]["label"] == "Le registre"
+    ext = {
+        "nodes": [{"id": "f", "label": "Une fiche", "file_type": "document"}, {"id": "c", "label": "C"}],
+        "edges": [{"source": "f", "target": "c"}],
+        "hyperedges": [{"nodes": ["f", "c", "f"]}],
+    }
+    assert pc.fondre_doublons_de_fiche(ext, set(), {"une fiche": "s"}, "x") == (1, 0)
+    assert ext["edges"][0]["source"] == "s" and ext["hyperedges"][0]["nodes"] == ["s", "c"]

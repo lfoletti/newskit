@@ -103,6 +103,12 @@ def lire(chemin: Path) -> nx.Graph:
                 bouts = {"edge_type": ty, "weight": poids, "from_node_id": de, "to_node_id": a}
                 G.add_edge(de, a, **{**json.loads(props or "{}"), **bouts})
     for n, d in G.nodes(data=True):
+        # Une entité attestée encore par d'autres fiches garde la première pour source, même retirée : elle prend la
+        # fiche d'une relation qui l'atteste encore (témoin, anticorps des débris, 27.11.2026).
+        if (src := str(d.get("_source") or "")) and src not in en_tetes:
+            vivantes = sorted(f for *_, e in G.edges(n, data=True) if (f := str(e.get("_source") or "")) in en_tetes)
+            if vivantes:
+                d["_source"] = vivantes[0]
         if d["node_type"] in FICHES:
             for k, v in en_tetes.get(str(d.get("_source") or ""), {}).items():
                 d.setdefault(k, v)

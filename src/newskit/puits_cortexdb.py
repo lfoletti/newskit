@@ -47,7 +47,7 @@ PRODUCTEURS_COMPOSES = {"squelette": PRODUCTEUR_SQUELETTE, "ast": PRODUCTEUR_AST
 # Un titre de section a un identifiant propre à sa fiche : par son nom, « Introduction » de mille fiches serait une
 # seule entité. Les auteurs, publications et papiers, eux, se fondent par leur nom, d'une fiche à l'autre.
 PREFIXE_TITRE = "entity:titre_"
-FICHES_SQUELETTE = ("article", "papier")  # fusionner_graphe : les nœuds du squelette qui sont des fiches
+FICHES_SQUELETTE = ("article", "papier")  # les nœuds du squelette qui sont des fiches
 RE_PARENTHESE_FINALE = re.compile(r"\s*\([^()]*\)\s*$")  # fusionner_graphe : « … (Ahead of AI, 2024-09-21) »
 # Morceaux relus par appel de get_chunks : le client gRPC n'admet que 4 Mo par réponse ; un livre de 1,6 Mo
 # (une bibliothèque de PDF, 24.10.2026) rendait 4,4 Mo d'un seul appel.
@@ -314,7 +314,7 @@ def chaines(meta: dict) -> dict[str, str]:
 
 def canon_squelette(graphe: dict) -> dict:
     """Pur : les nœuds du squelette dans le graphe composé (ceux qui portent `kind`) : par identifiant, leur libellé et
-    leur type ; par titre normalisé, l'identifiant de chaque fiche (fusionner_graphe.fondre_doublons_de_fiche)."""
+    leur type ; par titre normalisé, l'identifiant de chaque fiche (`fondre_doublons_de_fiche`)."""
     ids: dict[str, tuple[str, str]] = {}
     titres: dict[str, str] = {}
     for n in graphe.get("nodes") or []:
@@ -619,17 +619,84 @@ def couche1_par_fiche(graphe: dict, racine: Path) -> tuple[dict[str, dict], dict
     }, ecartes
 
 
+RE_BALISAGE = re.compile(r"^[\s*_`#>]+|[\s*_`:]+$")
+
+
+def nettoyer_titres(extraction: dict) -> int:
+    """Retire le balisage markdown des libellés des nœuds de titre de l'AST : une ligne en gras lue comme un titre
+    donnait un nœud « **Total Fines** » (12.10.2026 : 651 libellés d'un graphe de conformité, dont « **Real-time remote biometric
+    identification…** » que rien ne retrouvait). Rend le nombre de libellés changés."""
+    n = 0
+    for x in extraction.get("nodes", []):
+        l = x.get("label")
+        if not isinstance(l, str):
+            continue
+        propre = RE_BALISAGE.sub("", l.replace("**", "").replace("__", "").replace("`", "")).strip()
+        propre = re.sub(r"\s+", " ", propre)
+        if propre and propre != l:
+            x["label"] = propre
+            n += 1
+    return n
+
+
+def fondre_doublons_de_fiche(
+    extraction: dict, ids_squelette: set[str], labels_squelette: dict[str, str], nom: str
+) -> tuple[int, int]:
+    """Retire d'une extraction les nœuds qui redécrivent une fiche du squelette.
+
+    Pourquoi. Le squelette décrit chaque fiche avec son titre et son typage ; la
+    passe AST et les lots sémantiques la redécrivent au passage, avec une
+    étiquette parfois moins bonne et sans notre typage. La déduplication de
+    la composition tranche alors par ressemblance d'étiquette, et conserve
+    arbitrairement l'un ou l'autre : vingt-neuf fiches perdaient ainsi leur
+    typage, et une sur trois son titre.
+
+    On préfère donc une règle explicite : sur une fiche, le squelette fait foi.
+    Les arêtes de l'extraction sont réécrites vers son identifiant, ce qui ne
+    perd aucune relation.
+    """
+    remap: dict[str, str] = {}
+    gardes = []
+    for n in extraction["nodes"]:
+        nid, label = n["id"], n.get("label", "")
+        if nid in ids_squelette:
+            # Même identifiant que le squelette : la redéclaration est retirée
+            # de l'extraction, pour que les attributs du squelette prévalent.
+            # Les arêtes gardent l'identifiant, que le squelette fournit.
+            continue
+        if n.get("file_type") in ("document", "paper"):
+            cle = normaliser_etiquette(label)
+            cible = labels_squelette.get(cle) or labels_squelette.get(
+                normaliser_etiquette(RE_PARENTHESE_FINALE.sub("", label))
+            )
+            if cible:
+                remap[nid] = cible
+                continue
+        gardes.append(n)
+    extraction["nodes"] = gardes
+
+    aretes = []
+    for e in extraction["edges"]:
+        e["source"] = remap.get(e["source"], e["source"])
+        e["target"] = remap.get(e["target"], e["target"])
+        if e["source"] != e["target"]:  # la fusion peut créer des boucles
+            aretes.append(e)
+    boucles = len(extraction["edges"]) - len(aretes)
+    extraction["edges"] = aretes
+    for h in extraction.get("hyperedges", []):
+        h["nodes"] = list(dict.fromkeys(remap.get(x, x) for x in h.get("nodes", [])))
+    return len(remap), boucles
+
+
 class CoucheUn:
     """La couche 1 d'une fiche sans graphe composé : le squelette entier (`extraire_squelette.construire`), préparé une
     fois par passage, puis la structure des titres de chaque fiche (`structure_titres.extraire`). Sur une fiche, le
     squelette fait foi : la structure perd le balisage de ses titres et le nœud qui redécrit la fiche, par les règles de
-    la composition (`fusionner_graphe`). Le puits de la nuit et le passage continu passent tous deux par ici : une fiche
+    la composition, retirée depuis (K3). Le puits de la nuit et le passage continu passent tous deux par ici : une fiche
     inchangée garde son empreinte de l'un à l'autre. `ecartes` compte les arêtes écartées au fil des fiches."""
 
     def __init__(self, squelette: dict, racine: Path):
-        from newskit import fusionner_graphe as fg  # noqa: PLC0415 — networkx : absent du venv du client gRPC
-
-        self.fg, self.racine = fg, racine
+        self.racine = racine
         self.noeuds = squelette.get("nodes") or []
         self.par_id = {n["id"]: n for n in self.noeuds}
         self.ids = set(self.par_id)
@@ -637,7 +704,7 @@ class CoucheUn:
         self.fiches: set[str] = set()
         for n in self.noeuds:
             if n.get("kind") in FICHES_SQUELETTE:
-                self.titres.setdefault(fg._norm_label(n.get("label", "")), n["id"])
+                self.titres.setdefault(normaliser_etiquette(n.get("label", "")), n["id"])
                 self.fiches.add(self._source(n))
         self.aretes: dict[str, list[dict]] = {}
         for a in squelette.get("edges") or []:
@@ -657,8 +724,8 @@ class CoucheUn:
             return None
         st = {"nodes": [dict(n) for n in (structure or {}).get("nodes") or []]}
         st["edges"] = [dict(a) for a in (structure or {}).get("edges") or []]
-        self.fg.nettoyer_titres(st)
-        self.fg.fondre_doublons_de_fiche(st, self.ids, self.titres, "structure")
+        nettoyer_titres(st)
+        fondre_doublons_de_fiche(st, self.ids, self.titres, "structure")
         # Un lien de la fiche vers un fichier que le graphe ne porte pas n'est pas une arête : la composition ne la
         # garde pas non plus, et elle n'entre pas au compte des arêtes sans extrémité.
         connus = self.ids | {n["id"] for n in st["nodes"]}
@@ -1152,12 +1219,7 @@ def main() -> int:
         canon = canon_squelette(graphe)
         preparee = CoucheUn(squelette, RACINE)
     else:
-        chemin_graphe = cfg.chemins_du_graphe(args.graphe).get("graphe")
-        graphe = (
-            json.loads(Path(chemin_graphe).read_text(encoding="utf-8"))
-            if chemin_graphe and Path(chemin_graphe).exists()
-            else {}
-        )
+        graphe = {}  # sans couche 1, rien ne fait foi sur une fiche
         canon = preparee = None
     calculees: dict[str, int] = {}
     faites: set[str] = set()

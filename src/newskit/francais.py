@@ -299,7 +299,7 @@ def main() -> int:
     ecrire_table(g, table)
     faits = traduire(g, items[: a.plafond], table, a.paralleles, sauver=lambda t: ecrire_table(g, t))
     ecrire_table(g, table)
-    print(f"  {g} : {faits} élément(s) traduit(s) ; appliqués à la prochaine composition (fusionner_graphe.py).")
+    print(f"  {g} : {faits} élément(s) traduit(s) ; posés à la prochaine lecture du cerveau.")
     return 0
 
 

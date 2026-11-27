@@ -224,7 +224,7 @@ def test_le_puits_de_la_nuit_rend_la_meme_empreinte(fiche_sur_disque, tmp_path, 
     compose = {"nodes": copy.deepcopy(SQUELETTE["nodes"]), "links": copy.deepcopy(SQUELETTE["edges"])}
     (base / "graphe.json").write_text(json.dumps(compose), encoding="utf-8")
     monkeypatch.setattr(pc, "RACINE", tmp)
-    monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": base, "graphe": base / "graphe.json"})
+    monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": base})
     monkeypatch.setattr(cfg, "charger_droits_auteurs", lambda: None)
     monkeypatch.setattr(pc, "lots_du_graphe", lambda g: [lot_p])
     monkeypatch.setattr(pc, "squelette_du_graphe", lambda g: copy.deepcopy(SQUELETTE))
@@ -263,11 +263,8 @@ def test_la_nuit_compte_une_fiche_disparue_et_un_lot_invalide(fiche_sur_disque, 
     disparue, invalide = base / "disparue.json", base / "invalide.json"
     disparue.write_text(json.dumps({"nodes": [{**LOT["nodes"][0], "source_file": "sources/a/disparue.md"}]}))
     invalide.write_text(json.dumps(DEUX_FICHES))
-    (base / "graphe.json").write_text(
-        json.dumps({"nodes": [{**SQUELETTE["nodes"][2], "source_file": "sources/a/absente.md"}], "links": []})
-    )
     monkeypatch.setattr(pc, "RACINE", tmp)
-    monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": base, "graphe": base / "graphe.json"})
+    monkeypatch.setattr(cfg, "chemins_du_graphe", lambda g: {"base": base})
     monkeypatch.setattr(cfg, "charger_droits_auteurs", lambda: None)
     monkeypatch.setattr(pc, "lots_du_graphe", lambda g: [disparue, invalide])
     avant = tmp / "avant.json"
@@ -276,5 +273,5 @@ def test_la_nuit_compte_une_fiche_disparue_et_un_lot_invalide(fiche_sur_disque, 
     assert pc.main() == 1
     sortie = capsys.readouterr()
     bilan = json.loads(sortie.out.strip().splitlines()[-1])
-    assert (bilan["lots"], bilan["fiche_absente"], bilan["invalides"], bilan["verses"]) == (2, 2, 1, 0)
+    assert (bilan["lots"], bilan["fiche_absente"], bilan["invalides"], bilan["verses"]) == (2, 1, 1, 0)
     assert "!! invalide.json" in sortie.err

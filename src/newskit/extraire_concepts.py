@@ -538,7 +538,7 @@ def normaliser_extraction(ext: dict, chemin: Path, champs: dict, corps: str | No
 
 
 def valider(ext: dict) -> list[str]:
-    from newskit.composition import valider_extraction  # noqa: PLC0415
+    from newskit.validation import valider_extraction  # noqa: PLC0415
 
     return [str(e) for e in valider_extraction(ext)]
 

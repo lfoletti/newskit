@@ -717,7 +717,7 @@ def main() -> int:
             print(f"    … et {len(avertissements) - 15} de plus")
 
     if args.valider:
-        from newskit.composition import valider_extraction  # noqa: PLC0415
+        from newskit.validation import valider_extraction  # noqa: PLC0415
 
         erreurs = valider_extraction(extraction)
         print(f"\n  validation du schéma : {len(erreurs)} erreur(s)")

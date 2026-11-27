@@ -58,7 +58,7 @@ def test_la_routine_n_ecrit_pas_vers_le_reel(passage):
     assert temoin.fuites_vers_le_reel(avant) == []
 
 
-def test_la_routine_collecte_compose_et_dresse_la_carte(passage):
+def test_la_routine_collecte_verse_le_cerveau_et_dresse_la_carte(passage):
     t, r, _ = passage
     sortie = r.stdout
     import re
@@ -68,9 +68,10 @@ def test_la_routine_collecte_compose_et_dresse_la_carte(passage):
         r"Carnets des ruchers : (\d+) document\(s\), (\d+) section\(s\) → (\d+) fiche\(s\) neuve\(s\)", sortie
     )
     assert m and int(m[1]) == n and int(m[2]) == int(m[3]) >= n, sortie[-1500:]
-    for etape in ("couche 1 du graphe", "structure des titres", "composition", "carte du domaine"):
+    for etape in ("couche 1 du graphe", "structure des titres", "carte du domaine", "cerveau CortexDB"):
         assert f"ok      {etape}" in sortie, etape
-    assert (t.donnees / "graphe" / "graphe.json.gz").exists() and (t.donnees / "graphe" / "carte.md").exists()
+    assert "ok      composition" not in sortie  # le cerveau est le graphe (K3, étape 3)
+    assert not (t.donnees / "graphe" / "graphe.json.gz").exists() and (t.donnees / "graphe" / "carte.md").exists()
     assert len(list((t.donnees / "sources" / "ruchers" / "dossier").glob("*.md"))) == int(m[3])
 
 

@@ -1034,16 +1034,30 @@ def empreinte(v: dict) -> str:
     return hashlib.sha256(texte.encode("utf-8")).hexdigest()[:24]
 
 
+# Un changement voulu de la forme d'un versement se livre avec la fonction qui rend sa forme d'avant (mainteneur,
+# 27.11.2026) : le passage reconnaît l'ancienne empreinte au relevé, y écrit la nouvelle et n'écrit rien au cerveau.
+# Sans elle, chaque document dont la forme a changé serait réécrit, sans que sa fiche ait changé (0.1.85 : 3 288
+# documents d'un graphe de gouvernance). Une forme se retire quand le relevé de chaque cerveau est passé.
+FORMES_PRECEDENTES: list = []
+
+
+def empreintes_precedentes(v: dict) -> set[str]:
+    """Les empreintes que ce versement avait sous les formes précédentes déclarées."""
+    return {empreinte(forme(v)) for forme in FORMES_PRECEDENTES}
+
+
 class EnPlace:
     """Le versement en place (B15, mainteneur, 2 novembre 2026) : avec les empreintes du cerveau précédent, un versement
     inchangé ne s'écrit pas, un versement changé remplace l'ancien (`delete_document_graph` puis versement), un document
     absent du passage est retiré (`delete_document_graph` puis `knowledge_delete`). Demande CortexDB v2.143.0 au moins
     (D6). Sans empreintes précédentes, tout se verse, comme dans un cerveau neuf. `compter` classe chaque versement de
-    la même façon sans rien écrire ni appeler : le compte d'un passage en place, avant de choisir de le faire."""
+    la même façon sans rien écrire ni appeler : le compte d'un passage en place, avant de choisir de le faire. Un
+    versement dont le relevé porte l'empreinte d'une forme précédente (`FORMES_PRECEDENTES`) est migré : le relevé du
+    passage prend son empreinte du jour, le cerveau n'est pas écrit."""
 
     def __init__(self, client, avant: dict[str, str] | None, bilan: dict, compter: bool = False):
         self.client, self.avant, self.bilan, self.apres, self.compter = client, avant, bilan, {}, compter
-        for k in ("inchanges", "remplaces", "ajoutes", "retires"):
+        for k in ("inchanges", "migres", "remplaces", "ajoutes", "retires"):
             bilan.setdefault(k, 0)
 
     def appel(self, nom: str, **args) -> dict:
@@ -1056,6 +1070,10 @@ class EnPlace:
         if self.avant is not None and self.avant.get(ident) == h:
             inscrire(vus, ident, v["origine"])
             self.bilan["inchanges"] += 1
+            return None
+        if self.avant is not None and self.avant.get(ident) in empreintes_precedentes(v):
+            inscrire(vus, ident, v["origine"])
+            self.bilan["migres"] += 1
             return None
         if self.avant is not None and ident in self.avant:
             self.bilan["remplaces"] += 1

@@ -32,7 +32,7 @@ jobs:
           --junitxml=junit.xml -o junit_family=legacy
       - name: couverture vers Codecov
         if: matrix.python == '3.13'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml

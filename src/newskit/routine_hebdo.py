@@ -465,7 +465,7 @@ def fiches_de(G, n: str) -> set[str]:
 
 
 def entites_neuves(G, versees: set[str]) -> list[str]:
-    """Les entités neuves du passage (Lauro, 27.11.2026 : « date de collecte ») : toutes les fiches qui les attestent
+    """Les entités neuves du passage (mainteneur, 27.11.2026 : « date de collecte ») : toutes les fiches qui les attestent
     ont été collectées depuis le passage précédent (`versees`, par git), et il y en a au moins une. Une entité qu'une
     fiche plus ancienne atteste existait déjà, renommée ou fondue par une table d'alias ; elle n'est pas neuve. Le
     calcul ne lit que le cerveau et les fiches : une reconstruction du cerveau n'y change rien."""

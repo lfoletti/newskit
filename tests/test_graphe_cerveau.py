@@ -110,13 +110,179 @@ def test_les_colonnes_du_cerveau_l_emportent_sur_les_proprietes_du_meme_nom(tmp_
 
 
 def test_deux_relations_entre_les_memes_entites_gardent_la_derniere_versee(tmp_path):
-    """Le graphe en mémoire n'a qu'une arête par paire, comme le graphe composé : la dernière par identifiant."""
+    """Le graphe en mémoire n'a qu'une arête par paire, comme le graphe composé : la dernière par identifiant, sauf
+    une relation déterministe."""
     p = cerveau(
         tmp_path / "g.db",
         [("entity:a", "concept", {}), ("entity:b", "concept", {})],
         [("entity:a", "entity:b", "references", 1.0, {}), ("entity:b", "entity:a", "implements", 1.0, {})],
     )
     assert gc.lire(p).edges["entity:a", "entity:b"]["edge_type"] == "implements"
+
+
+def test_une_relation_deterministe_n_est_jamais_remplacee_par_une_relation_du_modele(tmp_path):
+    """Mesuré sur ai-governance (27.11.2026) : 1 137 `ecrit_par` de la couche 1 étaient écrasés par une `references`
+    du modèle sur la même paire ; l'index du site perdait 644 auteurs. Une relation du modèle cède à une relation
+    déterministe, dans les deux ordres ; entre deux relations du même genre, la dernière reste."""
+    sq = {"_producer": "x couche 1 (squelette, déterministe)"}
+    mo = {"_producer": "x couche 2 (claude -p)"}
+    p = cerveau(
+        tmp_path / "g.db",
+        [
+            ("entity:a", "concept", {}),
+            ("entity:b", "concept", {}),
+            ("entity:c", "concept", {}),
+            ("entity:d", "concept", {}),
+        ],
+        [
+            ("entity:a", "entity:b", "ecrit_par", 1.0, sq),
+            ("entity:a", "entity:b", "references", 1.0, mo),
+            ("entity:c", "entity:a", "references", 1.0, mo),
+            ("entity:c", "entity:a", "contains", 1.0, sq),
+            ("entity:b", "entity:c", "references", 1.0, mo),
+            ("entity:b", "entity:c", "implements", 1.0, mo),
+            ("entity:d", "entity:a", "ecrit_par", 1.0, sq),
+            ("entity:d", "entity:a", "contains", 1.0, sq),
+        ],
+    )
+    G = gc.lire(p)
+    assert G.edges["entity:a", "entity:b"]["edge_type"] == "ecrit_par"
+    assert G.edges["entity:a", "entity:c"]["edge_type"] == "contains"
+    assert G.edges["entity:b", "entity:c"]["edge_type"] == "implements"
+    assert G.edges["entity:a", "entity:d"]["edge_type"] == "contains"
+
+
+SQ = {"_producer": "x couche 1 (squelette, déterministe)", "_source": "sources/a.md"}
+MO = {"_producer": "x couche 2 (claude -p)"}
+
+
+def test_une_notion_qui_signe_une_oeuvre_a_un_jumeau_auteur(tmp_path):
+    """Le cerveau nomme une entité par son nom : l'auteur « Bruce Schneier » et la notion du même nom sont un seul
+    nœud, du genre du dernier producteur versé ; l'index du site perdait 640 auteurs (ai-governance, 27.11.2026).
+    Le jumeau auteur reprend les `ecrit_par` de la couche 1, dans les deux sens ; la notion garde le reste."""
+    p = cerveau(
+        tmp_path / "g.db",
+        [
+            (
+                "entity:bruce",
+                "concept",
+                {
+                    "name": "Bruce",
+                    "newskit_id": "concept_bruce",
+                    "description": "Un essayiste.",
+                    "_source": "sources/b.md",
+                },
+            ),
+            ("entity:essai", "article", {"name": "Un essai"}),
+            ("entity:papier", "papier", {"name": "Un papier"}),
+            ("entity:ia", "concept", {"name": "IA"}),
+            ("entity:x", "concept", {"name": "X"}),
+            ("entity:carla", "concept", {"name": "Carla"}),
+        ],
+        [
+            ("entity:essai", "entity:bruce", "ecrit_par", 1.0, SQ),
+            ("entity:bruce", "entity:papier", "ecrit_par", 1.0, SQ),
+            ("entity:bruce", "entity:ia", "conceptually_related_to", 1.0, MO),
+            ("entity:x", "entity:ia", "ecrit_par", 1.0, SQ),
+            ("entity:ia", "entity:essai", "ecrit_par", 1.0, MO),
+            ("entity:essai", "entity:bruce", "references", 1.0, MO),
+            ("entity:essai", "entity:papier", "ecrit_par", 1.0, SQ),
+            ("entity:papier", "entity:carla", "ecrit_par", 1.0, SQ),
+        ],
+    )
+    G = gc.lire(p)
+    j = "entity:bruce#auteur"
+    assert G.nodes[j] == {
+        "name": "Bruce",
+        "node_type": "auteur",
+        "newskit_id": "auteur_bruce",
+        "_source": "sources/b.md",
+    }
+    assert sorted(G[j]) == ["entity:essai", "entity:papier"]
+    assert (G.edges[j, "entity:essai"]["from_node_id"], G.edges[j, "entity:essai"]["to_node_id"]) == ("entity:essai", j)
+    assert (G.edges[j, "entity:papier"]["from_node_id"], G.edges[j, "entity:papier"]["to_node_id"]) == (
+        j,
+        "entity:papier",
+    )
+    assert G.nodes["entity:bruce"]["node_type"] == "concept" and sorted(G["entity:bruce"]) == [
+        "entity:essai",
+        "entity:ia",
+    ]
+    assert G.edges["entity:bruce", "entity:essai"]["edge_type"] == "references"  # écartée par la couche 1, rendue
+    assert "entity:x#auteur" not in G and "entity:ia#auteur" not in G  # sans œuvre au bout, ou lien du modèle
+    assert "entity:essai#auteur" not in G and "entity:papier#auteur" not in G  # une œuvre à chaque bout
+    assert list(G["entity:carla#auteur"]) == ["entity:papier"]  # l'auteur au second bout
+
+
+def test_un_auteur_ou_une_publication_que_le_modele_relie_a_un_jumeau_notion(tmp_path):
+    """L'inverse : « ChinaTalk », publication de la couche 1, était aussi une notion (125 liens) avant le cerveau. Le
+    jumeau notion reprend les relations du modèle et ses textes, même celles que la couche 1 avait écartées."""
+    p = cerveau(
+        tmp_path / "g.db",
+        [
+            (
+                "entity:chinatalk",
+                "publication",
+                {
+                    "name": "ChinaTalk",
+                    "newskit_id": "publication_chinatalk",
+                    "description": "Une lettre.",
+                    "name_fr": "ChinaTalk",
+                    "_source": "s/c.md",
+                },
+            ),
+            ("entity:ada", "auteur", {"name": "Ada", "newskit_id": "auteur_ada"}),
+            ("entity:seul", "auteur", {"name": "Seul"}),
+            ("entity:ida", "publication", {"name": "Ida"}),
+            ("entity:bob", "auteur", {"name": "Bob"}),
+            ("entity:dan", "auteur", {"name": "Dan"}),
+            ("entity:fay", "auteur", {"name": "Fay"}),
+            ("entity:gus", "auteur", {"name": "Gus"}),
+            ("entity:essai", "article", {"name": "Un essai"}),
+            ("entity:chine", "concept", {"name": "Chine"}),
+            ("entity:eve", "auteur", {"name": "Eve"}),  # après « Chine » : le signataire au second bout du lien
+        ],
+        [
+            ("entity:essai", "entity:chinatalk", "publie_dans", 1.0, SQ),
+            ("entity:chinatalk", "entity:chine", "references", 1.0, MO),
+            ("entity:essai", "entity:ada", "ecrit_par", 1.0, SQ),
+            ("entity:seul", "entity:ida", "references", 1.0, MO),
+            ("entity:essai", "entity:chinatalk", "references", 1.0, MO),
+            ("entity:essai", "entity:ada", "references", 1.0, MO),
+            ("entity:essai", "entity:bob", "ecrit_par", 1.0, SQ),
+            ("entity:bob", "entity:essai", "ecrit_par", 1.0, MO),
+            ("entity:essai", "entity:dan", "ecrit_par", 1.0, MO),
+            ("entity:chine", "entity:eve", "references", 1.0, MO),
+            ("entity:fay", "entity:chine", "wrote", 1.0, {}),  # sans producteur : pas du modèle
+            ("entity:essai", "entity:gus", "ecrit_par", 1.0, SQ),
+            ("entity:essai", "entity:gus", "references", 1.0, {}),
+        ],
+    )
+    G = gc.lire(p)
+    assert sorted(G["entity:seul#notion"]) + sorted(G["entity:ida"]) == ["entity:ida", "entity:seul#notion"]
+    j = "entity:chinatalk#notion"
+    assert G.nodes[j] == {
+        "name": "ChinaTalk",
+        "node_type": "concept",
+        "newskit_id": "concept_chinatalk",
+        "description": "Une lettre.",
+        "name_fr": "ChinaTalk",
+        "_source": "s/c.md",
+    }
+    assert sorted(G[j]) == ["entity:chine", "entity:essai"] and G.edges[j, "entity:chine"]["from_node_id"] == j
+    assert (G.edges[j, "entity:essai"]["edge_type"], G.edges[j, "entity:essai"]["to_node_id"]) == ("references", j)
+    assert G.nodes["entity:ada#notion"]["newskit_id"] == "concept_ada" and list(G["entity:ada#notion"]) == [
+        "entity:essai"
+    ]
+    assert list(G["entity:chinatalk"]) == ["entity:essai"] and G.nodes["entity:chinatalk"]["node_type"] == "publication"
+    assert G.nodes["entity:seul#notion"]["newskit_id"] == "concept_seul"
+    assert list(G["entity:eve#notion"]) == ["entity:chine"]  # le signataire au second bout
+    assert "entity:fay#notion" not in G and "entity:gus#notion" not in G
+    assert (
+        "entity:dan#notion" not in G
+        and "entity:bob#notion" not in G
+        and G.edges["entity:bob", "entity:essai"]["_producer"] == SQ["_producer"]
+    )
 
 
 def test_la_lecture_n_ecrit_pas_dans_le_cerveau(plein):

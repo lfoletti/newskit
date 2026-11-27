@@ -73,6 +73,64 @@ def _verifier(c: sqlite3.Connection, chemin: Path) -> None:
             )
 
 
+def _deterministe(e: dict) -> bool:
+    """Une relation posée par un producteur déterministe (couche 1, structure des titres, vues), pas par le modèle."""
+    return "déterministe" in str(e.get("_producer") or "")
+
+
+OEUVRES = {"article", "papier", "depot", "document"}  # le bout d'un `ecrit_par` qui n'est pas l'auteur
+SIGNATAIRES = {"auteur", "publication"}  # les genres de la couche 1 qui signent une œuvre
+TEXTES_DE_NOTION = ("description", "name_fr", "description_fr", "_source")
+
+
+def _jumeau(G: nx.Graph, n: str, genre: str, prefixe: str, aretes: list, textes=("_source",)) -> None:
+    d = G.nodes[n]
+    j = f"{n}#{'auteur' if genre == 'auteur' else 'notion'}"
+    cle = str(d["newskit_id"]).split("_", 1)[-1] if d.get("newskit_id") else n.split(":", 1)[-1]
+    G.add_node(
+        j, name=d.get("name"), node_type=genre, newskit_id=f"{prefixe}_{cle}", **{k: d[k] for k in textes if k in d}
+    )
+    for v, e in aretes:
+        if not G.has_edge(n, v):
+            continue  # entre deux signataires, la relation est partie au jumeau du premier
+        G.remove_edge(n, v)
+        G.add_edge(j, v, **{**e, **{k: j for k in ("from_node_id", "to_node_id") if e.get(k) == n}})
+
+
+def separer_homonymes(G: nx.Graph, cedees: list[tuple[str, str, dict]] = ()) -> None:
+    """Le cerveau nomme une entité par son nom : l'auteur et la notion du même nom sont un seul nœud, du genre du dernier
+    producteur versé ; l'ancien graphe en gardait deux (`auteur_x`, `concept_x`). Mesuré sur ai-governance le
+    27.11.2026 : 640 auteurs et 95 notions perdus à l'index du site. Une notion qui signe une œuvre par un `ecrit_par`
+    de la couche 1 reçoit un jumeau auteur, qui reprend ces liens ; un auteur ou une publication que le modèle relie
+    reçoit un jumeau notion, qui reprend ces relations. Une relation du modèle que la couche 1 avait écartée sur la même
+    paire (`cedees`) revient à la notion, une fois la paire libre. Une notion rangée comme raisonnement ne se distingue pas ainsi
+    (les vrais raisonnements portent les mêmes liens) : elle reste au versement."""
+    signe: dict[str, list] = {}
+    relie: dict[str, list] = {}
+    for a, b, e in G.edges(data=True):
+        ta, tb = G.nodes[a].get("node_type"), G.nodes[b].get("node_type")
+        if e.get("edge_type") == "ecrit_par" and _deterministe(e) and (ta in OEUVRES) != (tb in OEUVRES):
+            auteur, oeuvre = (b, a) if ta in OEUVRES else (a, b)
+            if G.nodes[auteur].get("node_type") not in SIGNATAIRES:
+                signe.setdefault(auteur, []).append((oeuvre, e))
+        elif e.get("edge_type") != "ecrit_par" and e.get("_producer") and not _deterministe(e):  # du modèle
+            for x, y in ((a, b), (b, a)):
+                if G.nodes[x].get("node_type") in SIGNATAIRES:
+                    relie.setdefault(x, []).append((y, e))
+    for a, b, e in cedees:
+        for x in (a, b) if e.get("edge_type") != "ecrit_par" and e.get("_producer") else ():
+            if G.nodes[x].get("node_type") in SIGNATAIRES:
+                relie.setdefault(x, [])
+    for n, aretes in signe.items():
+        _jumeau(G, n, "auteur", "auteur", aretes)
+    for n, aretes in relie.items():
+        _jumeau(G, n, "concept", "concept", aretes, TEXTES_DE_NOTION)
+    for a, b, e in cedees:
+        x, y = (f"{n}#notion" if n in relie else n for n in (a, b))
+        if not G.has_edge(x, y):
+            G.add_edge(x, y, **{**e, "from_node_id": x, "to_node_id": y})
+
+
 def lire(chemin: Path) -> nx.Graph:
     """Le graphe du cerveau `chemin`, sous ses noms. Une fiche reçoit l'en-tête de son document (`date`,
     `plateforme`, `statut`, `version`…, `puits_cortexdb.ENTETE_VERSEE`), que le versement range dans le document ;
@@ -81,6 +139,7 @@ def lire(chemin: Path) -> nx.Graph:
 
     G = nx.Graph()
     en_tetes: dict[str, dict] = {}
+    cedees: list[tuple[str, str, dict]] = []
     with _ouvrir(chemin) as c:
         _verifier(c, chemin)
         noeuds = c.execute(
@@ -100,8 +159,11 @@ def lire(chemin: Path) -> nx.Graph:
         for de, a, ty, poids, props in aretes:
             if de in G and a in G:
                 # les colonnes l'emportent : le versement répète le poids en propriété, en texte
-                bouts = {"edge_type": ty, "weight": poids, "from_node_id": de, "to_node_id": a}
-                G.add_edge(de, a, **{**json.loads(props or "{}"), **bouts})
+                e = {**json.loads(props or "{}"), "edge_type": ty, "weight": poids, "from_node_id": de, "to_node_id": a}
+                if G.has_edge(de, a) and _deterministe(G.edges[de, a]) and not _deterministe(e):
+                    cedees.append((de, a, e))  # une relation du modèle ne remplace pas la couche 1 (1 137 `ecrit_par`)
+                    continue
+                G.add_edge(de, a, **e)
     for n, d in G.nodes(data=True):
         # Une entité attestée encore par d'autres fiches garde la première pour source, même retirée : elle prend la
         # fiche d'une relation qui l'atteste encore (témoin, anticorps des débris, 27.11.2026).
@@ -112,6 +174,7 @@ def lire(chemin: Path) -> nx.Graph:
         if d["node_type"] in FICHES:
             for k, v in en_tetes.get(str(d.get("_source") or ""), {}).items():
                 d.setdefault(k, v)
+    separer_homonymes(G, cedees)
     fondre_par_identifiant(G)
     return G
 

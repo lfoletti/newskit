@@ -238,10 +238,14 @@ def identifiant_d_entite(nom: str) -> str:
 def groupes_d_alias(table: dict, noms: dict[str, set[str]]) -> dict[str, list[str]]:
     """Pur. alias.json (fondre_doublons.py) va d'identifiant de nœud à identifiant de nœud ; le cerveau nomme ses
     entités. Par libellé de canonique, les noms sous lesquels ses alias ont été versés (`noms` : identifiant de nœud →
-    noms versés), triés, sans ceux qui sont déjà l'entité du canonique. Une chaîne d'alias mène à son dernier
-    canonique ; une boucle, ou un canonique sans libellé connu, ne fait pas de groupe (jamais un nom inventé)."""
+    noms versés), triés, sans ceux qui sont déjà l'entité du canonique. Deux cas mesurés le 27.11.2026 sur les 23 alias
+    restés au cerveau : le canonique lui-même versé sous un autre libellé que celui de la table rejoint son groupe (9
+    alias) ; le libellé que la table donne à un alias y entre aussi, car un nom est une seule entité au cerveau, même
+    versée par un autre nœud (14 alias). Une chaîne d'alias mène à son dernier canonique ; une boucle, ou un canonique
+    sans libellé connu, ne fait pas de groupe (jamais un nom inventé)."""
     alias, libelles = table.get("alias") or {}, table.get("libelles") or {}
     groupes: dict[str, set[str]] = {}
+    gardes: dict[str, str] = {}
     for perdu in alias:
         garde, vus = alias[perdu], {perdu}
         while garde in alias and garde not in vus:
@@ -250,7 +254,13 @@ def groupes_d_alias(table: dict, noms: dict[str, set[str]]) -> dict[str, list[st
         canon = libelles.get(garde)
         if garde in vus or not canon:
             continue
-        autres = {n for n in noms.get(perdu, ()) if identifiant_d_entite(n) != identifiant_d_entite(canon)}
+        gardes[garde] = canon
+        verses = {*noms.get(perdu, ()), *([libelles[perdu]] if libelles.get(perdu) else [])}
+        autres = {n for n in verses if identifiant_d_entite(n) != identifiant_d_entite(canon)}
+        if autres:
+            groupes.setdefault(canon, set()).update(autres)
+    for garde, canon in gardes.items():
+        autres = {n for n in noms.get(garde, ()) if identifiant_d_entite(n) != identifiant_d_entite(canon)}
         if autres:
             groupes.setdefault(canon, set()).update(autres)
     return {canon: sorted(autres) for canon, autres in sorted(groupes.items())}

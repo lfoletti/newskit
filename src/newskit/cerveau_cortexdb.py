@@ -52,17 +52,30 @@ EN_PLACE_DES = (
     143,
     0,
 )  # D6 : delete_document_graph + knowledge_delete ne laissent rien (liliang-cn/cortexdb#122, #123)
-# Au-delà, un passage en place coûte plus qu'une reconstruction (mainteneur, 14.11.2026). Un remplacement est un appel à
-# delete_document_graph, un retrait deux (avec knowledge_delete) ; CortexDB lit tout le graphe à chacun. Un graphe de
-# gouvernance (396 000 nœuds, 1 043 819 arêtes), 14.11.2026 : 4,0 s par delete_document_graph (972 appels),
-# 6,0 s par knowledge_delete, contre 32 minutes pour sa reconstruction complète du matin.
-EFFACEMENTS_MAX = 300
-# CortexDB v2.154.0 (liliang-cn/cortexdb#190) trouve ce qu'un document a mis dans le graphe par des index de provenance :
-# une suppression ne lit plus tout le graphe. Copie du même graphe, 16.11.2026 : 0,04 à 0,19 s par delete_document_graph,
-# contre 0,9 à 1,2 s en v2.147.0. 3000 effacements au pire mesuré font ≈ 570 s, contre 1632 s pour sa reconstruction
-# complète du 16.11.2026.
+# Le plan d'un passage (mainteneur, 27.11.2026 : « une reconstruction complète n'est en réalité presque jamais
+# nécessaire et elle est coûteuse en temps ») : la durée prévue de chaque voie, et la moins coûteuse. Coûts de départ,
+# mesurés sur un graphe de gouvernance ; chaque passage met à jour ceux de son graphe au bilan (`mesures_apres`).
+# - Reconstruction complète du 19.11.2026 : 21 406 documents en 11 638 s, vecteurs repris de l'ancien cerveau, dont
+#   Sa part fixe (serveur, encodeur, contrôle) n'est pas mesurée : 320 s, à vue de nez.
+S_PAR_DOCUMENT = 0.53
+S_FIXE_COMPLET = 320.0
+# - Passages en place du 19.11.2026 (87 documents écrits, 28 effacements, 522 s) et du 27.11.2026 (830 écrits, 682
+#   effacements, 2 325 s) : leur écart donne 2,3 s par document écrit, encodage compris. Passage en place du 27.11.2026
+#   à 9 h 59, newskit 0.1.85 (21 écrits, 19 effacements, 292 alias fondus, 1 145 s) : le reste (comptage, clone,
+#   encodeur, relecture des documents, fusion des alias, contrôle) fait 1 100 s pour 23 017 documents. Il croît avec
+#   la taille du cerveau : 0,048 s par document. Un passage qui n'écrit rien coûte ainsi toujours moins qu'une
+#   reconstruction, quelle que soit la taille du cerveau.
+S_PAR_ECRIT_EN_PLACE = 2.3
+S_PAR_DOCUMENT_EN_PLACE = 0.048
+# - Un effacement : un remplacement est un appel à delete_document_graph, un retrait deux (avec knowledge_delete).
+#   Avant CortexDB v2.154.0, chacun lit tout le graphe : 4,0 s (14.11.2026, 972 appels). Depuis, des index de
+#   provenance (liliang-cn/cortexdb#190) : 0,19 s au pire mesuré (copie du même graphe, 16.11.2026).
 INDEX_PROVENANCE_DES = (2, 154, 0)
-EFFACEMENTS_MAX_INDEXES = 3000
+S_PAR_EFFACEMENT = 4.0
+S_PAR_EFFACEMENT_INDEXES = 0.19
+ECRITS_POUR_MESURER = 100  # en dessous, un passage en place mesure le coût d'un document relu, pas d'un écrit
+PART_REECRITE = 0.1  # part du cerveau à remplacer au-delà de laquelle le plan le signale
+DEPASSEMENT = 0.15  # écart à la durée prévue au-delà duquel le bilan demande un contrôle (mainteneur, 02.11.2026)
 COMPACTER = 0.15  # part de pages libres au-delà de laquelle le cerveau en place se compacte
 # Une reconstruction complète garde l'ancien cerveau jusqu'à la publication et écrit le neuf à côté, puis sa copie
 # compacte. Un graphe de gouvernance, 15.11.2026 : ancien 4,0 Go, neuf à 4,2 Go et pas fini quand le disque s'est rempli.
@@ -95,21 +108,99 @@ def mode_du_passage(
     return ("complet", raison) if raison else ("en_place", "")
 
 
-def plafond_effacements(version: tuple[int, ...]) -> int:
-    """Le nombre d'appels d'effacement au-delà duquel un passage en place coûte plus qu'une reconstruction, selon le
-    binaire qui versera."""
-    return EFFACEMENTS_MAX_INDEXES if version >= INDEX_PROVENANCE_DES else EFFACEMENTS_MAX
+def couts(mesures: dict, version: tuple[int, ...]) -> dict:
+    """Les coûts d'un passage pour ce graphe : ceux que ses passages précédents ont mesurés, sinon ceux de départ."""
+    return {
+        "s_par_document": mesures.get("s_par_document", S_PAR_DOCUMENT),
+        "s_par_ecrit_en_place": mesures.get("s_par_ecrit_en_place", S_PAR_ECRIT_EN_PLACE),
+        "s_par_document_en_place": mesures.get("s_par_document_en_place", S_PAR_DOCUMENT_EN_PLACE),
+        "s_par_effacement": S_PAR_EFFACEMENT_INDEXES if version >= INDEX_PROVENANCE_DES else S_PAR_EFFACEMENT,
+    }
 
 
-def mode_selon_effacements(
-    mode: str, raison: str, compte: dict | None, force: str | None, version: tuple[int, ...] = ()
-) -> tuple[str, str]:
-    """Le mode après le compte d'un passage en place : reconstruction complète au-delà du plafond d'appels
-    d'effacement du binaire (`plafond_effacements`), sauf en place forcé."""
+def _documents(compte: dict) -> int:
+    return sum(compte.get(k, 0) for k in ("inchanges", "migres", "remplaces", "ajoutes"))
+
+
+def plan_du_passage(compte: dict, mesures: dict, version: tuple[int, ...]) -> dict:
+    """La durée prévue des deux voies, d'après le compte du passage en place (`puits_cortexdb --compter`)."""
+    c = couts(mesures, version)
+    documents = _documents(compte)
+    remplaces = compte.get("remplaces", 0)
+    ecrits = remplaces + compte.get("ajoutes", 0)
+    effacements = remplaces + 2 * compte.get("retires", 0)
+    return {
+        "documents": documents,
+        "remplaces": remplaces,
+        "ecrits": ecrits,
+        "effacements": effacements,
+        "en_place_s": round(
+            documents * c["s_par_document_en_place"]
+            + ecrits * c["s_par_ecrit_en_place"]
+            + effacements * c["s_par_effacement"]
+        ),
+        "complet_s": round(S_FIXE_COMPLET + documents * c["s_par_document"]),
+    }
+
+
+def plan_complet(precedent: dict, mesures: dict, version: tuple[int, ...]) -> dict:
+    """Le plan d'une reconstruction décidée sans comptage : ses documents sont ceux du cerveau précédent."""
+    documents = _documents(precedent)
+    if not documents:
+        return {}
+    return {
+        "documents": documents,
+        "complet_s": round(S_FIXE_COMPLET + documents * couts(mesures, version)["s_par_document"]),
+    }
+
+
+def mode_selon_le_plan(mode: str, raison: str, plan: dict, force: str | None) -> tuple[str, str]:
+    """Le passage en place, sauf quand la reconstruction complète est prévue plus courte. Un passage en place forcé,
+    ou une reconstruction déjà décidée pour un cas nommé (`mode_du_passage`), ne change pas."""
     if mode != "en_place" or force == "en_place":
         return mode, raison
-    n, plafond = compte.get("remplaces", 0) + 2 * compte.get("retires", 0), plafond_effacements(version)
-    return ("complet", f"{n} effacements en place > {plafond}") if n > plafond else (mode, raison)
+    if plan["complet_s"] < plan["en_place_s"]:
+        return "complet", f"en place prévu en {plan['en_place_s']} s, reconstruction en {plan['complet_s']} s"
+    return mode, raison
+
+
+def alerte_du_plan(plan: dict) -> str:
+    """Le signal d'un passage qui remplacerait une grande part du cerveau : une version a peut-être changé l'empreinte
+    de versements inchangés (newskit 0.1.85, 27.11.2026 : 3 307 documents sur 23 017, dont 3 288 au contenu égal)."""
+    documents, remplaces = plan.get("documents", 0), plan.get("remplaces", 0)
+    if not documents or remplaces / documents <= PART_REECRITE:
+        return ""
+    return (
+        f"{remplaces} documents sur {documents} à remplacer ({100 * remplaces / documents:.0f} %) : si leurs fiches "
+        "n'ont pas changé, une version a changé la forme du versement, à déclarer dans "
+        "puits_cortexdb.FORMES_PRECEDENTES"
+    )
+
+
+def ecart_au_plan(prevu: float | None, fait: float) -> float | None:
+    """L'écart de la durée faite à la prévue, en part de la prévue."""
+    return round(fait / prevu - 1, 2) if prevu else None
+
+
+def mesures_apres(mesures: dict, mode: str, compte: dict, duree: float, version: tuple[int, ...]) -> dict:
+    """Les coûts du graphe après ce passage : une reconstruction mesure le coût d'un document ; un passage en place
+    mesure le coût d'un document écrit quand il en écrit assez, sinon celui d'un document relu."""
+    m = dict(mesures)
+    c = couts(m, version)
+    if mode == "complet":
+        if _documents(compte):
+            m["s_par_document"] = round(max(0.0, duree - S_FIXE_COMPLET) / _documents(compte), 3)
+        return m
+    plan = plan_du_passage(compte, m, version)
+    reste = duree - plan["effacements"] * c["s_par_effacement"]
+    relus = plan["documents"] * c["s_par_document_en_place"]
+    if plan["ecrits"] >= ECRITS_POUR_MESURER:
+        m["s_par_ecrit_en_place"] = round(max(0.0, reste - relus) / plan["ecrits"], 3)
+    elif plan["documents"]:
+        m["s_par_document_en_place"] = round(
+            max(0.0, reste - plan["ecrits"] * c["s_par_ecrit_en_place"]) / plan["documents"], 4
+        )
+    return m
 
 
 def place_libre(dossier: Path) -> int:
@@ -615,7 +706,7 @@ def remplaces_du_jour(graphe: str, releve_neuf: dict[str, str]) -> tuple[int, in
     return sum(1 for ident, h in jour.items() if releve_neuf.get(ident) != h), len(jour)
 
 
-COMPTES_DU_VERSEMENT = ("inchanges", "remplaces", "ajoutes", "retires", "alias_fondus", "alias_refuses")
+COMPTES_DU_VERSEMENT = ("inchanges", "migres", "remplaces", "ajoutes", "retires", "alias_fondus", "alias_refuses")
 
 
 def comptes_du_versement(versement: dict) -> dict:
@@ -663,6 +754,8 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         mode, raison = "complet", "la couche 1 a changé"
     possible = mode  # en place, ou complet sans recours
     t0 = time.time()
+    mesures = precedent.get("mesures") or {}
+    plan = plan_complet(precedent, mesures, version) if mode == "complet" else {}
     options = options_du_versement(graphe, cfg.chemins_du_graphe(graphe)["base"], couche1)
     if "--vues" in options:
         ecrire_vues(graphe, Path(options[options.index("--vues") + 1]))
@@ -671,14 +764,19 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         r = lancer_client([*puits, *options, "--empreintes-avant", str(p_emp), "--compter"])
         if r.returncode:
             raise RuntimeError(f"comptage : {(r.stdout + r.stderr)[-800:]}")
-        mode, raison = mode_selon_effacements(
-            mode, raison, json.loads(r.stdout.strip().splitlines()[-1]), force, version
-        )
+        plan = plan_du_passage(json.loads(r.stdout.strip().splitlines()[-1]), mesures, version)
+        mode, raison = mode_selon_le_plan(mode, raison, plan, force)
     mode, raison = mode_selon_place(mode, raison, possible, cible, place_libre(DOSSIER))
+    prevu = plan.get("en_place_s" if mode == "en_place" else "complet_s")
     print(
-        f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}",
+        f"  {graphe} : {'en place' if mode == 'en_place' else 'reconstruction complète'}{f' ({raison})' if raison else ''}"
+        + (f", prévu{'' if mode == 'en_place' else 'e'} en {prevu} s" if prevu is not None else "")
+        + (f" (reconstruction complète : {plan['complet_s']} s)" if mode == "en_place" and prevu is not None else ""),
         file=sys.stderr,
     )
+    alerte = alerte_du_plan(plan)
+    if alerte:
+        print(f"  {graphe} : {alerte}", file=sys.stderr)
     effacer(neuf)
     if mode == "en_place":
         cloner(cible, neuf)
@@ -767,6 +865,18 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         "historique_elague": historique_elague,
         "duree_s": round(time.time() - t0, 1),
     }
+    bilan.update(
+        plan=plan,
+        prevu_s=prevu,
+        ecart_au_plan=ecart_au_plan(prevu, bilan["duree_s"]),
+        mesures=mesures_apres(mesures, mode, versement, bilan["duree_s"], version),
+    )
+    if (bilan["ecart_au_plan"] or 0) > DEPASSEMENT:
+        print(
+            f"  {graphe} : contrôle : {bilan['duree_s']:.0f} s pour {prevu} s prévues "
+            f"(+{100 * bilan['ecart_au_plan']:.0f} %)",
+            file=sys.stderr,
+        )
     if not publiable(fin):
         bilan["publie"] = False
         print(json.dumps(bilan, ensure_ascii=False))

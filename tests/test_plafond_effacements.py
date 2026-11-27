@@ -1,10 +1,11 @@
-"""Un versement en place qui effacerait trop se fait en reconstruction complète (mainteneur, 14.11.2026).
+"""Un versement en place qui coûterait plus qu'une reconstruction complète se fait en reconstruction (mainteneur,
+14.11.2026 ; le choix par le coût prévu, 27.11.2026 : `test_plan_du_passage.py`).
 
 La routine d'un graphe de gouvernance, 14.11.2026 au soir : le versement en place a passé plus d'une heure dans
 `delete_document_graph` (972 appels, 4,0 s en moyenne) et `knowledge_delete` (6,0 s), quand la reconstruction
 complète du matin avait pris 32 minutes. CortexDB lit tout le graphe pour chaque document qu'il efface. Le puits
-compte donc d'abord, sans serveur, ce qu'un passage en place effacerait, et au-delà de EFFACEMENTS_MAX le cerveau se
-reconstruit en entier."""
+compte donc d'abord, sans serveur, ce qu'un passage en place écrirait et effacerait ; le plan du passage en tire la
+durée prévue des deux voies (`cerveau_cortexdb.plan_du_passage`)."""
 
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ def test_compter_classe_chaque_versement_sans_parler_au_serveur():
     ep = pc.EnPlace(SansServeur(), avant, bilan, compter=True)
     assert [ep.verser(v, {}) for v in (garde, change, neuf)] == [None, None, None]
     ep.retirer_absents()
-    assert bilan == {"inchanges": 1, "remplaces": 1, "ajoutes": 1, "retires": 1}
+    assert bilan == {"inchanges": 1, "migres": 0, "remplaces": 1, "ajoutes": 1, "retires": 1}
 
 
 def _main(monkeypatch, *args: str) -> None:
@@ -66,32 +67,8 @@ def test_compter_se_passe_du_client_et_n_ecrit_pas_les_empreintes(tmp_path, monk
     assert not apres.exists()
 
 
-@pytest.mark.parametrize(
-    "mode, compte, force, attendu",
-    [
-        ("en_place", {"remplaces": 100, "retires": 100}, None, ("en_place", "")),
-        (
-            "en_place",
-            {"remplaces": 101, "retires": 100},
-            None,
-            ("complet", f"301 effacements en place > {cc.EFFACEMENTS_MAX}"),
-        ),
-        (
-            "en_place",
-            {"remplaces": 0, "retires": 151},
-            None,
-            ("complet", f"302 effacements en place > {cc.EFFACEMENTS_MAX}"),
-        ),
-        ("en_place", {"remplaces": 5000}, "en_place", ("en_place", "")),  # forcé : le seuil ne s'applique pas
-    ],
-)
-def test_le_mode_selon_les_effacements(mode, compte, force, attendu):
-    assert cc.EFFACEMENTS_MAX == 300
-    assert cc.mode_selon_effacements(mode, "", compte, force) == attendu
-
-
 def test_un_passage_complet_ne_compte_pas():
-    assert cc.mode_selon_effacements("complet", "demandé", None, None) == ("complet", "demandé")
+    assert cc.mode_selon_le_plan("complet", "demandé", {}, None) == ("complet", "demandé")
 
 
 class Arret(Exception):
@@ -144,9 +121,13 @@ def poste(tmp_path, monkeypatch):
     return p
 
 
-@pytest.mark.parametrize("effacements, en_place", [(10, True), (cc.EFFACEMENTS_MAX + 1, False)])
-def test_construire_compte_avant_de_cloner(poste, effacements, en_place):
-    poste.compte = {"remplaces": effacements, "retires": 0, "ajoutes": 0, "inchanges": 7}
+PEU = {"remplaces": 10, "retires": 0, "ajoutes": 0, "inchanges": 5000}  # en place : 265 s, contre 2 975 s
+TROP = {"remplaces": 5000, "retires": 0, "ajoutes": 0, "inchanges": 0}  # en place : 12 690 s, contre 2 970 s
+
+
+@pytest.mark.parametrize("compte, en_place", [(PEU, True), (TROP, False)])
+def test_construire_compte_avant_de_cloner(poste, compte, en_place):
+    poste.compte = compte
     with pytest.raises(Arret):
         cc.construire("g")
     compte, verse = poste.appels
@@ -265,7 +246,7 @@ def test_la_place_de_l_ancien_cerveau_compte_son_journal(tmp_path):
 def test_trop_d_effacements_sans_place_passe_en_place(poste, monkeypatch):
     (poste.neuf.parent / "g.db").write_bytes(b"x" * 100)
     monkeypatch.setattr(cc, "place_libre", lambda d: 150)
-    poste.compte = {"remplaces": cc.EFFACEMENTS_MAX + 1, "retires": 0, "ajoutes": 0, "inchanges": 7}
+    poste.compte = TROP
     with pytest.raises(Arret):
         cc.construire("g")
     _, verse = poste.appels
@@ -275,7 +256,7 @@ def test_trop_d_effacements_sans_place_passe_en_place(poste, monkeypatch):
 def test_trop_d_effacements_avec_place_reconstruit(poste, monkeypatch):
     (poste.neuf.parent / "g.db").write_bytes(b"x" * 100)
     monkeypatch.setattr(cc, "place_libre", lambda d: 200)
-    poste.compte = {"remplaces": cc.EFFACEMENTS_MAX + 1, "retires": 0, "ajoutes": 0, "inchanges": 7}
+    poste.compte = TROP
     with pytest.raises(Arret):
         cc.construire("g")
     _, verse = poste.appels
@@ -299,24 +280,20 @@ def test_la_place_libre_est_celle_du_dossier_des_cerveaux(tmp_path):
 
 # CortexDB v2.154.0 (liliang-cn/cortexdb#190) trouve ce qu'un document a mis dans le graphe par des index de provenance :
 # une suppression ne lit plus tout le graphe. Copie du graphe de gouvernance, 16.11.2026 : 0,04 à 0,19 s par
-# delete_document_graph, contre 0,9 à 1,2 s en v2.147.0. Le plafond suit le binaire qui versera.
-@pytest.mark.parametrize(
-    "version, effacements, attendu",
-    [
-        ((2, 153, 9), 301, ("complet", "301 effacements en place > 300")),
-        ((2, 154, 0), 301, ("en_place", "")),
-        ((2, 154, 6), 3000, ("en_place", "")),
-        ((2, 154, 0), 3001, ("complet", "3001 effacements en place > 3000")),
-    ],
-)
-def test_le_plafond_suit_les_index_de_provenance(version, effacements, attendu):
-    assert cc.mode_selon_effacements("en_place", "", {"remplaces": effacements}, None, version) == attendu
+# delete_document_graph, contre 0,9 à 1,2 s en v2.147.0. Le coût d'un effacement suit le binaire qui versera.
+MOYEN = {
+    "remplaces": 600,
+    "retires": 0,
+    "ajoutes": 0,
+    "inchanges": 5000,
+}  # en place : 1 763 s, ou 4 049 s sans index ; reconstruction 3 288 s
 
 
-def test_construire_donne_la_version_du_binaire_au_plafond(poste, monkeypatch):
-    monkeypatch.setattr(cc, "version_binaire", lambda *a: (2, 154, 6))
-    poste.compte = {"remplaces": 301, "retires": 0, "ajoutes": 0, "inchanges": 7}
+@pytest.mark.parametrize("version, en_place", [((2, 154, 6), True), ((2, 153, 9), False)])
+def test_construire_donne_la_version_du_binaire_au_plan(poste, monkeypatch, version, en_place):
+    monkeypatch.setattr(cc, "version_binaire", lambda *a: version)
+    poste.compte = MOYEN
     with pytest.raises(Arret):
         cc.construire("g")
     _, verse = poste.appels
-    assert "--empreintes-avant" in verse and poste.clones
+    assert ("--empreintes-avant" in verse) is en_place and bool(poste.clones) is en_place

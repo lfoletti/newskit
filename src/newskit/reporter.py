@@ -453,8 +453,8 @@ def graphe_d_abord(G, sujet: dict, graphe: str) -> dict:
                 n
                 for n, d in G.nodes(data=True)
                 if chemin
-                and d.get("kind") in ("article", "papier")
-                and str(d.get("source_file") or "").endswith(chemin.split("/")[-1])
+                and d.get("node_type") in ("article", "papier")
+                and str(d.get("_source") or "").endswith(chemin.split("/")[-1])
             ),
             None,
         )

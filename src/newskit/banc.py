@@ -758,6 +758,36 @@ def composer_jeu(graphe: str, bornes: dict) -> list[dict]:
     return questions
 
 
+def poids_des_fiches_techniques(G) -> dict[str, int]:
+    """{fiche: nombre de principes et de mécanismes (notions « rationale ») qu'elle porte}, lus des sources du
+    cerveau (`_source` de la notion et de ses relations). Sans graphe, rien."""
+    poids: dict[str, int] = {}
+    for nd, d in G.nodes(data=True) if G is not None else ():
+        if dg._type(G, nd) == "rationale":
+            for f in {str(e.get("_source") or "") for _, _, e in G.edges(nd, data=True)} | {
+                str(d.get("_source") or "")
+            }:
+                if f:
+                    poids[f] = poids.get(f, 0) + 1
+    return poids
+
+
+def liens_explicites(G) -> list[tuple]:
+    """(nom, nom, fiche) des liens extraits tels quels entre deux notions (`implements`, `rationale_for`,
+    `shares_data_with`), sous les noms du cerveau. Sans graphe, rien."""
+    if G is None:
+        return []
+    return [
+        (G.nodes[u].get("name"), G.nodes[v].get("name"), d.get("_source"))
+        for u, v, d in G.edges(data=True)
+        if d.get("confidence") == "EXTRACTED"
+        and d.get("edge_type") in ("implements", "rationale_for", "shares_data_with")
+        and dg._type(G, u) in dg.TYPES_CONCEPT
+        and dg._type(G, v) in dg.TYPES_CONCEPT
+        and d.get("_source")
+    ]
+
+
 def composer(graphe: str, bornes: dict) -> list[dict]:
     """Tire un jeu de questions neuf : fiches récentes, fiches de fond, liens du graphe, pages extérieures, lacunes."""
     random.seed(time.strftime("%Y-%m-%d"))
@@ -820,16 +850,7 @@ def composer(graphe: str, bornes: dict) -> list[dict]:
         )
     # Fonctionnement : les fiches qui portent le plus de principes et de mécanismes (nœuds « rationale »),
     # quelle que soit leur date — billets techniques, papiers jalons, notes de version qui expliquent.
-    G0 = te.charger(graphe)
-    poids: dict[str, int] = {}
-    if G0 is not None:
-        for nd, d in G0.nodes(data=True):
-            if dg._type(G0, nd) == "rationale":
-                for f in {str(e.get("source_file") or "") for _, _, e in G0.edges(nd, data=True)} | {
-                    str(d.get("source_file") or "")
-                }:
-                    if f:
-                        poids[f] = poids.get(f, 0) + 1
+    poids = poids_des_fiches_techniques(te.charger(graphe))
     connues = {str(f.relative_to(RACINE)): f for f in toutes}
     techniques = [connues[f] for f, k in sorted(poids.items(), key=lambda kv: -kv[1]) if f in connues and k >= 1]
     reserve = random.sample(techniques[:200], min(200, len(techniques)))
@@ -864,20 +885,7 @@ def composer(graphe: str, bornes: dict) -> list[dict]:
             "fiche du graphe",
         )
     # Relationnel : des liens explicites entre deux notions, avec la fiche qui les porte.
-    G = te.charger(graphe)
-    liens = (
-        [
-            (G.nodes[u].get("label"), G.nodes[v].get("label"), d.get("source_file"))
-            for u, v, d in G.edges(data=True)
-            if d.get("confidence") == "EXTRACTED"
-            and d.get("relation") in ("implements", "rationale_for", "shares_data_with")
-            and dg._type(G, u) in dg.TYPES_CONCEPT
-            and dg._type(G, v) in dg.TYPES_CONCEPT
-            and d.get("source_file")
-        ]
-        if G is not None
-        else []
-    )
+    liens = liens_explicites(te.charger(graphe))
     reserve_l = [l for l in random.sample(liens, min(60, len(liens))) if (RACINE / str(l[2])).exists()]
     for _ in range(4):
         if compte("relationnel") >= parts_cibles["rel"] * 1.25 or not reserve_l:

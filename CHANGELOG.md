@@ -23,6 +23,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
+- Le chargeur du cerveau fond les entités qui portent le même ancien identifiant (`fondre_par_identifiant`) : deux
+  lots donnent parfois le même identifiant sous deux libellés, que la composition fondait et que le cerveau garde à
+  part (2 882 identifiants au cerveau d'ai-governance). La plus reliée garde son nom, les autres vont sous `aliases`.
+- La pyramide (`synthese`, `cartes`) lit le graphe du cerveau, rangé sous les anciens identifiants jusqu'à l'étape 3
+  (`sous_anciennes_cles`) : ses synthèses gardent leurs clés. Les preuves se lisent sous les noms du cerveau ; un nom
+  fondu atteste la notion comme son nom. Le lot d'un texte de référence se trouve par l'ancien identifiant de la fiche.
+- La première tenue de la pyramide sur le cerveau réancre les empreintes, une fois, sans réécrire de synthèse
+  (`reancrer`) : le cerveau ne garde pas la même description que la composition quand plusieurs lots décrivent une
+  notion.
+- Le banc (`poids_des_fiches_techniques`, `liens_explicites`) et le reporter lisent les noms du cerveau.
 - La carte du domaine (`digerer_graphe`), ses communautés, les thèmes émergents, l'avance, le canon, les lacunes, le
   contexte, le classement et l'encodeur lisent le graphe du cerveau, sous ses noms ; `digerer_graphe --graphe` ne
   prend plus de chemin de `graphe.json`. Le score d'un rapprochement se lit du texte que le cerveau garde.

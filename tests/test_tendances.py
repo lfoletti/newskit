@@ -1,7 +1,7 @@
 """Les tendances d'un graphe (mainteneur, 15.11.2026 : « accueil sur "trending topics" »).
 
 Un graphe qui déclare `tendances: {jours: 30, max: 8}` garde dans `tendances.json` les notions que plusieurs sources
-indépendantes ont attestées pendant la fenêtre. Aucun appel au modèle : le compte se lit du graphe composé."""
+indépendantes ont attestées pendant la fenêtre. Aucun appel au modèle : le compte se lit du graphe du cerveau."""
 
 from __future__ import annotations
 
@@ -18,17 +18,17 @@ JUSQU = "2026-11-15"
 
 
 def graphe(*fiches, noms=()):
-    """Un graphe composé : (chemin de la fiche, genre, date, notions attestées) par fiche ; `noms` : (libellé, genre)
-    des nœuds d'auteur, d'entité ou de publication."""
+    """Un graphe du cerveau, sous ses noms : (chemin de la fiche, genre, date, notions attestées) par fiche ; `noms` :
+    (nom, genre) des entités d'auteur, d'entité ou de publication."""
     G = nx.Graph()
     for chemin, genre, date, notions in fiches:
-        G.add_node(chemin, kind=genre, source_file=chemin, date=date, label=chemin, file_type="document")
+        G.add_node(chemin, node_type=genre, _source=chemin, date=date, name=chemin)
         for n in notions:
             if n not in G:
-                G.add_node(n, label=n, file_type="concept", source_file=chemin)
-            G.add_edge(chemin, n, source_file=chemin)
+                G.add_node(n, name=n, node_type="concept", _source=chemin)
+            G.add_edge(chemin, n, _source=chemin)
     for i, (libelle, genre) in enumerate(noms):
-        G.add_node(f"nom{i}", label=libelle, kind=genre, file_type="concept")
+        G.add_node(f"nom{i}", name=libelle, node_type=genre)
     return G
 
 
@@ -46,6 +46,15 @@ def test_une_notion_attestee_par_deux_sources_dans_la_fenetre_est_une_tendance()
         ("sources/b/2026-11-12_z.md", "article", "2026-11-12", ["RLVR"]),
     )
     assert td.compter(G, JUSQU) == [{"notion": "RLVR", "sources": 2, "fiches": 3}]
+
+
+def test_une_tendance_porte_le_nom_de_l_entite_pas_son_identifiant():
+    G = nx.Graph()
+    for chemin in ("sources/a/1.md", "sources/b/1.md"):
+        G.add_node(chemin, node_type="article", _source=chemin, date="2026-11-10", name=chemin)
+        G.add_node("entity:rlvr", name="RLVR", node_type="concept")
+        G.add_edge(chemin, "entity:rlvr", _source=chemin)
+    assert noms_de(G) == ["RLVR"]
 
 
 def test_une_seule_source_ne_fait_pas_une_tendance():
@@ -120,8 +129,8 @@ def test_seules_les_notions_comptent():
         ("sources/a/1.md", "article", "2026-11-01", ["RAG", "Ada", "Section"]),
         ("sources/b/1.md", "article", "2026-11-01", ["RAG", "Ada", "Section"]),
     )
-    G.nodes["Ada"]["kind"] = "depot"
-    G.nodes["Section"]["file_type"] = "document"
+    G.nodes["Ada"]["node_type"] = "depot"
+    G.nodes["Section"]["node_type"] = "document"
     assert noms_de(G) == ["RAG"]
 
 
@@ -219,11 +228,14 @@ def test_la_commande_ne_fait_rien_sans_declaration_ni_sans_graphe(tmp_path, monk
     assert "graphe absent" in capsys.readouterr().out and not (tmp_path / "tendances.json").exists()
 
 
-def test_le_graphe_se_charge_du_dossier_du_graphe(monkeypatch):
-    from newskit import themes_emergents as te
+def test_le_graphe_des_tendances_est_celui_du_cerveau_et_rien_sans_cerveau(monkeypatch, tmp_path):
+    from newskit import graphe_cerveau as gc
 
-    monkeypatch.setattr(te, "charger", lambda g: f"graphe de {g}")
-    assert td.charger("g") == "graphe de g"
+    monkeypatch.setattr(gc, "charger", lambda g: f"cerveau de {g}")
+    assert td.charger("g") == "cerveau de g"
+    monkeypatch.undo()
+    monkeypatch.setattr(gc.cc, "chemin_cerveau", lambda g: tmp_path / "absent.db")
+    assert td.charger("g") is None
     assert len(td.aujourd_hui()) == 10
 
 

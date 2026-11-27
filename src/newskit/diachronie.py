@@ -130,11 +130,11 @@ def annoter_fiches(graphe: str, controle: bool = False) -> dict:
 
 
 def index_fiches(G) -> dict[str, dict]:
-    """source_file → attributs du nœud de fiche (date, statut, texte, version…)."""
+    """_source → attributs de l'entité de fiche (date, statut, texte, version…)."""
     return {
-        str(d["source_file"]): {**d, "_id": n}
+        str(d["_source"]): {**d, "_id": n}
         for n, d in G.nodes(data=True)
-        if d.get("kind") in ("article", "papier") and d.get("source_file")
+        if d.get("node_type") in ("article", "papier") and d.get("_source")
     }
 
 
@@ -144,13 +144,13 @@ def attestations(G, n, idx: dict[str, dict] | None = None) -> list[dict]:
     idx = idx if idx is not None else index_fiches(G)
     fiches: list[str] = []
     for v in G.neighbors(n):
-        f = str((G.get_edge_data(n, v) or {}).get("source_file") or "")
+        f = str((G.get_edge_data(n, v) or {}).get("_source") or "")
         if f and f not in fiches:
             fiches.append(f)
-        f = str(G.nodes[v].get("source_file") or "") if G.nodes[v].get("kind") in ("article", "papier") else ""
+        f = str(G.nodes[v].get("_source") or "") if G.nodes[v].get("node_type") in ("article", "papier") else ""
         if f and f not in fiches:
             fiches.append(f)
-    f0 = str(G.nodes[n].get("source_file") or "")
+    f0 = str(G.nodes[n].get("_source") or "")
     if f0 and f0 not in fiches and f0 in idx:
         fiches.append(f0)
     out = []
@@ -202,10 +202,7 @@ def _extraite(G, idx: dict[str, dict], f: str) -> bool:
     d = idx.get(f)
     if not d:
         return False
-    return any(
-        G.nodes[v].get("file_type") == "concept" and G.nodes[v].get("kind") not in ("auteur", "publication")
-        for v in G.neighbors(d["_id"])
-    )
+    return any(G.nodes[v].get("node_type") == "concept" for v in G.neighbors(d["_id"]))
 
 
 def _nommee_dans(G, n, f: str) -> bool:
@@ -217,20 +214,18 @@ def _nommee_dans(G, n, f: str) -> bool:
     p = RACINE / f
     if not f or not p.exists():
         return False
-    formes = [ig._label(G, n), *(G.nodes[n].get("aussi") or [])]
+    formes = [ig._label(G, n), *ig.autres_noms(G, n)]
     motif = re.compile(r"(?<![\w])(?:" + "|".join(re.escape(ig._plier(x)) for x in formes if x) + r")(?![\w])")
     return motif.search(ig._plier(p.read_text(encoding="utf-8", errors="replace"))) is not None
 
 
 def annoter_graphe(G) -> dict:
-    """Pose `actualite` sur chaque notion du graphe (à la composition). Rend les comptes pour le journal."""
-    from newskit import digerer_graphe as dg  # noqa: PLC0415
-    from newskit import interroger_graphe as ig  # noqa: PLC0415
-
+    """Pose `actualite` sur chaque notion du graphe (au chargement du cerveau, `graphe_cerveau.annoter`). Rend les
+    comptes pour le journal."""
     idx = index_fiches(G)
     c = {"notions": 0, "reference": 0, "en_vigueur": 0, "remplacee_seulement": 0, "evolue": 0}
     for n, d in G.nodes(data=True):
-        if dg._type(G, n) not in dg.TYPES_CONCEPT or ig.est_auteur(G, n):
+        if d.get("node_type") not in ("concept", "rationale"):
             continue
         a = actualite(G, n, idx)
         if not a["attestations"]:

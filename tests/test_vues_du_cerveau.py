@@ -15,7 +15,10 @@ def _poser(monkeypatch, tmp_path, cerveau: bool):
         ti._cerveau(tmp_path / "g.db", ti.NOEUDS, ti.ARETES)
     (tmp_path / "carte.md").write_text("# Carte des ruchers", encoding="utf-8")
     monkeypatch.setattr(cc, "chemin_cerveau", lambda g: tmp_path / f"{g}.db")
-    monkeypatch.setattr("newskit.config_sources.chemins_du_graphe", lambda g: {"carte": tmp_path / "carte.md"})
+    monkeypatch.setattr(
+        "newskit.config_sources.chemins_du_graphe", lambda g: {"carte": tmp_path / "carte.md", "base": tmp_path}
+    )
+    monkeypatch.setattr("newskit.config_sources.graphes_inclus", lambda g: [])
 
 
 def test_les_vues_se_calculent_sur_le_cerveau_sous_ses_noms(monkeypatch, tmp_path):

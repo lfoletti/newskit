@@ -6,6 +6,13 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Ajouté
 
+- `graphe_cerveau.charger` rend le graphe annoté, comme la composition le posait : une fiche (article, papier) reçoit
+  l'en-tête de son document (`date`, `plateforme`, `statut`, `version`…) ; la table anglaise d'`alias.json` (graphe et
+  graphes inclus) donne leur nom anglais aux notions, l'original sous `aussi` ; la table française pose `name_fr` et
+  `description_fr` ; la diachronie pose `actualite`. Les tables nomment une entité par son identifiant au cerveau ou
+  par l'ancien (`newskit_id`). Mesuré sur ai-engineering : 7,3 s pour 85 019 entités, dont 67 561 notions datées
+  contre 34 383 dans `graphe.json`, où les chemins absolus des fiches du canon cachaient leurs attestations.
+
 - `graphe_cerveau.charger` lit le graphe d'un graphe dans son cerveau, sous les noms du cerveau, sans traduction : un
   nœud par entité, sous son identifiant `entity:…`, avec `node_type` et ses propriétés ; une arête par relation, avec
   `edge_type` et `weight`, ses deux bouts dans le sens du cerveau (`from_node_id`, `to_node_id`) et ses propriétés. Les
@@ -16,6 +23,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
+- Les tendances et la diachronie se calculent sur le graphe du cerveau, sous ses noms ; sans cerveau, les
+  tendances gardées restent.
 - `interroger_graphe` lit le graphe dans son cerveau, par le nom du graphe (`--graphe <nom>`, le principal par
   défaut) ; un chemin de `graphe.json` n'est plus accepté. Ses sous-commandes lisent les noms du cerveau : `name`,
   `node_type`, `_source`, `description`, `edge_type`. Un nom fondu par la table d'alias (`aliases`) mène à son entité.

@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.86] - 2026-11-27
+
 ### Changé
 
 - Le passage du cerveau choisit sa voie par son coût prévu, plus par un seuil d'effacements. Avant de cloner, il dresse

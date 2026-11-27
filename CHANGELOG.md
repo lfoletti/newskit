@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.87] - 2026-11-27
+
 ### Corrigé
 
 - Une entité restée sous le nom d'un alias se fond dans son canonique. `puits_cortexdb.groupes_d_alias` met dans le

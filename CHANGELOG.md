@@ -23,6 +23,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
+- Les nouveautés de la lettre se lisent du cerveau, une fois reconstruit : une entité est neuve quand toutes les fiches
+  qui l'attestent ont été collectées depuis le passage précédent (`entites_neuves`). La différence de `graphe.json`
+  avant et après la composition n'est plus lue ; une reconstruction du cerveau n'y change rien. Les chiffres du bilan
+  (entités, relations) et l'état du banc suivent le cerveau.
 - Le chargeur du cerveau fond les entités qui portent le même ancien identifiant (`fondre_par_identifiant`) : deux
   lots donnent parfois le même identifiant sous deux libellés, que la composition fondait et que le cerveau garde à
   part (2 882 identifiants au cerveau d'ai-governance). La plus reliée garde son nom, les autres vont sous `aliases`.

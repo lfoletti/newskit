@@ -1197,11 +1197,17 @@ def rejuger(graphe: str, redemander: tuple[str, ...] = ()) -> dict | None:
 
 
 def etat_du_graphe(graphe: str) -> str:
-    """L'horodatage de la dernière modification de ce que le graphe répond : sa composition (graphe.json), sa pyramide
+    """L'horodatage de la dernière modification de ce que le graphe répond : son cerveau (K3, 27.11.2026), sa pyramide
     (synthese/notions.json) et ses cartes (synthese/cartes.json). Sert à ne pas reposer un banc à un graphe qui n'a pas
     bougé (règle « pas de requête redondante »)."""
+    from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
+
     ch = cfg.chemins_du_graphe(graphe)
-    fichiers = [ch["graphe"], ch["base"] / "synthese" / "notions.json", ch["base"] / "synthese" / "cartes.json"]
+    fichiers = [
+        cc.chemin_cerveau(graphe),
+        ch["base"] / "synthese" / "notions.json",
+        ch["base"] / "synthese" / "cartes.json",
+    ]
     mt = max((f.stat().st_mtime for f in fichiers if f.exists()), default=0)
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(mt)) if mt else ""
 

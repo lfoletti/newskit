@@ -4,6 +4,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Changé
+
+- La table d'alias d'un graphe (`alias.json`) entre au cerveau par des fusions d'entités, plus par le nom versé. Une
+  fiche se verse sous les noms que son lot porte et son empreinte ne suit plus la table : une paire ajoutée ne fait
+  réécrire aucun document. Mesuré sur six nuits d'un graphe de 10 939 lots : 119 à 192 fiches étaient réécrites par
+  nuit pour 62 à 113 paires changées. Après les versements et les retraits, `puits_cortexdb.fondre_alias` fond
+  chaque alias qui a encore un nœud dans son canonique (`merge_entities`) ; CortexDB note le nom fondu sur l'entité
+  gardée et un versement ultérieur sous ce nom arrive sur elle. Le cerveau fait foi sur ce qui reste à fondre, aucun
+  relevé n'est tenu à côté. Le bilan porte trois comptes : `alias_groupes`, `alias_fondus`, `alias_refuses`. Demande CortexDB
+  v2.157.0 au moins : avec une table d'alias, un serveur plus ancien arrête le passage et garde l'ancien cerveau.
+  Le premier passage après cette version réécrit une fois chaque fiche qui nomme un alias.
+- `lot_vers_cortexdb`, `versement_d_une_fiche`, `CoucheUn`, `couche1_par_fiche`, `couche1_d_une_fiche`,
+  `entite_composee` et `synthese_vers_cortexdb` perdent leur paramètre `alias` ; `alias_par_identifiant` disparaît.
+
 ## [0.1.84] - 2026-11-20
 
 ### Ajouté

@@ -615,6 +615,20 @@ def remplaces_du_jour(graphe: str, releve_neuf: dict[str, str]) -> tuple[int, in
     return sum(1 for ident, h in jour.items() if releve_neuf.get(ident) != h), len(jour)
 
 
+COMPTES_DU_VERSEMENT = ("inchanges", "remplaces", "ajoutes", "retires", "alias_fondus", "alias_refuses")
+
+
+def comptes_du_versement(versement: dict) -> dict:
+    """Ce que le versement a fait aux documents et aux entités, pour le bilan de la construction."""
+    return {k: versement.get(k, 0) for k in COMPTES_DU_VERSEMENT}
+
+
+def a_change(mode: str, versement: dict) -> bool:
+    """Le cerveau n'est plus celui d'avant le passage : un document écrit ou retiré, ou un alias fondu (la fusion
+    retire des nœuds de l'index des vecteurs). Il se rouvre alors une fois avec l'encodeur avant d'être publié."""
+    return mode == "complet" or any(versement.get(k) for k in ("remplaces", "ajoutes", "retires", "alias_fondus"))
+
+
 def construire(
     graphe: str, reprendre_de: list[Path] | None = None, couche1: bool = False, force: str | None = None
 ) -> dict:
@@ -708,7 +722,7 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         )
         avant = controle(neuf, octets)
         encodes = 0
-        change = mode == "complet" or any(versement.get(k) for k in ("remplaces", "ajoutes", "retires"))
+        change = a_change(mode, versement)
         if avant["a_encoder"]:
             if mode == "complet":
                 garder_provenance(neuf, cote)
@@ -746,7 +760,7 @@ def _construire(graphe: str, reprendre_de: list[Path] | None, couche1: bool, for
         "lots": versement.get("verses"),
         "syntheses": versement.get("syntheses", 0),
         **fin,
-        **{k: versement.get(k, 0) for k in ("inchanges", "remplaces", "ajoutes", "retires")},
+        **comptes_du_versement(versement),
         "vecteurs_repris": repris,
         "vecteurs_encodes": encodes,
         "journal_elague": journal_elague,

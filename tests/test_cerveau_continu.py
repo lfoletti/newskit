@@ -470,14 +470,6 @@ def test_le_squelette_la_structure_le_lot_et_la_routine_se_lisent_aux_modules(tm
     assert ct.lot_de(A) == {"nodes": []}
 
 
-def test_les_alias_du_graphe_se_lisent_a_sa_base(at):
-    assert ct._alias("g") == {}
-    base = at.tmp / "graphe" / "g"
-    base.mkdir(parents=True)
-    (base / "alias.json").write_text("{}", encoding="utf-8")
-    assert ct._alias("g") == {}
-
-
 def test_sans_client_le_passage_se_connecte_avec_la_cle_d_ecriture(at, monkeypatch, capsys):
     connexions = []
 

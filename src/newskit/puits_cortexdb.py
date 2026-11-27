@@ -52,6 +52,8 @@ RE_PARENTHESE_FINALE = re.compile(r"\s*\([^()]*\)\s*$")  # fusionner_graphe : «
 # Morceaux relus par appel de get_chunks : le client gRPC n'admet que 4 Mo par réponse ; un livre de 1,6 Mo
 # (une bibliothèque de PDF, 24.10.2026) rendait 4,4 Mo d'un seul appel.
 MORCEAUX_PAR_LECTURE = 200
+NOEUDS_PAR_LECTURE = 200  # entités relues par appel de get_nodes, sous la même limite
+PREFIXE_ENTITE = "entity:"
 COLLECTION_PYRAMIDE = "pyramide"
 # CortexDB fait attendre chaque écrivain son tour au plus 30 s, et son point de contrôle du WAL prend ce tour. Au VPS
 # (3,4 Mo/s en écritures de 4 Ko), un point de contrôle a dépassé 30 s : la reconstruction complète s'arrêtait après une
@@ -86,7 +88,7 @@ CHAMPS_LOT = {
 }
 CHAMPS_NOEUD = {
     "id": "métadonnée newskit_id (CortexDB dérive l'identifiant du nom)",
-    "label": "nom de l'entité (après la table d'alias)",
+    "label": "nom de l'entité ; la table d'alias s'applique après, par fusion (`fondre_alias`)",
     "file_type": "type de l'entité",
     "source_file": "_source relatif ; document du versement",
     "source_location": "métadonnée",
@@ -220,11 +222,73 @@ def de_balisage(libelle: str) -> bool:
     return not re.search(r"\w", libelle or "")
 
 
-def alias_par_identifiant(table: dict) -> dict[str, str]:
-    """alias.json (fondre_doublons.py) va d'identifiant à identifiant ; le versement veut, par identifiant de nœud,
-    le libellé du canonique. Un canonique sans libellé connu n'est pas appliqué (jamais un nom inventé)."""
-    libelles = table.get("libelles") or {}
-    return {perdu: libelles[garde] for perdu, garde in (table.get("alias") or {}).items() if libelles.get(garde)}
+def identifiant_d_entite(nom: str) -> str:
+    """L'identifiant que CortexDB tire du nom d'une entité (`graphEntityNodeID`) : minuscules, lettres et chiffres
+    gardés, espace, tiret et souligné rendus par un souligné, le reste retiré. Deux noms de même identifiant sont une
+    seule entité ; un identifiant déjà formé passe tel quel."""
+    if nom.startswith(PREFIXE_ENTITE):
+        return nom
+    plie = "".join(
+        c if c.isalpha() or c.isdecimal() else "_" if c in " -_" else ""
+        for c in (x.lower() for x in nom)  # lettre par lettre : pas de sigma final
+    )
+    return PREFIXE_ENTITE + (plie.strip("_") or "entity")
+
+
+def groupes_d_alias(table: dict, noms: dict[str, set[str]]) -> dict[str, list[str]]:
+    """Pur. alias.json (fondre_doublons.py) va d'identifiant de nœud à identifiant de nœud ; le cerveau nomme ses
+    entités. Par libellé de canonique, les noms sous lesquels ses alias ont été versés (`noms` : identifiant de nœud →
+    noms versés), triés, sans ceux qui sont déjà l'entité du canonique. Une chaîne d'alias mène à son dernier
+    canonique ; une boucle, ou un canonique sans libellé connu, ne fait pas de groupe (jamais un nom inventé)."""
+    alias, libelles = table.get("alias") or {}, table.get("libelles") or {}
+    groupes: dict[str, set[str]] = {}
+    for perdu in alias:
+        garde, vus = alias[perdu], {perdu}
+        while garde in alias and garde not in vus:
+            vus.add(garde)
+            garde = alias[garde]
+        canon = libelles.get(garde)
+        if garde in vus or not canon:
+            continue
+        autres = {n for n in noms.get(perdu, ()) if identifiant_d_entite(n) != identifiant_d_entite(canon)}
+        if autres:
+            groupes.setdefault(canon, set()).update(autres)
+    return {canon: sorted(autres) for canon, autres in sorted(groupes.items())}
+
+
+def fondre_alias(appel, groupes: dict[str, list[str]]) -> dict:
+    """Applique la table d'alias au cerveau, après les versements : chaque alias qui a encore un nœud à lui se fond
+    dans son canonique (`merge_entities`, CortexDB v2.157.0 : arêtes redirigées, nom noté sur l'entité gardée, qu'un
+    versement ultérieur sous ce nom atteint). Le cerveau fait foi sur ce qui reste à fondre : un alias déjà fondu n'a
+    plus de nœud, rien n'est tenu à côté. Canonique sans nœud (la table a inversé une paire déjà fondue, ou son lot n'est
+    pas versé) : un alias seul reste tel quel, plusieurs se réunissent sous le premier. Une fusion refusée parce qu'une
+    entité a disparu entre la lecture et l'écriture se compte et n'arrête rien ; toute autre erreur arrête le passage
+    (un serveur sans l'outil ne publie pas un cerveau aux alias épars). `appel(nom, **args)` : un appel d'outil."""
+    bilan = {"alias_groupes": len(groupes), "alias_fondus": 0, "alias_refuses": 0}
+    ids = list(dict.fromkeys(identifiant_d_entite(n) for canon, autres in groupes.items() for n in (canon, *autres)))
+    presents: set[str] = set()
+    for k in range(0, len(ids), NOEUDS_PAR_LECTURE):
+        presents.update(
+            n["id"] for n in appel("get_nodes", node_ids=ids[k : k + NOEUDS_PAR_LECTURE]).get("nodes") or []
+        )
+    for canon, autres in groupes.items():
+        cible = identifiant_d_entite(canon)
+        a_fondre = [i for i in dict.fromkeys(map(identifiant_d_entite, autres)) if i in presents]
+        if cible not in presents and a_fondre:
+            cible, a_fondre = a_fondre[0], a_fondre[1:]
+        if not a_fondre:
+            continue
+        try:
+            appel("merge_entities", canonical=cible, aliases=a_fondre)
+        except Exception as e:  # noqa: BLE001 — grpc.RpcError, sans importer grpc ici
+            if "NOT_FOUND" not in str(e):
+                raise
+            bilan["alias_refuses"] += 1
+            print(f"  !! alias de {cible} non fondus ({', '.join(a_fondre)}) : {e}", file=sys.stderr)
+            continue
+        presents.difference_update(a_fondre)
+        bilan["alias_fondus"] += len(a_fondre)
+    return bilan
 
 
 def chaines(meta: dict) -> dict[str, str]:
@@ -268,27 +332,28 @@ def du_squelette(n: dict, canon: dict | None) -> tuple[str, str] | None:
     return None
 
 
-def lot_vers_cortexdb(
-    lot: dict, entete: dict, corps: str, racine: Path, alias: dict[str, str] | None = None, canon: dict | None = None
-) -> dict:
-    """{document, entites, relations, ecartes} d'un lot : rien n'est écrit, rien n'est lu. `alias` : identifiant de nœud
-    → libellé du canonique (`alias_par_identifiant`). `canon` : le squelette (`canon_squelette`), qui fait foi sur une
-    fiche."""
-    alias = alias or {}
+def lot_vers_cortexdb(lot: dict, entete: dict, corps: str, racine: Path, canon: dict | None = None) -> dict:
+    """{document, entites, relations, ecartes, noms} d'un lot : rien n'est écrit, rien n'est lu. Chaque entité porte le
+    nom que le lot lui donne : la table d'alias s'applique au cerveau après les versements (`fondre_alias`), et
+    n'entre pas dans l'empreinte de la fiche. `canon` : le squelette (`canon_squelette`), qui fait foi sur une fiche.
+    `noms` : identifiant de nœud → nom versé, pour `groupes_d_alias` ; sans les nœuds que le squelette nomme."""
     sources = {n["source_file"] for n in lot["nodes"]}
     if len(sources) != 1:
         raise LotInvalide(f"un lot porte une seule fiche : {len(sources)} trouvées")
     source = relatif(sources.pop(), racine)
     ecartes = {"libelle_de_balisage": 0, "arete_sans_extremite": 0}
     nom_de: dict[str, str] = {}
+    noms: dict[str, str] = {}
     entites: dict[str, dict] = {}
     for n in lot["nodes"]:
         if de_balisage(n.get("label", "")):
             ecartes["libelle_de_balisage"] += 1
             continue
         sq = du_squelette(n, canon)
-        nom, type_ = sq if sq else (alias.get(n["id"], n["label"]), n.get("file_type") or "concept")
+        nom, type_ = sq if sq else (n["label"], n.get("file_type") or "concept")
         nom_de[n["id"]] = nom
+        if not sq:  # un nœud que le squelette nomme n'est l'alias de rien
+            noms[n["id"]] = nom
         e = entites.setdefault(
             nom,
             {
@@ -339,6 +404,7 @@ def lot_vers_cortexdb(
         "entites": list(entites.values()),
         "relations": relations,
         "ecartes": ecartes,
+        "noms": noms,
     }
 
 
@@ -453,7 +519,7 @@ def fiches_sans_lot(graphe: dict, avec_lot: set[str], racine: Path) -> list[str]
     return sorted(fiches - avec_lot)
 
 
-def entite_composee(n: dict, source: str, alias: dict[str, str]) -> dict:
+def entite_composee(n: dict, source: str) -> dict:
     """L'entité d'un nœud du graphe composé, extrémité d'une arête du squelette ou de l'AST."""
     if "kind" in n:
         return {
@@ -486,17 +552,16 @@ def entite_composee(n: dict, source: str, alias: dict[str, str]) -> dict:
             ),
         }
     return {
-        "name": alias.get(n["id"], n["label"]),
+        "name": n["label"],
         "type": n.get("file_type") or "concept",
         "chunk_ids": [],
         "metadata": chaines({"_source": source, "_producer": PRODUCTEUR, "newskit_id": n["id"]}),
     }
 
 
-def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None = None) -> tuple[dict[str, dict], dict]:
+def couche1_par_fiche(graphe: dict, racine: Path) -> tuple[dict[str, dict], dict]:
     """Pur : par fiche (chemin relatif), les entités et relations du squelette et de l'AST du graphe composé, et les
     arêtes écartées, comptées. Une entité est désignée par son identifiant s'il en a un, sinon par son nom."""
-    alias = alias or {}
     noeuds = {n["id"]: n for n in graphe.get("nodes") or [] if n.get("id")}
     par_fiche: dict[str, dict] = {}
     ecartes = {"arete_sans_extremite": 0, "fiche_hors_depot": 0, "boucle": 0}
@@ -514,7 +579,7 @@ def couche1_par_fiche(graphe: dict, racine: Path, alias: dict[str, str] | None =
         except LotInvalide:
             ecartes["fiche_hors_depot"] += 1
             continue
-        de, vers = (entite_composee(b, source, alias) for b in bouts)
+        de, vers = (entite_composee(b, source) for b in bouts)
         cles = [x.get("id") or x["name"] for x in (de, vers)]
         if cles[0] == cles[1]:
             ecartes["boucle"] += 1
@@ -551,10 +616,10 @@ class CoucheUn:
     la composition (`fusionner_graphe`). Le puits de la nuit et le passage continu passent tous deux par ici : une fiche
     inchangée garde son empreinte de l'un à l'autre. `ecartes` compte les arêtes écartées au fil des fiches."""
 
-    def __init__(self, squelette: dict, racine: Path, alias: dict[str, str] | None = None):
+    def __init__(self, squelette: dict, racine: Path):
         from newskit import fusionner_graphe as fg  # noqa: PLC0415 — networkx : absent du venv du client gRPC
 
-        self.fg, self.racine, self.alias = fg, racine, alias or {}
+        self.fg, self.racine = fg, racine
         self.noeuds = squelette.get("nodes") or []
         self.par_id = {n["id"]: n for n in self.noeuds}
         self.ids = set(self.par_id)
@@ -592,17 +657,15 @@ class CoucheUn:
         # les seuls nœuds du squelette que la fiche touche : le squelette entier, par fiche, coûterait la nuit
         bouts = dict.fromkeys(i for a in aretes for i in (a["source"], a["target"]) if i in self.par_id)
         compose = {"nodes": [*(self.par_id[i] for i in bouts), *st["nodes"]], "links": aretes}
-        par_fiche, ecartes = couche1_par_fiche(compose, self.racine, self.alias)
+        par_fiche, ecartes = couche1_par_fiche(compose, self.racine)
         for k, n in ecartes.items():
             self.ecartes[k] += n
         return par_fiche.get(source) or {"entites": [], "relations": []}
 
 
-def couche1_d_une_fiche(
-    squelette: dict, structure: dict | None, source: str, racine: Path, alias: dict[str, str] | None = None
-) -> dict | None:
+def couche1_d_une_fiche(squelette: dict, structure: dict | None, source: str, racine: Path) -> dict | None:
     """La couche 1 d'une seule fiche (`CoucheUn`, qui prépare le squelette une fois pour plusieurs fiches)."""
-    return CoucheUn(squelette, racine, alias).d_une_fiche(source, structure)
+    return CoucheUn(squelette, racine).d_une_fiche(source, structure)
 
 
 def squelette_du_graphe(graphe: str) -> dict:
@@ -623,7 +686,6 @@ def versement_d_une_fiche(
     source: str,
     lot: dict | None,
     couche1: dict | None,
-    alias: dict[str, str] | None,
     canon: dict | None,
     droits: dict | None,
     racine: Path,
@@ -640,7 +702,7 @@ def versement_d_une_fiche(
     entete, corps = fiche.lire_fichier(chemin)
     corps = corps_versable(cfg.source_du_chemin(source), entete, corps, droits, chemin=source)
     if lot:
-        v = lot_vers_cortexdb(lot, entete, corps, racine, alias, canon)
+        v = lot_vers_cortexdb(lot, entete, corps, racine, canon)
     else:
         v = fiche_vers_cortexdb(source, entete, corps)
     completer(v, couche1)
@@ -660,7 +722,7 @@ def completer(v: dict, couche1: dict | None) -> None:
     v["relations"].extend(couche1["relations"])
 
 
-def synthese_vers_cortexdb(cid: str, notion: dict, alias: dict[str, str] | None = None, relayee=None) -> dict | None:
+def synthese_vers_cortexdb(cid: str, notion: dict, relayee=None) -> dict | None:
     """Une synthèse de la pyramide (synthese/notions.json) : un document de la collection `pyramide`, rattaché à
     l'entité de sa notion ; ses preuves (fiches distinctes, dans l'ordre) en métadonnée. Grade « self_consistent » :
     rédigée d'après des sources et contrôlée mot à mot, jamais une source elle-même. Sans phrase, rien n'est versé.
@@ -676,7 +738,7 @@ def synthese_vers_cortexdb(cid: str, notion: dict, alias: dict[str, str] | None 
     ]
     if not phrases:
         phrases = ["(synthèse non citée : ses sources ne sont pas relayées ; suivre ses preuves)"]
-    nom = (alias or {}).get(cid, notion["label"])
+    nom = notion["label"]
     preuves = list(
         dict.fromkeys(r["fiche"] for ph in notion["phrases"] for r in ph.get("refs") or [] if r.get("fiche"))
     )
@@ -1050,7 +1112,8 @@ def main() -> int:
         ap.error("--empreintes-avant et --limite : un versement en place partiel retirerait le reste")
     base = cfg.chemins_du_graphe(args.graphe)["base"]
     alias_p = base / "alias.json"
-    alias = alias_par_identifiant(json.loads(alias_p.read_text(encoding="utf-8"))) if alias_p.exists() else {}
+    table = json.loads(alias_p.read_text(encoding="utf-8")) if alias_p.exists() else {}
+    noms: dict[str, set[str]] = {}  # identifiant de nœud → noms versés, pour fondre les alias à la fin
     lots = lots_du_graphe(args.graphe)
     if args.couche1:
         # Le squelette et la structure des titres, fiche par fiche, comme le passage continu (`cerveau_continu`) : le
@@ -1059,7 +1122,7 @@ def main() -> int:
         squelette = squelette_du_graphe(args.graphe)
         graphe = {"nodes": squelette.get("nodes") or []}
         canon = canon_squelette(graphe)
-        preparee = CoucheUn(squelette, RACINE, alias)
+        preparee = CoucheUn(squelette, RACINE)
     else:
         chemin_graphe = cfg.chemins_du_graphe(args.graphe).get("graphe")
         graphe = (
@@ -1127,7 +1190,7 @@ def main() -> int:
             source = relatif(lot["nodes"][0]["source_file"], RACINE)
             avec_lot.add(source)
             try:
-                v = versement_d_une_fiche(source, lot, couche1(source), alias, canon, droits, RACINE)
+                v = versement_d_une_fiche(source, lot, couche1(source), canon, droits, RACINE)
             except LotInvalide as e:
                 bilan["invalides"] += 1
                 print(f"  !! {p.name} : {e}", file=sys.stderr)
@@ -1137,6 +1200,8 @@ def main() -> int:
                 continue
             for cle, n in v["ecartes"].items():
                 bilan[cle] += n
+            for ident, nom in v["noms"].items():
+                noms.setdefault(ident, set()).add(nom)
             versee(source)
             for cle, n in versement(v).items():
                 bilan[cle] += n
@@ -1145,7 +1210,7 @@ def main() -> int:
                 print(f"  {k}/{len(lots)} ({time.time() - t0:.0f} s)", flush=True)
         if graphe and not args.limite:
             for source in fiches_sans_lot(graphe, avec_lot, RACINE):
-                v = versement_d_une_fiche(source, None, couche1(source), alias, canon, droits, RACINE)
+                v = versement_d_une_fiche(source, None, couche1(source), canon, droits, RACINE)
                 if v is None:
                     bilan["fiche_absente"] += 1
                     continue
@@ -1159,8 +1224,9 @@ def main() -> int:
             notions = json.loads((base / "synthese" / "notions.json").read_text(encoding="utf-8"))["notions"]
             bilan["syntheses"] = 0
             for cid, notion in notions.items():
-                v = synthese_vers_cortexdb(cid, notion, alias, relayee)
+                v = synthese_vers_cortexdb(cid, notion, relayee)
                 if v:
+                    noms.setdefault(cid, set()).add(v["entites"][0]["name"])
                     versement(v)
                     bilan["syntheses"] += 1
         if args.vues:
@@ -1170,6 +1236,8 @@ def main() -> int:
             bilan["vues"] = len(vues)
         if not args.limite:
             ep.retirer_absents()
+            if not args.compter:  # après les versements et les retraits : une entité à fondre a son nœud
+                bilan.update(fondre_alias(ep.appel, groupes_d_alias(table, noms)))
             if args.empreintes_apres and not args.compter:
                 args.empreintes_apres.write_text(json.dumps(ep.apres, ensure_ascii=False), encoding="utf-8")
     if preparee is not None:

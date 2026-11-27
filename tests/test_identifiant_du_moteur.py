@@ -22,7 +22,7 @@ def test_une_entite_porte_l_identifiant_sous_le_nom_du_moteur():
         {"id": "auteur_x", "label": "X", "kind": "auteur"},
         {"id": "titre_1", "label": "Titre", "_origin": "ast"},
     ):
-        m = pc.entite_composee(n, "sources/a.md", {})["metadata"]
+        m = pc.entite_composee(n, "sources/a.md")["metadata"]
         assert m.get("newskit_id") == n["id"] and "contaixt_id" not in m, n
 
 

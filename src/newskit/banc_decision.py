@@ -29,6 +29,8 @@ import argparse
 import collections
 import hashlib
 import json
+
+import networkx as nx
 import random
 import sys
 import time
@@ -210,8 +212,8 @@ def deux_classes(pred: list[bool], verites: list[bool]) -> dict:
 def jeu_doublons(graphe: str) -> tuple[list[dict], dict, dict]:
     """Les paires tranchées, avec libellés et voisins ; et (label, vois) pour rejouer Sonnet."""
     memo = fd.lire_alias(graphe)
-    d = fd.charger_graphe(graphe) or {"nodes": [], "links": []}
-    label, vois, _ = fd.contexte(d)
+    G = fd.charger_graphe(graphe)
+    label, vois, _ = fd.contexte(G if G is not None else nx.Graph())
     label_lots, vois_lots = fd.contexte_des_lots(graphe)
     for n, l in label_lots.items():
         label.setdefault(n, l)

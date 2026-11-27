@@ -137,28 +137,23 @@ SCHEMA_TRADUCTION = {
 }
 
 
-def traduire(graphe: str, d: dict, memo: dict, plafond: int = 4000) -> int:
+def traduire(graphe: str, G, memo: dict, plafond: int = 4000) -> int:
     """Le nom anglais de chaque notion au libellé étranger, gardé dans memo["anglais"] (identifiant → libellé) : une
     fois demandé, jamais redemandé. Le nom propre, le sigle ou le titre officiel reste tel quel. Rend le nombre de
     libellés traduits. Chaque appel est consigné au registre des coûts (poste « alias-traduction »)."""
     memo.setdefault("anglais", {})
     voc = set(vocabulaire())
-    for n in d["nodes"]:
-        l = str(n.get("label") or "")
-        if (
-            str(n.get("id", "")).startswith("concept_")
-            and EN.search(l)
-            and not ACCENTS.search(l)
-            and not MOTS_OUTILS.search(l)
-        ):
+    for i, n in G.nodes(data=True):
+        l = str(n.get("name") or "")
+        if str(i).startswith("concept_") and EN.search(l) and not ACCENTS.search(l) and not MOTS_OUTILS.search(l):
             voc |= set(re.findall(r"[a-z]{3,}", l.lower()))
     a_faire = [
-        (n["id"], str(n["label"]))
-        for n in d["nodes"]
-        if str(n.get("id", "")).startswith("concept_")
-        and n["id"] not in memo["anglais"]
-        and n["id"] not in memo["alias"]
-        and etranger(n.get("label"), voc)
+        (i, str(n["name"]))
+        for i, n in G.nodes(data=True)
+        if str(i).startswith("concept_")
+        and i not in memo["anglais"]
+        and i not in memo["alias"]
+        and etranger(n.get("name"), voc)
     ][:plafond]
     faits = 0
     decl = cfg.graphe_declare(graphe) or {}
@@ -230,14 +225,15 @@ def racine(alias: dict[str, str], n: str) -> str:
     return n
 
 
-def charger_graphe(graphe: str) -> dict | None:
-    ch = cfg.chemins_du_graphe(graphe)
-    gz, clair = Path(str(ch["graphe"]) + ".gz"), ch["graphe"]
-    if gz.exists() and (not clair.exists() or gz.stat().st_mtime >= clair.stat().st_mtime):
-        return json.loads(gzip.open(gz).read())
-    if clair.exists():
-        return json.loads(clair.read_text(encoding="utf-8"))
-    return None
+def charger_graphe(graphe: str):
+    """Le graphe du cerveau, sous les anciens identifiants que la table d'alias garde jusqu'à l'étape 3 de K3
+    (`gc.sous_anciennes_cles`) ; None sans cerveau."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    try:
+        return gc.sous_anciennes_cles(gc.charger(graphe))
+    except gc.CerveauAbsent:
+        return None
 
 
 def langue(l: str) -> str:
@@ -269,15 +265,12 @@ def singulier(l: str) -> str:
     return " ".join(mots)
 
 
-def candidats(graphe: str, d: dict, memo: dict) -> list[tuple[str, str, float, str]]:
-    """(id_a, id_b, score, raison) des paires à trancher, hors paires déjà tranchées."""
-    concepts = [n for n in d["nodes"] if str(n.get("id", "")).startswith("concept_")]
-    ids = [n["id"] for n in concepts]
-    labels = [str(n.get("label") or "").strip() for n in concepts]
-    deg = collections.Counter()
-    for l in d["links"]:
-        deg[l["source"]] += 1
-        deg[l["target"]] += 1
+def candidats(graphe: str, G, memo: dict) -> list[tuple[str, str, float, str]]:
+    """(id_a, id_b, score, raison) des paires à trancher, hors paires déjà tranchées. Les notions sont celles qu'un
+    ancien identifiant nomme (`concept_…`) : la table d'alias les garde sous lui jusqu'à l'étape 3 de K3."""
+    ids = [n for n in G if str(n).startswith("concept_")]
+    labels = [str(G.nodes[n].get("name") or "").strip() for n in ids]
+    deg = collections.Counter(dict(G.degree()))
     deja = set(memo["alias"]) | {x for k in memo["refuses"] for x in k.split("|")}
     tranchees = set(memo["refuses"]) | {f"{a}|{b}" for a, b in memo["alias"].items()}
 
@@ -391,12 +384,11 @@ def contexte_des_lots(graphe: str, max_voisins: int = 12) -> tuple[dict[str, str
     return label, {n: [label.get(v, v) for v in vs] for n, vs in vois.items()}
 
 
-def contexte(d: dict) -> tuple[dict[str, str], dict[str, list[str]], collections.Counter]:
-    label = {n["id"]: str(n.get("label") or n["id"]) for n in d["nodes"]}
+def contexte(G) -> tuple[dict[str, str], dict[str, list[str]], collections.Counter]:
+    label = {n: str(d.get("name") or n) for n, d in G.nodes(data=True)}
     vois: dict[str, list[str]] = collections.defaultdict(list)
     deg = collections.Counter()
-    for l in d["links"]:
-        a, b = l["source"], l["target"]
+    for a, b in G.edges():
         deg[a] += 1
         deg[b] += 1
         if len(vois[a]) < 12:
@@ -490,8 +482,8 @@ def trancher(
 
 def passage(graphe: str, controle: bool, plafond: int) -> int:
     d = charger_graphe(graphe)
-    if not d:
-        print(f"  {graphe} : pas de graphe composé, rien à fondre", file=sys.stderr)
+    if d is None:
+        print(f"  {graphe} : pas de cerveau, rien à fondre", file=sys.stderr)
         return 1
     memo = lire_alias(graphe)
     if not controle:

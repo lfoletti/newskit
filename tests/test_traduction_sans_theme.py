@@ -16,8 +16,12 @@ def _consigne(monkeypatch, decl: dict) -> str:
     monkeypatch.setattr(cfg, "graphe_declare", lambda nom: decl)
     monkeypatch.setattr(couts, "en_limite", lambda: False)
     monkeypatch.setattr(fd.te, "appeler_claude", lambda prompt, *a, **k: vus.append(prompt) or {"libelles": []})
-    d = {"nodes": [{"id": "concept_ruche_paille", "label": "ruche en paille du Moyen Âge"}]}
-    fd.traduire("ruchers", d, {"alias": {}, "anglais": {}})
+    import networkx as nx
+
+    G = nx.Graph()
+    G.add_node("concept_ruche_paille", name="ruche en paille du Moyen Âge", node_type="concept")
+    G.add_node("entity:sans_ancien_id", name="ruche en osier du Moyen Âge", node_type="concept")
+    fd.traduire("ruchers", G, {"alias": {}, "anglais": {}})
     assert len(vus) == 1
     return vus[0]
 

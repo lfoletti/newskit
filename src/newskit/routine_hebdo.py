@@ -150,6 +150,13 @@ def composer_et_lire(j: Journal, g: str, etiquette: str) -> None:
     lancer(j, f"carte du domaine{etiquette}", ["scripts/digerer_graphe.py", "--graphe", g], garder=1)
 
 
+def doublons_a_lire(g: str) -> bool:
+    """Les doublons de notions se cherchent dans le cerveau du graphe : sans lui, rien à lire."""
+    from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
+
+    return cc.chemin_cerveau(g).exists()
+
+
 def premier_cerveau(j: Journal, g: str, etiquette: str) -> None:
     """Les lecteurs de la nuit lisent le cerveau tel qu'il est (K3, 27.11.2026 : le cerveau est le graphe) : celui du
     passage continu, ou celui de la nuit d'avant ; il se reconstruit en fin de nuit (`cerveau_cortexdb`). Un graphe
@@ -1711,10 +1718,9 @@ def main() -> int:
     for g in graphes:
         etiquette = "" if g == cfg.GRAPHE_PRINCIPAL else f" ({g})"
         # Les doublons de notions (traduction, sigle, variante) : candidats par l'encodeur local, tranchés par Sonnet,
-        # gardés dans alias.json et appliqués par la composition qui suit (fondre_doublons.py, 09.10.2026).
-        if (cfg.chemins_du_graphe(g)["base"] / "graphe.json.gz").exists() and not inactive(
-            j, g, "alias", f"doublons de notions{etiquette}"
-        ):
+        # gardés dans alias.json et appliqués par la composition qui suit (fondre_doublons.py, 09.10.2026). Ils se
+        # lisent du cerveau tel qu'il est (K3, 27.11.2026).
+        if doublons_a_lire(g) and not inactive(j, g, "alias", f"doublons de notions{etiquette}"):
             lancer(
                 j,
                 f"doublons de notions{etiquette}",

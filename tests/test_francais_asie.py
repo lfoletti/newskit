@@ -41,6 +41,6 @@ def test_une_traduction_qui_garde_des_caracteres_asiatiques_est_refusee(monkeypa
 
 
 def test_une_traduction_en_table_qui_garde_des_caracteres_asiatiques_se_refait():
-    n = {"id": "d1", "label": "AI情報通：10月29日15時の情報", "kind": "article"}
-    table = {"libelles": {"d1": ["AI情報通 : informations du 29 octobre", fr.empreinte(n["label"])]}}
-    assert fr.a_traduire([n], table) == [("d1", "l", n["label"])]
+    n = {"id": "d1", "name": "AI情報通：10月29日15時の情報", "node_type": "article"}
+    table = {"libelles": {"d1": ["AI情報通 : informations du 29 octobre", fr.empreinte(n["name"])]}}
+    assert fr.a_traduire([n], table) == [("d1", "l", n["name"])]

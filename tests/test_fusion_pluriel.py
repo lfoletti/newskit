@@ -44,10 +44,14 @@ def _graphe():
         ("concept_smes", "SMEs"),
         ("concept_casse", "AI policy"),  # la casse seule : candidate aussi
     ]
-    return {
-        "nodes": [{"id": i, "label": l} for i, l in noeuds],
-        "links": [{"source": "concept_deepfake", "target": "concept_ai_policy"}],
-    }
+    import networkx as nx
+
+    G = nx.Graph()
+    for i, l in noeuds:
+        G.add_node(i, name=l, node_type="concept")
+    G.add_node("entity:sans_ancien_id", name="Deepfakes", node_type="concept")  # hors table d'alias
+    G.add_edge("concept_deepfake", "concept_ai_policy")
+    return G
 
 
 def test_le_pluriel_est_candidat_sans_l_encodeur(monkeypatch):

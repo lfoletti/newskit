@@ -102,6 +102,45 @@ def test_un_groupe_reunit_sous_le_libelle_du_canonique_les_noms_verses_de_ses_al
     assert pc.groupes_d_alias(table, noms) == {"Data minimization": ["Minimisation", "Minimisation des données"]}
 
 
+def test_un_canonique_verse_sous_un_autre_libelle_rejoint_son_groupe():
+    """Mesuré au cerveau d'ai-governance le 27.11.2026 : 24 alias de la table y gardaient leur entité. Pour la plupart,
+    le lot d'une fiche nommait le canonique lui-même autrement que la table : `concept_data_protection_officer` versé
+    sous « Data protection officer (DPO) », quand la table le nomme « Data Protection Officer »."""
+    table = {"alias": {"p1": "g"}, "libelles": {"g": "Data Protection Officer"}}
+    noms = {
+        "p1": {"Délégué à la protection des données"},
+        "g": {"Data protection officer (DPO)", "Data Protection Officer"},
+    }
+    assert pc.groupes_d_alias(table, noms) == {
+        "Data Protection Officer": ["Data protection officer (DPO)", "Délégué à la protection des données"]
+    }
+    # l'alias jamais versé : le canonique seul fait encore son groupe
+    assert pc.groupes_d_alias(table, {"g": {"Data protection officer (DPO)"}}) == {
+        "Data Protection Officer": ["Data protection officer (DPO)"]
+    }
+
+
+def test_le_libelle_qu_une_table_donne_a_un_alias_rejoint_son_groupe():
+    """Les 14 autres alias restés au cerveau le 27.11.2026 : leur libellé dans la table est le nom d'une entité versée par
+    un autre nœud (« data protection impact assessment », versé par `concept_impact_assessment`). Un nom est une seule
+    entité au cerveau : c'est celle de l'alias."""
+    table = {"alias": {"aipd": "dpia"}, "libelles": {"aipd": "data protection impact assessment", "dpia": "DPIA"}}
+    assert pc.groupes_d_alias(table, {}) == {"DPIA": ["data protection impact assessment"]}
+    # le libellé qui est déjà l'entité du canonique ne fait pas de groupe
+    table = {"alias": {"p": "g"}, "libelles": {"p": "data-minimization", "g": "Data minimization"}}
+    assert pc.groupes_d_alias(table, {}) == {}
+
+
+def test_le_canonique_d_une_boucle_ou_sans_libelle_ne_fait_pas_de_groupe_par_ses_noms():
+    table = {"alias": {"x": "y", "y": "x", "p": "sans_libelle"}, "libelles": {"x": "X", "y": "Y"}}
+    assert pc.groupes_d_alias(table, {"x": {"X bis"}, "y": {"Y bis"}, "sans_libelle": {"Autre"}}) == {}
+
+
+def test_un_nom_qui_ne_mene_a_aucun_canonique_ne_rejoint_aucun_groupe():
+    table = {"alias": {"p1": "g"}, "libelles": {"g": "G"}}
+    assert pc.groupes_d_alias(table, {"p1": {"P1"}, "autre": {"Autre"}}) == {"G": ["P1"]}
+
+
 def test_un_alias_jamais_verse_ou_un_canonique_sans_libelle_ne_fait_pas_de_groupe():
     table = {"alias": {"p1": "g", "p2": "sans_libelle"}, "libelles": {"g": "Data minimization"}}
     assert pc.groupes_d_alias(table, {"p2": {"Autre"}}) == {}

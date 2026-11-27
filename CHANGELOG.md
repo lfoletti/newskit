@@ -4,6 +4,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Corrigé
+
+- Une entité restée sous le nom d'un alias se fond dans son canonique. `puits_cortexdb.groupes_d_alias` met dans le
+  groupe du canonique, en plus des noms versés sous ses alias, deux noms de plus : ceux sous lesquels le canonique
+  lui-même a été versé ; le libellé que la table donne à chaque alias. Mesuré le 27.11.2026 sur un cerveau de 23 019
+  documents : 24 alias de la table gardaient une entité, 23 en tout (deux alias portent le même libellé). Sur ces 23, 9
+  venaient d'un lot qui nommait le canonique autrement que la table (« Data protection officer (DPO) » pour « Data
+  Protection Officer ») ; 14 portaient le libellé de l'alias, versé par un autre nœud. Aucune empreinte ne change : le
+  prochain passage fond ces entités sans réécrire de document.
+
 ## [0.1.86] - 2026-11-27
 
 ### Changé

@@ -4,6 +4,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+### Ajouté
+
+- `graphe_cerveau.charger` lit le graphe d'un graphe dans son cerveau, sous les noms du cerveau, sans traduction : un
+  nœud par entité, sous son identifiant `entity:…`, avec `node_type` et ses propriétés ; une arête par relation, avec
+  `edge_type` et `weight`, ses deux bouts dans le sens du cerveau (`from_node_id`, `to_node_id`) et ses propriétés. Les
+  documents des fiches, leurs morceaux, les liens de texte et les faits retirés ou clos restent hors du graphe. La
+  lecture ouvre le fichier du cerveau en lecture seule : mesuré le 27.11.2026 sur une copie d'un cerveau de 164 489
+  entités, 12 s contre 1 061 s par le serveur. Un schéma de CortexDB inconnu est refusé (`SchemaInconnu`). Premier pas
+  du retrait de `graphe.json` : aucun module ne l'appelle encore.
+
 ## [0.1.87] - 2026-11-27
 
 ### Corrigé

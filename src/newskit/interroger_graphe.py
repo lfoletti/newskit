@@ -57,11 +57,8 @@ from collections import Counter
 from pathlib import Path
 
 import networkx as nx
-from networkx.readwrite import json_graph
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
-
-GRAPHE = RACINE / "graphe" / "graphe.json"
 
 LARGEUR = 64
 # Une recherche restée sans réponse est notée (lacunes.py) : l'éclaireur ira la chercher sur le web.
@@ -78,31 +75,42 @@ def _lacune(termes: str, outil: str) -> None:
             pass
 
 
-def _graphe_ou_chemin(valeur: str) -> Path:
-    """`<nom>` → graphe/<nom>/graphe.json ; un chemin est rendu tel quel."""
-    if valeur.endswith(".json") or "/" in valeur:
-        return Path(valeur)
+def nom_du_graphe(graphe: str | None) -> str:
+    """Le nom d'un graphe du registre ; le principal sans nom ; un ancien nom mène au graphe renommé."""
     from newskit import config_sources as cfg  # noqa: PLC0415
 
-    return cfg.chemins_du_graphe(cfg.nom_actuel(valeur))["graphe"]  # un ancien nom mène au graphe renommé
+    return cfg.nom_actuel(graphe) if graphe else cfg.GRAPHE_PRINCIPAL
 
 
-def charger(chemin: Path | None = None) -> nx.Graph:
-    p = chemin or GRAPHE
-    if not p.exists():
-        print(f"  Graphe absent : {p}. Lancer newskit.fusionner_graphe.", file=sys.stderr)
+def charger(graphe: str | None = None) -> nx.Graph:
+    """Le graphe `graphe`, lu dans son cerveau (`graphe_cerveau`, K3, 27.11.2026), avec le passe-partout de ses
+    sources. Sans cerveau, l'arrêt, jamais un graphe vide."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    nom = nom_du_graphe(graphe)
+    try:
+        G = gc.charger(nom)
+    except gc.CerveauAbsent as e:
+        print(f"  {e}. Construire le cerveau du graphe : newskit.cerveau_cortexdb --graphe {nom}.", file=sys.stderr)
         sys.exit(1)
-    charger_passe_partout(p)
-    return json_graph.node_link_graph(json.loads(p.read_text(encoding="utf-8")), edges="links")
+    charger_passe_partout(cfg.chemins_du_graphe(nom)["base"])
+    return G
 
 
 def _label(G: nx.Graph, n: str) -> str:
-    return str(G.nodes[n].get("label") or n)
+    return str(G.nodes[n].get("name") or n)
 
 
 def _type(G: nx.Graph, n: str) -> str:
+    return str(G.nodes[n].get("node_type") or "?")
+
+
+def autres_noms(G: nx.Graph, n: str) -> list[str]:
+    """Les autres noms d'une entité : ceux des nœuds fondus en elle (`aliases`, posés par la fusion du cerveau) et ceux
+    que la table anglaise a remplacés (`aussi`)."""
     d = G.nodes[n]
-    return str(d.get("kind") or d.get("file_type") or "?")
+    return list(dict.fromkeys(x for x in (*(d.get("aussi") or []), *(d.get("aliases") or [])) if x != d.get("name")))
 
 
 def est_auteur(G: nx.Graph, n: str) -> bool:
@@ -112,7 +120,7 @@ def est_auteur(G: nx.Graph, n: str) -> bool:
 def est_du_modele(G: nx.Graph, n: str) -> bool:
     """Le nœud vient-il d'un complément écrit par un modèle ?"""
     d = G.nodes[n]
-    return d.get("origine") == "modele" or "sources/modele/" in str(d.get("source_file") or "")
+    return d.get("origine") == "modele" or "sources/modele/" in str(d.get("_source") or "")
 
 
 def _marque(G: nx.Graph, n: str) -> str:
@@ -125,8 +133,11 @@ def _conf(G: nx.Graph, u: str, v: str) -> str:
     d = G.get_edge_data(u, v) or {}
     c = str(d.get("confidence") or "")
     if c in ("INFERRED", "AMBIGUOUS"):
-        s = d.get("confidence_score")
-        return f" ·{c.lower()}" + (f" {float(s):.2f}" if isinstance(s, (int, float)) else "")
+        try:  # le cerveau garde le score en texte
+            s = f" {float(d.get('confidence_score')):.2f}"
+        except (TypeError, ValueError):
+            s = ""
+        return f" ·{c.lower()}" + s
     return ""
 
 
@@ -141,14 +152,9 @@ def resoudre(G: nx.Graph, requete: str, muet: bool = False) -> str | None:
     q = requete.casefold().strip()
 
     def formes(n: str) -> list[str]:
-        # Le libellé et ceux des nœuds fondus dans celui-ci (alias de langue ou de sigle, `aussi`, 09.10.2026) :
+        # Le nom et ceux des nœuds fondus dans celui-ci (alias de langue ou de sigle, 09.10.2026) :
         # « Minimisation des données » mène au nœud « Data minimization ».
-        # Le titre français d'un article du fil (titre_fr, 03.11.2026) le fait trouver en français.
-        return [
-            _label(G, n),
-            *(G.nodes[n].get("aussi") or []),
-            *([G.nodes[n]["titre_fr"]] if G.nodes[n].get("titre_fr") else []),
-        ]
+        return [_label(G, n), *autres_noms(G, n)]
 
     exacts = [n for n in G if any(f.casefold() == q for f in formes(n))]
     if len(exacts) == 1:
@@ -173,7 +179,7 @@ def resoudre(G: nx.Graph, requete: str, muet: bool = False) -> str | None:
 
 def _provenance(G: nx.Graph, u: str, v: str) -> str:
     d = G.get_edge_data(u, v) or {}
-    f, l = d.get("source_file") or "", d.get("source_location") or ""
+    f, l = d.get("_source") or "", d.get("source_location") or ""
     court = str(f).split("/")[-1]
     ligne = f" {l}" if l and str(l).lower() != "none" else ""
     return f"{court}{ligne}" if f else ""
@@ -184,8 +190,8 @@ def _provenance(G: nx.Graph, u: str, v: str) -> str:
 
 def cmd_chercher(G: nx.Graph, args) -> None:
     q = " ".join(args.termes).casefold()
-    # Le libellé et ceux des nœuds fondus (`aussi`) : chercher lit ce que resoudre lit (06.11.2026, le témoin).
-    trouves = [n for n in G if any(q in f.casefold() for f in (_label(G, n), *(G.nodes[n].get("aussi") or [])))]
+    # Le nom et ceux des nœuds fondus : chercher lit ce que resoudre lit (06.11.2026, le témoin).
+    trouves = [n for n in G if any(q in f.casefold() for f in (_label(G, n), *autres_noms(G, n)))]
     auteurs = 0
     if args.type:
         trouves = [n for n in trouves if _type(G, n) == args.type]
@@ -211,7 +217,7 @@ def cmd_voisinage(G: nx.Graph, args) -> None:
     print(f"  {_label(G, n)}  [{_type(G, n)}]  degré {G.degree(n)}")
     par_rel: dict[str, list[str]] = {}
     for v in G.neighbors(n):
-        rel = (G.get_edge_data(n, v) or {}).get("relation", "?")
+        rel = (G.get_edge_data(n, v) or {}).get("edge_type", "?")
         par_rel.setdefault(rel, []).append(v)
     for rel in sorted(par_rel, key=lambda r: -len(par_rel[r])):
         voisins = sorted(par_rel[rel], key=lambda v: -G.degree(v))
@@ -240,7 +246,7 @@ def cmd_chemin(G: nx.Graph, args) -> None:
         d = G.get_edge_data(p[i], p[i + 1]) or {}
         prov = _provenance(G, p[i], p[i + 1])
         print(f"    {_label(G, p[i])[:52]}")
-        print(f"        --{d.get('relation', '?')}--> [{d.get('confidence', '?')}]" + (f"  ← {prov}" if prov else ""))
+        print(f"        --{d.get('edge_type', '?')}--> [{d.get('confidence', '?')}]" + (f"  ← {prov}" if prov else ""))
     print(f"    {_label(G, p[-1])[:52]}")
 
 
@@ -271,9 +277,9 @@ def cmd_expliquer(G: nx.Graph, args) -> None:
     ):
         if d.get(cle) not in (None, "", []):
             print(f"    {cle:<12} {str(d[cle])[:72]}")
-    if d.get("rationale"):
-        print(f"\n    pourquoi : {str(d['rationale'])[:400]}")
-    rels = Counter((G.get_edge_data(n, v) or {}).get("relation", "?") for v in G.neighbors(n))
+    if d.get("description"):
+        print(f"\n    pourquoi : {str(d['description'])[:400]}")
+    rels = Counter((G.get_edge_data(n, v) or {}).get("edge_type", "?") for v in G.neighbors(n))
     print("\n    relations : " + ", ".join(f"{r} ×{c}" for r, c in rels.most_common()))
     voisins = sorted(G.neighbors(n), key=lambda v: -G.degree(v))[:10]
     print("\n    voisins les plus centraux :")
@@ -296,7 +302,7 @@ def cmd_sources(G: nx.Graph, args, entete: bool = True) -> None:
     vues: dict[str, str] = {}
     for v in G.neighbors(n):
         d = G.get_edge_data(n, v) or {}
-        f = str(d.get("source_file") or "")
+        f = str(d.get("_source") or "")
         if f and f not in vues:
             vues[f] = str(d.get("source_location") or "")
     prefixe = "    " if entete else "      "
@@ -312,7 +318,7 @@ def cmd_fiche(G: nx.Graph, args) -> None:
     cands = [
         n
         for n, d in G.nodes(data=True)
-        if d.get("kind") in ("article", "papier") and (q in str(n).casefold() or q in _label(G, n).casefold())
+        if d.get("node_type") in ("article", "papier") and (q in str(n).casefold() or q in _label(G, n).casefold())
     ]
     if not cands:
         print(f"  Aucune fiche ne correspond à « {args.chemin} ».")
@@ -321,13 +327,10 @@ def cmd_fiche(G: nx.Graph, args) -> None:
     n = cands[0]
     d = G.nodes[n]
     print(f"  {_label(G, n)}")
-    print(
-        f"    {d.get('source_file', '?')}  |  {d.get('date', '?')}  |  {d.get('words', '?')} mots"
-        f"  |  complet={d.get('complet')}"
-    )
+    print(f"    {d.get('_source', '?')}  |  {d.get('date', '?')}")
     par_rel: dict[str, list[str]] = {}
     for v in G.neighbors(n):
-        rel = (G.get_edge_data(n, v) or {}).get("relation", "?")
+        rel = (G.get_edge_data(n, v) or {}).get("edge_type", "?")
         par_rel.setdefault(rel, []).append(v)
     print(f"    apporte {G.degree(n)} arête(s) au graphe :")
     for rel in sorted(par_rel, key=lambda r: -len(par_rel[r])):
@@ -383,10 +386,10 @@ PASSE_PARTOUT: set[str] = (
 RE_TAGS = re.compile(r"^\s*(?:Tags?|Étiquettes?|Catégories?|Categories|Filed under)\s*:", re.I)
 
 
-def charger_passe_partout(chemin_graphe: Path) -> int:
-    """Le passe-partout calculé à côté du graphe (passe_partout.json) : les paragraphes que la lecture saute. Rend leur
-    nombre. La mémoire des paragraphes est vidée, puisqu'elle dépend du filtre."""
-    p = Path(chemin_graphe).parent / "passe_partout.json"
+def charger_passe_partout(base: Path) -> int:
+    """Le passe-partout calculé dans le dossier du graphe (passe_partout.json) : les paragraphes que la lecture saute.
+    Rend leur nombre. La mémoire des paragraphes est vidée, puisqu'elle dépend du filtre."""
+    p = Path(base) / "passe_partout.json"
     PASSE_PARTOUT.clear()
     _PARAGRAPHES.clear()
     if p.exists():
@@ -455,8 +458,8 @@ def cmd_passages(G: nx.Graph, args) -> None:
     reserve = getattr(args, "reserve", None)  # posé par le serveur : réservées ou non publiées
     fiches = {}
     for n, d in G.nodes(data=True):
-        if d.get("kind") in ("article", "papier") and d.get("source_file"):
-            p = Path(str(d["source_file"]))
+        if d.get("node_type") in ("article", "papier") and d.get("_source"):
+            p = Path(str(d["_source"]))
             p = p if p.is_absolute() else RACINE / p
             fiches[str(p)] = (n, str(d.get("date") or ""))
     trouves = []
@@ -494,7 +497,7 @@ def cmd_sommets(G: nx.Graph, args) -> None:
 
 
 def cmd_relations(G: nx.Graph, args) -> None:
-    rels = Counter(d.get("relation", "?") for _, _, d in G.edges(data=True))
+    rels = Counter(d.get("edge_type", "?") for _, _, d in G.edges(data=True))
     confs = Counter(d.get("confidence", "?") for _, _, d in G.edges(data=True))
     types = Counter(_type(G, n) for n in G)
     print(f"  {G.number_of_nodes()} nœuds, {G.number_of_edges()} arêtes\n")
@@ -511,7 +514,7 @@ def cmd_relations(G: nx.Graph, args) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--graphe", type=_graphe_ou_chemin, help="nom d'un graphe du registre ou chemin d'un graphe.json")
+    ap.add_argument("--graphe", help="nom d'un graphe du registre (le principal par défaut)")
     ap.add_argument(
         "--sans-modele", action="store_true", help="écarter les nœuds issus des compléments écrits par un modèle"
     )
@@ -566,18 +569,12 @@ def main() -> int:
     p.set_defaults(fn=None)
 
     args = ap.parse_args()
-    # Le nom du graphe interrogé, pour ranger ses lacunes : le principal, ou graphe/<nom>/graphe.json.
+    # Le nom du graphe interrogé, pour ranger ses lacunes ; un graphe absent du registre n'en note pas.
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import lacunes  # noqa: PLC0415
 
-    chemin = Path(args.graphe).resolve() if args.graphe else GRAPHE
-    nom = (
-        cfg.GRAPHE_PRINCIPAL
-        if chemin == GRAPHE.resolve()
-        else chemin.parent.name
-        if chemin.parent.parent == (RACINE / "graphe").resolve()
-        else None
-    )
+    nom = nom_du_graphe(args.graphe)
+    nom = nom if nom in (cfg.charger().get("graphes") or {}) else None
     if args.cmd == "lacune":
         question = " ".join(args.question)
         if nom and lacunes.noter(nom, question, "skill", "skill", question=question):

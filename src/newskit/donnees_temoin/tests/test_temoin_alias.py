@@ -68,7 +68,9 @@ def recompose(tmp_path_factory):
             c["id"]: a["id"],
             "notion_qui_n_existe_pas": b["id"],
             concepts[3]["id"]: "cible_qui_n_existe_pas",
-        }
+        },
+        # les libellés, comme fondre_doublons les écrit : la fusion du cerveau nomme ses entités par eux
+        "libelles": {x["id"]: x["label"] for x in concepts[:4]},
     }
     (t.donnees / "graphe" / "alias.json").write_text(json.dumps(table), encoding="utf-8")
     (t.donnees / "cache" / "limite_atteinte").write_text(

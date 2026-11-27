@@ -14,6 +14,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   entités, 12 s contre 1 061 s par le serveur. Un schéma de CortexDB inconnu est refusé (`SchemaInconnu`). Premier pas
   du retrait de `graphe.json` : aucun module ne l'appelle encore.
 
+### Changé
+
+- `interroger_graphe` lit le graphe dans son cerveau, par le nom du graphe (`--graphe <nom>`, le principal par
+  défaut) ; un chemin de `graphe.json` n'est plus accepté. Ses sous-commandes lisent les noms du cerveau : `name`,
+  `node_type`, `_source`, `description`, `edge_type`. Un nom fondu par la table d'alias (`aliases`) mène à son entité.
+  Un cerveau absent arrête la lecture. Trois lecteurs chargent aussi le graphe par son nom : `angle_critique`, `reporter`, `synthese`.
+- Les vues du graphe (carte, sommets, relations, fiches `expliquer`) se calculent sur le cerveau ; la fiche
+  `expliquer` d'une entité est désormais rangée sous son identifiant `entity:…`, ce qui réécrit une fois les
+  200 fiches versées.
+- Le témoin construit le cerveau de son graphe chaque nuit, avec le binaire CortexDB réel, le Python du témoin pour
+  client et un faux encodeur déterministe (le témoin n'a ni réseau ni modèle). La CI télécharge CortexDB 2.160.0 et
+  vérifie sa somme. Newskit dépend de `cortexdb-client`.
+
 ## [0.1.87] - 2026-11-27
 
 ### Corrigé

@@ -1,0 +1,19 @@
+name: cortexdb
+description: >-
+  Le binaire cortexdb-grpc de la version que servent les cerveaux, vérifié par sa somme : la nuit du témoin construit
+  le cerveau de son graphe (K3, 27.11.2026 : le cerveau est le graphe).
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        VERSION: v2.160.0
+        SOMME: 7839a732e50789afc825169855f405e7abe27cfade97cbf5ff9d04c6dbbb1148
+      run: |
+        d="$RUNNER_TEMP/cortexdb"
+        mkdir -p "$d" && cd "$d"
+        curl -fsSL -o cortexdb.tar.gz \
+          "https://github.com/liliang-cn/cortexdb/releases/download/$VERSION/cortexdb-grpc_linux_amd64.tar.gz"
+        echo "$SOMME  cortexdb.tar.gz" | sha256sum -c -
+        tar xzf cortexdb.tar.gz cortexdb-grpc
+        echo "CORTEXDB_BINAIRE=$d/cortexdb-grpc" >> "$GITHUB_ENV"

@@ -150,7 +150,7 @@ def dossier(graphe: str) -> Path:
 
 
 def charger_graphe(graphe: str):
-    return ig.charger(cfg.chemins_du_graphe(graphe)["graphe"])
+    return ig.charger(graphe)
 
 
 def mots(texte: str) -> set[str]:

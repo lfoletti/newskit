@@ -629,18 +629,16 @@ def options_du_versement(graphe: str, base: Path, couche1: bool = False) -> list
 
 def ecrire_vues(graphe: str, chemin: Path) -> None:
     """Les vues du graphe (K4 : carte, sommets, relations), calculées ici, où networkx est là ; le puits, qui tourne dans
-    le Python du pilote, ne fait que les verser. Sans graphe sur le disque, aucune vue."""
+    le Python du pilote, ne fait que les verser. Elles se calculent sur le cerveau d'avant le passage (K3, 27.11.2026 :
+    le cerveau est le graphe) ; sans cerveau, aucune vue."""
     from newskit import config_sources as cfg  # noqa: PLC0415
-    from newskit import interroger_graphe as ig  # noqa: PLC0415
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
     from newskit import puits_cortexdb as pc  # noqa: PLC0415
 
-    ch = cfg.chemins_du_graphe(graphe)
     vues = []
-    if ch.get("graphe") and Path(ch["graphe"]).exists():
-        carte = Path(ch["carte"])
-        vues = pc.vues_du_graphe(
-            ig.charger(Path(ch["graphe"])), carte.read_text(encoding="utf-8") if carte.exists() else None
-        )
+    if chemin_cerveau(graphe).exists():
+        carte = Path(cfg.chemins_du_graphe(graphe)["carte"])
+        vues = pc.vues_du_graphe(gc.charger(graphe), carte.read_text(encoding="utf-8") if carte.exists() else None)
     chemin.write_text(json.dumps(vues, ensure_ascii=False), encoding="utf-8")
 
 

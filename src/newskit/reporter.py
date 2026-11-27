@@ -3081,7 +3081,7 @@ def main() -> int:
         print("  aucun sujet")
         return 1
     graphe = a.graphe or sujets[0]["graphe"]
-    G = ig.charger(cfg.chemins_du_graphe(graphe)["graphe"])
+    G = ig.charger(graphe)
     lettre = sujets[0].get("lettre") or time.strftime("%Y-%m-%d")
     reprise = json.loads(a.reprendre.read_text(encoding="utf-8")) if a.reprendre else None
     _, deja, lignes = lancer(

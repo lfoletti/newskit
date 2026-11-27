@@ -184,7 +184,13 @@ def registre(reseau: bool = False) -> dict:
             "launchd": "local.temoin",
         },
         "graphes": {
-            GRAPHE: {"libelle": "Apiculture médiévale", "domaine": "medieval beekeeping: swarming, wax, apiary law"}
+            # Son cerveau, en couche 1 : le cerveau est le graphe (K3, 27.11.2026).
+            GRAPHE: {
+                "libelle": "Apiculture médiévale",
+                "domaine": "medieval beekeeping: swarming, wax, apiary law",
+                "cortexdb": True,
+                "couche1": True,
+            }
         },
         "sources": [
             {
@@ -375,6 +381,24 @@ def _crochet(ev, args):
 
 
 sys.addaudithook(_crochet)
+
+# Le faux encodeur, dans le seul encodeur du cerveau (embeddings_locaux) : déterministe, 384 dimensions, ni réseau ni
+# modèle. L'index de la nuit garde sa recherche par les mots, dont dépendent les consignes enregistrées.
+if os.path.basename(sys.argv[0] if sys.argv else "") == "embeddings_locaux.py":
+    import hashlib, types
+
+    class _FauxEncodeur:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def embed(self, textes):
+            for t in textes:
+                octets = hashlib.sha256(str(t).encode("utf-8")).digest() * 12
+                yield [o / 255 - 0.5 for o in octets[:384]]
+
+    _faux = types.ModuleType("fastembed")
+    _faux.TextEmbedding, _faux.TEMOIN = _FauxEncodeur, True
+    sys.modules["fastembed"] = _faux
 '''
 
 
@@ -404,12 +428,19 @@ def preparer(dossier: Path, reponses: Path | None = None, reseau: bool = False) 
         f.write_text(FAUX_RESEAU.format(python=sys.executable, nom=nom, code=RESEAU_COUPE), encoding="utf-8")
         f.chmod(0o755)
     (t.canari / "sitecustomize.py").write_text(CANARI, encoding="utf-8")
+    # Le client du versement dans le cerveau : le Python du témoin, qui a le client gRPC et networkx.
+    client = t.donnees / "cache" / "pilote_cortexdb" / "venv" / "bin" / "python"
+    client.parent.mkdir(parents=True)
+    client.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+    client.chmod(0o755)
     return t
 
 
 def environnement(t: Temoin, reel: list[Path] | None = None) -> dict[str, str]:
     """L'environnement d'un processus du témoin. `reel` : les racines à protéger (par défaut le code, les données et la
     maison réels)."""
+    from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
+
     env = {k: v for k, v in os.environ.items() if not k.startswith(("NEWSKIT_", "TEMOIN_", "CORTEXDB_DOSSIER"))}
     racines = reel if reel is not None else [CODE, RACINE, Path.home()]
     env.update(
@@ -421,6 +452,8 @@ def environnement(t: Temoin, reel: list[Path] | None = None) -> dict[str, str]:
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONHASHSEED": "0",
             "HF_HUB_OFFLINE": "1",
+            # le binaire choisi, sinon le réel : la maison du témoin n'en a pas
+            "CORTEXDB_BINAIRE": os.environ.get("CORTEXDB_BINAIRE") or str(cc.BINAIRE),
             "NEWSKIT_DONNEES": str(t.donnees),
             "NEWSKIT_CONTACT_EMAIL": "temoin@exemple.invalid",
             "TEMOIN_REEL": os.pathsep.join(str(Path(p).resolve()) for p in racines),

@@ -164,11 +164,6 @@ def lot_de(source: str) -> dict | None:
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
-def _alias(graphe: str) -> dict[str, str]:
-    p = cfg.chemins_du_graphe(graphe)["base"] / "alias.json"
-    return pc.alias_par_identifiant(json.loads(p.read_text(encoding="utf-8"))) if p.exists() else {}
-
-
 def _connexion(graphe: str, client):
     if client is not None:
         return contextlib.nullcontext(client)
@@ -220,7 +215,7 @@ def _passer(graphe: str, client, horloge, bilan: dict) -> dict:
         extraction = ec.extraire([retard[c] for c in liste])
         bilan.update(extraites=extraction["faites"], echecs_d_extraction=extraction["echecs"])
     squelette = squelette_du_graphe(graphe)
-    couche1 = pc.CoucheUn(squelette, pc.RACINE, _alias(graphe))
+    couche1 = pc.CoucheUn(squelette, pc.RACINE)
     canon = pc.canon_squelette({"nodes": squelette.get("nodes") or []})
     droits = cfg.charger_droits_auteurs()
     actions = a_traiter(evenements, couche1.fiches)
@@ -258,7 +253,6 @@ def _passer(graphe: str, client, horloge, bilan: dict) -> dict:
                             source,
                             lot_de(source),
                             couche1.d_une_fiche(source, structure_de(source)),
-                            couche1.alias,
                             canon,
                             droits,
                             pc.RACINE,

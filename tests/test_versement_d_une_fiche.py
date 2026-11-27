@@ -152,7 +152,7 @@ def fiche_sur_disque(tmp_path, monkeypatch):
 
 
 def verser(tmp, lot=None, c1=None, droits=None, source=FICHE):
-    return pc.versement_d_une_fiche(source, lot, c1, {}, None, droits, tmp)
+    return pc.versement_d_une_fiche(source, lot, c1, None, droits, tmp)
 
 
 def test_une_fiche_avec_lot_porte_ses_entites(fiche_sur_disque):
@@ -250,8 +250,8 @@ def test_le_puits_de_la_nuit_rend_la_meme_empreinte(fiche_sur_disque, tmp_path, 
     canon = pc.canon_squelette(compose)
     lot = json.loads(lot_p.read_text())
     attendu = {
-        FICHE: pc.empreinte(pc.versement_d_une_fiche(FICHE, lot, c.d_une_fiche(FICHE, None), {}, canon, None, tmp)),
-        AUTRE: pc.empreinte(pc.versement_d_une_fiche(AUTRE, None, c.d_une_fiche(AUTRE, None), {}, canon, None, tmp)),
+        FICHE: pc.empreinte(pc.versement_d_une_fiche(FICHE, lot, c.d_une_fiche(FICHE, None), canon, None, tmp)),
+        AUTRE: pc.empreinte(pc.versement_d_une_fiche(AUTRE, None, c.d_une_fiche(AUTRE, None), canon, None, tmp)),
     }
     assert recus == attendu
 

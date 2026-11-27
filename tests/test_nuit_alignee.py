@@ -157,10 +157,10 @@ def nuit(depot, monkeypatch, capsys, *options) -> tuple[int, dict, dict]:
 def du_continu(depot, source: str, lot: dict | None) -> str:
     """L'empreinte du versement de la fiche par le chemin du passage continu (`cerveau_continu._passer`)."""
     squelette = ct.squelette_du_graphe("g")
-    c = pc.CoucheUn(squelette, pc.RACINE, {})
+    c = pc.CoucheUn(squelette, pc.RACINE)
     canon = pc.canon_squelette({"nodes": squelette["nodes"]})
     return pc.empreinte(
-        pc.versement_d_une_fiche(source, lot, c.d_une_fiche(source, ct.structure_de(source)), {}, canon, None, depot)
+        pc.versement_d_une_fiche(source, lot, c.d_une_fiche(source, ct.structure_de(source)), canon, None, depot)
     )
 
 

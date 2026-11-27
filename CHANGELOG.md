@@ -23,6 +23,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
+- L'élagage et le semis de la pyramide (`partage_graphe --elaguer`, `--pyramide`) lisent les fiches et les entités du
+  cerveau ; le contrôle d'un nouveau graphe attend son premier cerveau, plus son premier `graphe.json`.
 - La traduction française (`francais`) et les doublons de notions (`fondre_doublons`, `banc_decision`) lisent le graphe
   du cerveau, sous les anciens identifiants que leurs tables gardent jusqu'à l'étape 3 de K3 : `name`, `description`,
   `node_type` et le degré du cerveau. Un original que le cerveau décrit autrement que la composition se retraduit une

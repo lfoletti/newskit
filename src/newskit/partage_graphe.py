@@ -193,6 +193,21 @@ def _relatif(source_file: str, racine: str) -> str:
     return s[len(r) :] if s.startswith(r) else s
 
 
+def sources_presentes(graphe: str) -> set[str]:
+    """Les fiches que le cerveau du graphe nomme encore pour source d'une entité, relatives à la racine."""
+    from newskit import config_sources as cfg  # noqa: PLC0415
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    return {_relatif(d.get("_source"), cfg.RACINE) for _, d in gc.charger(graphe).nodes(data=True)} - {""}
+
+
+def cles_presentes(graphe: str) -> set[str]:
+    """Les entités du cerveau du graphe, sous les anciennes clés que la pyramide garde jusqu'à l'étape 3 de K3."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    return set(gc.sous_anciennes_cles(gc.charger(graphe)))
+
+
 def retirer_fiches(G, exclues: set[str], racine) -> tuple[int, int]:
     """Retire du graphe composé ce qui vient des fiches exclues : les arêtes qu'elles attestent, leurs nœuds, puis les
     notions que ce retrait laisse sans arête (une notion isolée avant le retrait reste). Rend (nœuds, arêtes) retirés."""
@@ -417,10 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         copie = p.with_name("notions.avant_elagage.json")
         if not copie.exists():
             copie.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
-        present = {
-            _relatif(n.get("source_file"), cfg.RACINE)
-            for n in json.loads((base / "graphe.json").read_text(encoding="utf-8"))["nodes"]
-        } - {None, ""}
+        present = sources_presentes(a.graphe)
         b = elaguer_pyramide(etat, present)
         p.write_text(json.dumps(etat, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"  pyramide élaguée : {b} ; copie d'avant : {copie}")
@@ -432,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {sortie} existe : rien n'est semé", file=sys.stderr)
             return 1
         tab = json.loads((base / "alias.json").read_text(encoding="utf-8")).get("alias", {})
-        present = {n["id"] for n in json.loads((base / "graphe.json").read_text(encoding="utf-8"))["nodes"]}
+        present = cles_presentes(a.graphe)
         etats = [
             json.loads(p.read_text(encoding="utf-8"))
             for g in inclus

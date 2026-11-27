@@ -61,14 +61,6 @@ def chemin_jalons(graphe: str) -> Path:
     return cfg.chemins_du_graphe(graphe)["base"] / "jalons.json"
 
 
-def jalons_du_graphe(graphe: str) -> set[str]:
-    """Identifiants arXiv retenus pour ce graphe, vide si la sélection n'a pas encore tourné."""
-    p = chemin_jalons(graphe)
-    if not p.exists():
-        return set()
-    return set(json.loads(p.read_text(encoding="utf-8")).get("papiers", {}))
-
-
 def jalons_detailles(graphe: str) -> dict[str, dict]:
     """arxiv_id → {citations, fiches_citantes, titre, chemin} des jalons du graphe."""
     p = chemin_jalons(graphe)

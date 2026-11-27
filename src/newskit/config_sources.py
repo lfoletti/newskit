@@ -1242,19 +1242,6 @@ def graphes_inclus(nom: str) -> list[str]:
     return list((charger().get("graphes", {}).get(nom) or {}).get("inclut") or [])
 
 
-def annonce_a_l_accueil(nom: str) -> bool:
-    """Un graphe servi est annoncé sur la page d'accueil, sauf `accueil: false` au registre : il reste
-    alors accessible par le serveur MCP sans figurer sur la page (un graphe de trading quantitatif, 05.10.2026)."""
-    return ((charger().get("graphes") or {}).get(nom) or {}).get("accueil", True) is not False
-
-
-def mesures_a_l_accueil(nom: str) -> bool:
-    """Les mesures d'un graphe annoncé figurent dans l'onglet Fiabilité de la page d'accueil, sauf `fiabilite: false`
-    au registre : le graphe reste dans l'onglet Graphes, ses tableaux de fiabilité attendent (porteur, 10.10.2026 :
-    un graphe de conformité seul, tant que les autres bancs sont de l'ancienne méthode et leurs routines en pause)."""
-    return ((charger().get("graphes") or {}).get(nom) or {}).get("fiabilite", True) is not False
-
-
 def ordre_d_affichage() -> list[str]:
     """Les graphes dans l'ordre de leur déclaration sous `graphes:` — celui des daemons et de la
     page d'accueil ; un graphe sans déclaration vient ensuite, par ordre alphabétique."""
@@ -1343,7 +1330,6 @@ def chemins_du_graphe(nom: str) -> dict[str, Path]:
     return {
         "base": base,
         "squelette": base / "squelette.json",
-        "graphe": base / "graphe.json",
         "stats": base / "graphe_stats.md",
         "carte": base / "carte.md",
         "couche2": base / "couche2",
@@ -1357,7 +1343,7 @@ def chemins_du_graphe(nom: str) -> dict[str, Path]:
 
 # Les étapes de la routine qu'un graphe peut arrêter ou remettre en service une à une, sans toucher au code ni aux
 # daemons (porteur, 08.10.2026 : « architecture granulaire ») : `graphes.<nom>.etapes: {poseur: false, banc: false}`.
-# Une étape absente est active. Toutes appellent le modèle, sauf la composition, qui est toujours faite.
+# Une étape absente est active. Toutes appellent le modèle, sauf le versement du cerveau, toujours fait.
 ETAPES = {
     "collecte",
     "canon",

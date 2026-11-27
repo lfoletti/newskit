@@ -2384,11 +2384,6 @@ def source_de_repli(f: dict) -> dict:
     return {"titre": libelle_affiche(f["notions"][0]), "editeur": f["editeur"], "date": "", "url": ""}
 
 
-def _affiche(x: dict, f: dict) -> str:
-    l_ = libelle_affiche(x)
-    return l_ if lisible(l_) else f["titre"]
-
-
 def breve(t: dict, fiche: dict, chemin: str) -> dict:
     """La brève de la lettre : le titre du modèle (celui de la fiche à défaut), son descriptif, comme un autre fait
     saillant (mainteneur, 04.11.2026), l'adresse et le chemin de la fiche."""
@@ -2805,11 +2800,6 @@ def eclairages_publies(graphe: str) -> dict[str, str]:
             if k:
                 out[k] = "https://" + E["adresse"]
     return out
-
-
-def page_de_la_lettre(L: dict) -> str:
-    """L'adresse de la page web de la lettre : <site>/lettres/<graphe>/<envoi> ; vide sans site public."""
-    return f"{L['site']}/lettres/{L['graphe']}/{L['envoi']}" if L.get("site") else ""
 
 
 def liens_de_l_edition(L: dict) -> dict[int, str]:

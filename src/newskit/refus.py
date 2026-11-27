@@ -21,11 +21,6 @@ from newskit.commun import RACINE
 _cache: dict = {}
 
 
-def oublier() -> None:
-    """Relit les droits et les résumés au prochain appel (après `accords.py appliquer`, et dans les tests)."""
-    _cache.clear()
-
-
 def _droits() -> dict:
     if "droits" not in _cache:
         _cache["droits"] = cfg.charger_droits_auteurs()

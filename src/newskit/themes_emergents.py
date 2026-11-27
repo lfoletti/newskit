@@ -62,7 +62,6 @@ import unicodedata
 from pathlib import Path
 
 import networkx as nx
-from networkx.readwrite import json_graph
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402

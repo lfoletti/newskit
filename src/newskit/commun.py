@@ -183,11 +183,6 @@ def separer_auteurs(champ: str | None) -> list[str]:
     return noms
 
 
-def normaliser_cle(s: str) -> str:
-    """Lettres et chiffres seulement, en minuscules, séparés par une espace."""
-    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
-
-
 def normaliser_identifiant(s: str) -> str:
     """Forme canonique d'un identifiant de nœud, celle de `graphify.ids.normalize_id`
     (graphify 0.9.20) : les identifiants sont des clés persistantes (numéros, alias,

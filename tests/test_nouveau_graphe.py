@@ -21,3 +21,20 @@ def test_les_sources_de_l_eclaireur_et_du_canon_sont_des_pieces(monkeypatch):
     monkeypatch.setattr(ng.cfg, "toutes", lambda graphe=None: [SimpleNamespace(dossier="eclaireur/ai-exemple")])
     pieces = {p: ok for ok, p, _ in ng.pieces_sources("ai-exemple")}
     assert pieces == {"source de l'éclaireur : eclaireur/ai-exemple": True, "source du canon : canon/ai-exemple": False}
+
+
+def test_le_registre_du_skill_nomme_le_cerveau_et_plus_graphe_json(monkeypatch, tmp_path):
+    """K3 (27.11.2026) : le cerveau est le graphe ; le registre du skill le nomme, relatif à la racine, et une entrée
+    ancienne perd son chemin vers graphe.json."""
+    import json
+
+    from newskit import cerveau_cortexdb as cc
+
+    monkeypatch.setattr(ng, "SKILL", tmp_path / "graphes.json")
+    monkeypatch.setattr(ng, "RACINE", tmp_path)
+    monkeypatch.setattr(cc, "DOSSIER", tmp_path / "cache" / "cortexdb")
+    monkeypatch.setattr(ng.cfg, "edition", lambda: {"nom": "m"})
+    ng.SKILL.write_text(json.dumps({"crooners": {"graphe": "graphe/crooners/graphe.json"}}), encoding="utf-8")
+    ng.ecrire_skill("crooners", "Crooners", "", [])
+    e = json.loads(ng.SKILL.read_text(encoding="utf-8"))["crooners"]
+    assert e["cerveau"] == "cache/cortexdb/crooners.db" and "graphe" not in e

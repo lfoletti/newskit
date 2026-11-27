@@ -5,8 +5,8 @@ CortexDB, sans extracteur), des entités rattachées à ces morceaux et des rela
 appel au modèle : ce qui a été extrait et payé se verse tel quel.
 
 La couche 1 (squelette : auteurs, publications, papiers, dépôts, citations) et la structure des titres (AST, `contains`)
-se versent avec la fiche qui les porte (K0 de la dilution de kg-mcp, 27.10.2026). Elles se lisent dans le graphe composé
-(graphe.json), où fusionner_graphe a déjà tranché : sur une fiche, le squelette fait foi, et le lot la nomme comme lui.
+se versent avec la fiche qui les porte (K0 de la dilution de kg-mcp, 27.10.2026). Elles se calculent ici (`CoucheUn`),
+sans graphe composé depuis K3 : sur une fiche, le squelette fait foi, et le lot la nomme comme lui.
 
 Forme : `lot_vers_cortexdb` est un calcul pur (testé sans serveur) ; `verser` est la seule fonction qui parle au
 serveur ; le client gRPC ne s'importe qu'en elle (venv du pilote : cache/pilote_cortexdb/venv).
@@ -1073,7 +1073,7 @@ def choisir_lots(candidats: list[Path], retenues: set[str] | None, racine: Path)
 
 def lots_du_graphe(graphe: str) -> list[Path]:
     """Les lots du graphe, ceux des graphes qu'il inclut, et ceux des fiches d'autres graphes rangées chez lui ; filtrés
-    par son partage s'il en a un (comme fusionner_graphe compose)."""
+    par son partage s'il en a un."""
     from newskit import config_sources as cfg  # noqa: PLC0415
     from newskit import extraire_concepts as ec  # noqa: PLC0415
     from newskit import partage_graphe  # noqa: PLC0415

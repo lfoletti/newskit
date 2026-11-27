@@ -33,7 +33,7 @@ def test_la_consigne_ecarte_une_preuve_qui_ne_decrit_qu_un_document_et_demande_d
 
 def test_une_phrase_illisible_est_retiree_et_journalisee(monkeypatch, tmp_path):
     G = nx.Graph()
-    G.add_node("concept_palantir", label="Palantir")
+    G.add_node("concept_palantir", name="Palantir")
     preuve = {
         "fiche": "sources/a.md",
         "ligne": 0,

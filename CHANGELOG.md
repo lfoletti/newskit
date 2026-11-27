@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.85] - 2026-11-27
+
 ### Changé
 
 - La table d'alias d'un graphe (`alias.json`) entre au cerveau par des fusions d'entités, plus par le nom versé. Une

@@ -3,7 +3,7 @@
 
 Un graphe qui déclare `tendances: {jours: 30, max: 8, hors: [...]}` garde dans `tendances.json` les notions que
 plusieurs sources indépendantes ont attestées pendant la fenêtre, pour l'accueil du média. Aucun appel au modèle : le
-compte se lit du graphe composé, par les attestations datées de chaque notion (diachronie.py).
+compte se lit du graphe du cerveau, par les attestations datées de chaque notion (diachronie.py).
 
 La règle :
 
@@ -63,20 +63,21 @@ def compter(
     hors: list[str] | tuple[str, ...] = (),
     min_sources: int = MIN_SOURCES,
 ) -> list[dict]:
-    """Les tendances du graphe composé G au jour `jusqu` (AAAA-MM-JJ) : [{notion, sources, fiches}]."""
+    """Les tendances du graphe G (lu du cerveau) au jour `jusqu` (AAAA-MM-JJ) : [{notion, sources, fiches}]."""
     from newskit import diachronie  # noqa: PLC0415 — charge networkx
 
     debut = (date.fromisoformat(jusqu) - timedelta(days=jours)).isoformat()
     idx = diachronie.index_fiches(G)
-    ecartes = {_cle(d.get("label")) for _, d in G.nodes(data=True) if d.get("kind") in NOMS} | {_cle(h) for h in hors}
+    ecartes = {_cle(d.get("name")) for _, d in G.nodes(data=True) if d.get("node_type") in NOMS}
+    ecartes |= {_cle(h) for h in hors}
     lues = []
     for n, d in G.nodes(data=True):
-        if d.get("file_type") != "concept" or d.get("kind") or _cle(d.get("label")) in ecartes:
+        if d.get("node_type") != "concept" or _cle(d.get("name")) in ecartes:
             continue
         fiches = [a["fiche"] for a in diachronie.attestations(G, n, idx) if debut < a["date"] <= jusqu]
-        sources = {f if idx[f].get("kind") == "papier" else str(Path(f).parent) for f in fiches}
+        sources = {f if idx[f].get("node_type") == "papier" else str(Path(f).parent) for f in fiches}
         if len(sources) >= min_sources:
-            lues.append({"notion": str(d.get("label") or n), "sources": len(sources), "fiches": len(fiches)})
+            lues.append({"notion": str(d.get("name") or n), "sources": len(sources), "fiches": len(fiches)})
     lues.sort(key=lambda t: (-t["sources"], -t["fiches"], t["notion"]))
     return lues[:maximum]
 
@@ -91,9 +92,13 @@ def lire(chemin: Path) -> list[dict]:
 
 
 def charger(graphe: str):
-    from newskit import themes_emergents as te  # noqa: PLC0415 — charge la carte du graphe
+    """Le graphe du cerveau ; rien sans cerveau (les tendances gardées restent)."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415 — charge networkx
 
-    return te.charger(graphe)
+    try:
+        return gc.charger(graphe)
+    except gc.CerveauAbsent:
+        return None
 
 
 def aujourd_hui() -> str:

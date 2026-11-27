@@ -37,6 +37,7 @@ from pathlib import Path
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 from newskit import config_sources as cfg  # noqa: E402
+from newskit import cerveau_cortexdb as cc  # noqa: E402 — le cerveau est le graphe (K3)
 from newskit import media  # noqa: E402 — les heures des passages du média
 
 SKILL = media.registre_des_graphes()  # le registre des graphes du média (config.yaml, N5)
@@ -124,8 +125,8 @@ def pieces(nom: str) -> list[tuple[bool, str, str]]:
         )
     out.append(
         (
-            (base / "graphe.json.gz").exists() or (base / "graphe.json").exists(),
-            "premier graphe composé",
+            cc.chemin_cerveau(nom).exists(),
+            "premier cerveau",
             f"python3 -m newskit.routine_hebdo --graphe {nom} --sans-commit",
         )
     )

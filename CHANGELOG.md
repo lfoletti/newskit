@@ -21,6 +21,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   entités, 12 s contre 1 061 s par le serveur. Un schéma de CortexDB inconnu est refusé (`SchemaInconnu`). Premier pas
   du retrait de `graphe.json` : aucun module ne l'appelle encore.
 
+### Corrigé
+
+- `graphe_cerveau.lire` sépare les homonymes que le cerveau confond. Le cerveau nomme une entité par son nom : l'auteur
+  et la notion du même nom ne font qu'un nœud, du genre du dernier producteur versé, où l'ancien graphe en gardait deux.
+  Une notion qui signe une œuvre par un `ecrit_par` de la couche 1 reçoit un jumeau auteur (`…#auteur`, `auteur_…`) ;
+  un auteur ou une publication que le modèle relie reçoit un jumeau notion (`…#notion`, `concept_…`). Sur une même
+  paire, une relation du modèle ne remplace plus une relation déterministe ; elle revient à la notion une fois la
+  paire libre. Mesuré sur ai-governance le 27.11.2026 : l'index du site retrouve 4 577 des 4 621 auteurs (3 977
+  avant) et 43 007 notions communes avec `graphe.json` (42 933 avant). Une notion rangée comme raisonnement ne se
+  distingue pas ainsi : 187 restent à reprendre au versement.
+
 ### Retiré
 
 - La composition (`fusionner_graphe`, `composition`) et `graphe.json` : la nuit ne compose plus, le cerveau est le graphe

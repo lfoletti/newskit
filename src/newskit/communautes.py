@@ -96,7 +96,7 @@ def etiqueter(G: nx.Graph, comms: dict[int, list]) -> dict[int, str]:
             noms[c] = f"Community {c}"
             continue
         pivot = min(presents, key=lambda n: (-G.degree(n), str(n)))
-        nom = str(G.nodes[pivot].get("label") or pivot).strip()
+        nom = str(G.nodes[pivot].get("name") or pivot).strip()
         if nom.endswith("()"):
             nom = nom[:-2]
         noms[c] = nom or f"Community {c}"

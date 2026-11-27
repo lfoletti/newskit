@@ -47,9 +47,9 @@ def mesurer(graphe: str, jeu: str) -> dict:
     ixm = sy.index_mots(graphe, textes)
     G = sy.charger_graphe(graphe)
     urls = {
-        str(d.get("url") or "").rstrip("/"): str(d.get("source_file"))
+        str(d.get("url") or "").rstrip("/"): str(d.get("_source"))
         for _, d in G.nodes(data=True)
-        if d.get("url") and d.get("source_file")
+        if d.get("url") and d.get("_source")
     }
     fiche_de = [i[0] for i in ids]
     lignes = []

@@ -107,8 +107,7 @@ def repond(G, termes: str) -> bool:
     """Le graphe a-t-il maintenant un nœud (hors auteurs) dont l'étiquette contient ces termes ?"""
     q = termes.casefold().strip()
     return any(
-        q in str(d.get("label") or n).casefold() and (d.get("kind") or d.get("file_type")) != "auteur"
-        for n, d in G.nodes(data=True)
+        q in str(d.get("name") or n).casefold() and d.get("node_type") != "auteur" for n, d in G.nodes(data=True)
     )
 
 

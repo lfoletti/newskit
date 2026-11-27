@@ -259,7 +259,7 @@ def graphe_du(graphe: str):
     """La recherche au graphe d'un billet : reporter.graphe_d_abord, puis les fiches qu'elle nomme, chargées."""
     from newskit import interroger_graphe as ig  # noqa: PLC0415
 
-    G = ig.charger(cfg.chemins_du_graphe(graphe)["graphe"])
+    G = ig.charger(graphe)
 
     def chercher(billet: dict, graphe_: str) -> dict:
         f = billet["fiche"]

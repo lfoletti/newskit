@@ -33,6 +33,7 @@ dependencies = [
     "lxml>=5.0",
     "rapidfuzz>=3.0",           # la déduplication de la composition (Jaro, Jaro-Winkler), reprise de graphify
     "Pillow>=10.1",             # la carte d'aperçu d'une fiche (pages_fiches), polices variables
+    "cortexdb-client>=0.2,<0.3", # le versement dans le cerveau (cerveau_cortexdb, puits_cortexdb)
     "pytest>=8.0",              # l'essai du moteur : un passage ne part pas sans lui (newskit test)
 ]
 

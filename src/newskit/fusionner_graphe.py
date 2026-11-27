@@ -464,8 +464,7 @@ def main() -> int:
     p_fr = francais.chemin_table(nom_graphe)
     if p_fr.exists():
         poses = appliquer_francais(G, json.loads(p_fr.read_text(encoding="utf-8")))
-        reste = len(francais.manquants([{"id": n, **d} for n, d in G.nodes(data=True)]))
-        print(f"    français : {poses} champ(s) posé(s), {reste} élément(s) affiché(s) sans français")
+        print(f"    français : {poses} champ(s) posé(s)")
     # L'actualité de chaque notion, lue de ses attestations datées (diachronie.py, 09.10.2026) : première et dernière,
     # versions des textes de référence qui la nomment, en vigueur ou remplacée seulement, évoluant entre deux versions.
     from newskit import diachronie  # noqa: PLC0415

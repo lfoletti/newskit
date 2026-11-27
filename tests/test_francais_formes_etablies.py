@@ -20,11 +20,11 @@ def test_la_consigne_demande_la_forme_francaise_etablie_d_un_nom_propre_ou_d_un_
 
 def _noeuds():
     return [
-        {"id": "concept_a", "label": "Alpha Body", "file_type": "concept"},
-        {"id": "concept_b", "label": "Beta Org", "file_type": "concept"},
-        {"id": "concept_c", "label": "Gamma Thing", "file_type": "concept"},
-        {"id": "concept_d", "label": "Démocratie", "file_type": "concept"},
-        {"id": "auteur_x", "label": "Xavier Writer", "file_type": "concept", "kind": "auteur"},
+        {"id": "concept_a", "name": "Alpha Body", "node_type": "concept"},
+        {"id": "concept_b", "name": "Beta Org", "node_type": "concept"},
+        {"id": "concept_c", "name": "Gamma Thing", "node_type": "concept"},
+        {"id": "concept_d", "name": "Démocratie", "node_type": "concept"},
+        {"id": "auteur_x", "name": "Xavier Writer", "node_type": "auteur"},
     ]
 
 
@@ -59,22 +59,32 @@ def test_revoir_rend_les_libelles_a_retraduire_sans_les_retirer_de_la_table(monk
     assert table["libelles"]["concept_b"] == ["Organisation bêta", fr.empreinte("Beta Org")]
 
 
-def test_les_liens_d_un_graphe_comptent_les_deux_bouts():
-    assert fr.compter_liens([{"source": "a", "target": "b"}, {"source": "a", "target": "c"}]) == {
-        "a": 2,
-        "b": 1,
-        "c": 1,
+def _graphe():
+    import networkx as nx
+
+    G = nx.Graph()
+    for n in [*_noeuds(), {"id": "concept_e", "name": "Epsilon rule", "node_type": "concept"}]:
+        G.add_node(n["id"], **{k: v for k, v in n.items() if k != "id"})
+    G.add_edge("concept_b", "concept_a")
+    G.add_edge("concept_b", "concept_c")
+    return G
+
+
+def test_les_liens_d_une_entite_sont_son_degre():
+    assert fr.compter_liens(_graphe()) == {
+        "concept_a": 1,
+        "concept_b": 2,
+        "concept_c": 1,
+        "concept_d": 0,
+        "auteur_x": 0,
+        "concept_e": 0,
     }
 
 
 def test_la_commande_revoit_les_noms_avant_le_reste(monkeypatch, capsys):
     vus = {}
-    graphe = {
-        "nodes": _noeuds() + [{"id": "concept_e", "label": "Epsilon rule", "file_type": "concept"}],
-        "links": [{"source": "concept_b", "target": "concept_a"}, {"source": "concept_b", "target": "concept_c"}],
-    }
     monkeypatch.setattr(fr.cfg, "nom_actuel", lambda g: g)
-    monkeypatch.setattr(fr, "charger_graphe", lambda g: graphe)
+    monkeypatch.setattr(fr, "charger_graphe", lambda g: _graphe())
     monkeypatch.setattr(fr, "lire_table", lambda g: _table())
     monkeypatch.setattr(fr, "ecrire_table", lambda g, t: None)
     monkeypatch.setattr(fr, "traduire", lambda g, items, table, p, sauver=None: vus.setdefault("items", items) and 0)
@@ -84,18 +94,24 @@ def test_la_commande_revoit_les_noms_avant_le_reste(monkeypatch, capsys):
     assert "g : 2 libellé(s) gardé(s) tel(s) quel(s) ; 1 à revoir" in capsys.readouterr().out
 
 
-def test_les_noeuds_se_lisent_dans_le_graphe(monkeypatch, tmp_path):
-    p = tmp_path / "graphe.json"
-    p.write_text('{"nodes": [{"id": "n"}], "links": []}', encoding="utf-8")
-    monkeypatch.setattr(fr.cfg, "chemins_du_graphe", lambda g: {"graphe": p})
-    assert fr.charger_noeuds("g") == [{"id": "n"}] and fr.charger_graphe("g")["links"] == []
+def test_les_entites_se_lisent_du_cerveau_sous_les_cles_de_la_table(monkeypatch):
+    import networkx as nx
+
+    G = nx.Graph()
+    G.add_node("entity:a", name="Alpha", node_type="concept", newskit_id="concept_a")
+    G.add_node("entity:b", name="Beta", node_type="concept")
+    vus = []
+    monkeypatch.setattr("newskit.graphe_cerveau.charger", lambda g: vus.append(g) or G)
+    H = fr.charger_graphe("g")
+    assert vus == ["g"] and sorted(H) == ["concept_a", "entity:b"]
+    assert {"name": "Alpha", "node_type": "concept", "newskit_id": "concept_a", "id": "concept_a"} in fr.noeuds_de(H)
 
 
-def test_le_graphe_compresse_plus_recent_passe_devant(monkeypatch, tmp_path):
-    import gzip
-
-    p = tmp_path / "graphe.json"
-    p.write_text('{"nodes": [{"id": "ancien"}]}', encoding="utf-8")
-    (tmp_path / "graphe.json.gz").write_bytes(gzip.compress(b'{"nodes": [{"id": "neuf"}], "links": []}'))
-    monkeypatch.setattr(fr.cfg, "chemins_du_graphe", lambda g: {"graphe": p})
-    assert fr.charger_graphe("g")["nodes"] == [{"id": "neuf"}]
+def test_une_fiche_ou_une_notion_s_affiche_un_auteur_non():
+    assert [fr.affiche({"node_type": t}) for t in ("article", "concept", "rationale", "auteur", None)] == [
+        True,
+        True,
+        True,
+        False,
+        False,
+    ]

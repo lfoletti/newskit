@@ -4,8 +4,8 @@ gardés à côté de l'original.
 
 Pourquoi : le graphe parle anglais (consigne d'extraction du 09.10.2026, libellés étrangers renommés par
 fondre_doublons.traduire), mais le lecteur veut tout lire en français. La page ne peut pas appeler un modèle à
-l'affichage : la traduction se calcule ici, à la composition, et la page lit seulement les champs `label_fr` et
-`rationale_fr`.
+l'affichage : la traduction se calcule ici, et le chargeur du cerveau pose `name_fr` et `description_fr`
+(`graphe_cerveau.appliquer_francais`, K3, 27.11.2026).
 
 Comment :
   1. les nœuds affichés : notions, principes, articles, papiers et dépôts (pas les auteurs, publications, adresses) ;
@@ -14,8 +14,8 @@ Comment :
      (14.11.2026), sinon il reste tel quel, comme un titre officiel ;
   4. la table graphe/<g>/francais.json garde chaque traduction avec l'empreinte de son original : un original changé
      est retraduit, un original inchangé jamais ;
-  5. `fusionner_graphe.appliquer_francais` pose `label_fr` et `rationale_fr` à chaque composition ;
-  6. `manquants` dit ce qui n'a pas de français : la page refuse de se construire tant que la liste n'est pas vide.
+  5. le chargeur du cerveau pose `name_fr` et `description_fr` à chaque lecture ; les entités se lisent du cerveau,
+     sous les anciennes clés de la table jusqu'à l'étape 3 de K3.
 
     python3 -m newskit.francais --graphe <g>               # un passage (PLAFOND éléments au plus)
     python3 -m newskit.francais --graphe <g> --controle    # ce qui reste à traduire, sans appel
@@ -27,7 +27,6 @@ Chaque appel est consigné au registre des coûts (poste « francais »). Le cou
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
 import re
@@ -47,7 +46,7 @@ LOT_LIBELLES = 80
 LOT_TEXTES = 30
 PARALLELES = 6
 PLAFOND = 60000
-AFFICHES = {"article", "papier", "depot"}  # genres de fiche affichés ; les notions (sans genre) aussi
+AFFICHES = {"article", "papier", "depot", "concept", "rationale"}  # genres affichés : fiches et notions
 CACHES = {"auteur", "publication", "externe"}
 # Le français : un mot-outil ou une lettre accentuée française, sans mot-outil anglais.
 FR = re.compile(
@@ -85,18 +84,14 @@ def en_francais(s: str) -> bool:
 
 
 def affiche(n: dict) -> bool:
-    k = n.get("kind")
-    if k in CACHES:
-        return False
-    return (
-        k in AFFICHES or str(n.get("id", "")).startswith("concept_") or n.get("file_type") in ("concept", "rationale")
-    )
+    """Une entité que la page montre : une fiche ou une notion, sous le genre que le cerveau lui donne."""
+    return n.get("node_type") in AFFICHES
 
 
 def _champs(n: dict):
-    yield "l", "libelles", str(n.get("label") or "")
-    if n.get("rationale"):
-        yield "t", "textes", str(n["rationale"])
+    yield "l", "libelles", str(n.get("name") or "")
+    if n.get("description"):
+        yield "t", "textes", str(n["description"])
 
 
 def _a_jour(table: dict, cle: str, i: str, original: str) -> bool:
@@ -116,7 +111,7 @@ def garder_le_francais(noeuds, table: dict) -> int:
                 k += 1
         # Une notion renommée en anglais (fondre_doublons.traduire) garde son original sous `aussi` : s'il est
         # français, il sert de traduction, sans appel.
-        l = str(n.get("label") or "")
+        l = str(n.get("name") or "")
         fr_aussi = next((a for a in n.get("aussi") or [] if en_francais(a)), None)
         if l and fr_aussi and not en_francais(l) and not _a_jour(table, "libelles", n["id"], l):
             table.setdefault("libelles", {})[n["id"]] = [fr_aussi, empreinte(l)]
@@ -133,19 +128,6 @@ def a_traduire(noeuds, table: dict) -> list[tuple[str, str, str]]:
         for c, cle, s in _champs(n):
             if s and not en_francais(s) and not _a_jour(table, cle, n["id"], s):
                 out.append((n["id"], c, s))
-    return out
-
-
-def manquants(noeuds) -> list[tuple[str, str]]:
-    """(identifiant, champ) de chaque élément affiché sans français, après la composition."""
-    out = []
-    for n in noeuds:
-        if not affiche(n):
-            continue
-        if n.get("label") and not n.get("label_fr"):
-            out.append((n["id"], "l"))
-        if n.get("rationale") and not n.get("rationale_fr"):
-            out.append((n["id"], "t"))
     return out
 
 
@@ -241,24 +223,21 @@ def ecrire_table(graphe: str, d: dict) -> None:
     tmp.replace(p)
 
 
-def charger_graphe(graphe: str) -> dict:
-    ch = cfg.chemins_du_graphe(graphe)
-    gz, clair = Path(str(ch["graphe"]) + ".gz"), ch["graphe"]
-    if gz.exists() and (not clair.exists() or gz.stat().st_mtime >= clair.stat().st_mtime):
-        return json.loads(gzip.open(gz).read())
-    return json.loads(clair.read_text(encoding="utf-8"))
+def charger_graphe(graphe: str):
+    """Le graphe du cerveau, sous les anciennes clés que la table garde jusqu'à l'étape 3 de K3
+    (`gc.sous_anciennes_cles`) : une traduction faite reste trouvée par sa clé."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    return gc.sous_anciennes_cles(gc.charger(graphe))
 
 
-def charger_noeuds(graphe: str) -> list[dict]:
-    return charger_graphe(graphe)["nodes"]
+def noeuds_de(G) -> list[dict]:
+    """Les entités du graphe, chacune avec son identifiant (`id`) et ce que le cerveau lui donne."""
+    return [{**d, "id": n} for n, d in G.nodes(data=True)]
 
 
-def compter_liens(liens) -> dict[str, int]:
-    n: dict[str, int] = {}
-    for e in liens:
-        for bout in (e["source"], e["target"]):
-            n[bout] = n.get(bout, 0) + 1
-    return n
+def compter_liens(G) -> dict[str, int]:
+    return dict(G.degree())
 
 
 def gardes_tels_quels(noeuds, table: dict, liens: dict[str, int]) -> list[str]:
@@ -269,10 +248,10 @@ def gardes_tels_quels(noeuds, table: dict, liens: dict[str, int]) -> list[str]:
         n["id"]
         for n in noeuds
         if affiche(n)
-        and n.get("label")
-        and not en_francais(n["label"])
-        and _a_jour(table, "libelles", n["id"], n["label"])
-        and lib[n["id"]][0] == n["label"]
+        and n.get("name")
+        and not en_francais(n["name"])
+        and _a_jour(table, "libelles", n["id"], n["name"])
+        and lib[n["id"]][0] == n["name"]
     ]
     return sorted(ids, key=lambda i: -liens.get(i, 0))
 
@@ -282,7 +261,7 @@ def revoir(noeuds, table: dict, liens: dict[str, int], nombre: int) -> list[tupl
     établies. Leur traduction reste dans la table jusqu'à ce que la nouvelle la remplace : un passage interrompu ne
     laisse aucun libellé sans français."""
     par_id = {n["id"]: n for n in noeuds}
-    return [(i, "l", par_id[i]["label"]) for i in gardes_tels_quels(noeuds, table, liens)[:nombre]]
+    return [(i, "l", par_id[i]["name"]) for i in gardes_tels_quels(noeuds, table, liens)[:nombre]]
 
 
 def main() -> int:
@@ -301,11 +280,11 @@ def main() -> int:
     a = ap.parse_args()
     g = cfg.nom_actuel(a.graphe)
     graphe = charger_graphe(g)
-    noeuds = graphe["nodes"]
+    noeuds = noeuds_de(graphe)
     table = lire_table(g)
     a_revoir = []
     if a.revoir_noms:
-        liens = compter_liens(graphe.get("links") or graphe.get("edges") or [])
+        liens = compter_liens(graphe)
         a_revoir = revoir(noeuds, table, liens, a.revoir_noms)
         print(
             f"  {g} : {len(gardes_tels_quels(noeuds, table, liens))} libellé(s) gardé(s) tel(s) quel(s) ; "

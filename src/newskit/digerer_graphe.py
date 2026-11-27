@@ -32,18 +32,15 @@ Usage :
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 import networkx as nx
-from networkx.readwrite import json_graph
 
 from newskit.commun import CODE, RACINE  # noqa: E402 — deux racines, le code et les données (N1)
 
-GRAPHE = RACINE / "graphe" / "graphe.json"
 SORTIE = RACINE / "graphe" / "carte.md"
 
 TYPES_CONCEPT = ("concept", "rationale")
@@ -52,7 +49,7 @@ TYPES_CONCEPT = ("concept", "rationale")
 def _du_modele(G, n) -> bool:
     """Nœud issu d'un complément écrit par un modèle, sans source externe."""
     d = G.nodes[n]
-    return d.get("origine") == "modele" or "sources/modele/" in str(d.get("source_file") or "")
+    return d.get("origine") == "modele" or "sources/modele/" in str(d.get("_source") or "")
 
 
 def _label(G, n) -> str:
@@ -62,12 +59,19 @@ def _label(G, n) -> str:
     par un modèle doit être lisible comme telle à l'endroit où elle est lue, et
     pas seulement dans le graphe.
     """
-    return str(G.nodes[n].get("label") or n) + (" ·modèle" if _du_modele(G, n) else "")
+    return str(G.nodes[n].get("name") or n) + (" ·modèle" if _du_modele(G, n) else "")
 
 
 def _type(G, n) -> str:
-    d = G.nodes[n]
-    return str(d.get("kind") or d.get("file_type") or "?")
+    return str(G.nodes[n].get("node_type") or "?")
+
+
+def _score(d: dict) -> float:
+    """Le score de confiance d'une relation, que le cerveau garde en texte ; 0 sans score lisible."""
+    try:
+        return float(d.get("confidence_score") or 0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _tableau(entetes: list[str], lignes: list[list[str]]) -> list[str]:
@@ -108,36 +112,28 @@ def communautes(G, combien: int) -> list[tuple[str, list[str], float]]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--communautes", type=int, default=12)
-    ap.add_argument("--graphe", help="nom d'un graphe du registre, ou chemin d'un graphe.json")
+    ap.add_argument("--graphe", help="nom d'un graphe du registre (le principal par défaut)")
     ap.add_argument("--sortie", type=Path, help="où écrire la carte (défaut : à côté du graphe)")
     args = ap.parse_args()
 
-    global SORTIE
-    p = GRAPHE
-    if args.graphe:
-        if args.graphe.endswith(".json") or "/" in args.graphe:
-            p = Path(args.graphe)
-            SORTIE = p.parent / "carte.md"
-        else:
-            pass
-            from newskit import config_sources as cfg  # noqa: PLC0415
+    from newskit import config_sources as cfg  # noqa: PLC0415
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
 
-            chemins = cfg.chemins_du_graphe(args.graphe)
-            p, SORTIE = chemins["graphe"], chemins["carte"]
-    if args.sortie:
-        SORTIE = args.sortie
-    if not p.exists():
-        print(f"  Graphe absent : {p}", file=sys.stderr)
+    global SORTIE
+    nom = cfg.nom_actuel(args.graphe) if args.graphe else cfg.GRAPHE_PRINCIPAL
+    SORTIE = args.sortie or Path(cfg.chemins_du_graphe(nom)["carte"])
+    try:
+        G = gc.charger(nom)  # le cerveau est le graphe (K3, 27.11.2026)
+    except gc.CerveauAbsent as e:
+        print(f"  {e}", file=sys.stderr)
         return 1
-    G = json_graph.node_link_graph(json.loads(p.read_text(encoding="utf-8")), edges="links")
 
     types = Counter(_type(G, n) for n in G)
-    rels = Counter(d.get("relation", "?") for _, _, d in G.edges(data=True))
+    rels = Counter(d.get("edge_type", "?") for _, _, d in G.edges(data=True))
     confs = Counter(d.get("confidence", "?") for _, _, d in G.edges(data=True))
 
     L: list[str] = [
-        "# Carte du domaine"
-        + (f" — {args.graphe}" if args.graphe and "/" not in args.graphe and not args.graphe.endswith(".json") else ""),
+        "# Carte du domaine" + (f" — {args.graphe}" if args.graphe else ""),
         "",
         "*Produite par `newskit.digerer_graphe`. Ce document est fait pour être chargé "
         "intégralement : il oriente dans le graphe, il ne le remplace pas. "
@@ -167,7 +163,11 @@ def main() -> int:
             )
         )(
             sum(1 for n in G if _du_modele(G, n)),
-            sum(1 for _u, _v, d in G.edges(data=True) if d.get("origine") == "modele"),
+            sum(
+                1
+                for _u, _v, d in G.edges(data=True)
+                if d.get("origine") == "modele" or "sources/modele/" in str(d.get("_source") or "")
+            ),
         ),
         "",
         "## Ce que le graphe contient",
@@ -258,11 +258,7 @@ def main() -> int:
                 "",
             ]
 
-    ponts = [
-        (d.get("confidence_score", 0), u, v)
-        for u, v, d in G.edges(data=True)
-        if d.get("relation") == "semantically_similar_to"
-    ]
+    ponts = [(_score(d), u, v) for u, v, d in G.edges(data=True) if d.get("edge_type") == "semantically_similar_to"]
     ponts.sort(reverse=True)
     if ponts:
         L += [

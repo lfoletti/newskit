@@ -520,7 +520,7 @@ def passage(graphe: str, controle: bool = False, plafond: int = PLAFOND) -> int:
         print(f"  {graphe} : rien à combler (pas de mesure, ou canon déjà traité)")
         return 0
     G = te.charger(graphe)
-    etiquettes = [str(G.nodes[n].get("label") or n) for n in G if dg._type(G, n) != "auteur"] if G is not None else []
+    etiquettes = [str(G.nodes[n].get("name") or n) for n in G if dg._type(G, n) != "auteur"] if G is not None else []
     cands = [candidats(t, etiquettes) for t in termes]
     decl = cfg.graphe_declare(graphe)
     juges: dict[int, dict] = {}

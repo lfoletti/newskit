@@ -40,6 +40,8 @@ def test_la_validation_rend_les_erreurs_de_graphify(cas):
 def test_les_communautes_sont_celles_de_graphify():
     f = json.loads((FIXTURES / "communautes.json").read_text(encoding="utf-8"))
     H = json_graph.node_link_graph(f["graphe"], edges="links")
+    for _, d in H.nodes(data=True):  # le graphe du cerveau nomme ses entités par `name` (K3, 27.11.2026)
+        d["name"] = d.pop("label", None)
     comms = communautes.decouper(H)
     assert {str(k): v for k, v in comms.items()} == f["communautes"]
     assert {str(k): v for k, v in communautes.etiqueter(H, comms).items()} == f["etiquettes"]

@@ -168,10 +168,13 @@ def sujets_declares(graphe: str) -> list[str]:
 
 
 def charger(graphe: str) -> nx.Graph | None:
-    p = cfg.chemins_du_graphe(graphe)["graphe"]
-    if not p.exists():
+    """Le graphe du cerveau (K3, 27.11.2026) ; rien sans cerveau."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    try:
+        return gc.charger(graphe)
+    except gc.CerveauAbsent:
         return None
-    return json_graph.node_link_graph(json.loads(p.read_text(encoding="utf-8")), edges="links")
 
 
 def communautes_du_graphe(graphe: str, G: nx.Graph | None = None) -> list[tuple[str, list[str], float]]:
@@ -187,7 +190,7 @@ def communautes_du_graphe(graphe: str, G: nx.Graph | None = None) -> list[tuple[
 
 def notions_du_graphe(G: nx.Graph) -> list[str]:
     """Les étiquettes de toutes les notions du graphe (les auteurs, papiers et dépôts n'en sont pas)."""
-    return [str(G.nodes[n].get("label") or n) for n in G if dg._type(G, n) in dg.TYPES_CONCEPT]
+    return [str(G.nodes[n].get("name") or n) for n in G if dg._type(G, n) in dg.TYPES_CONCEPT]
 
 
 def porteurs_de(notions: list[str]) -> dict[str, int]:

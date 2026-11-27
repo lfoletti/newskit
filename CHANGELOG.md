@@ -23,6 +23,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ### Changé
 
+- La carte du domaine (`digerer_graphe`), ses communautés, les thèmes émergents, l'avance, le canon, les lacunes, le
+  contexte, le classement et l'encodeur lisent le graphe du cerveau, sous ses noms ; `digerer_graphe --graphe` ne
+  prend plus de chemin de `graphe.json`. Le score d'un rapprochement se lit du texte que le cerveau garde.
+- La nuit : les lecteurs lisent le cerveau tel qu'il est (celui du passage continu, ou celui de la nuit d'avant) ; il
+  se reconstruit toujours en fin de nuit. Un graphe engagé sans cerveau, à sa première nuit, le reçoit avant ses
+  lecteurs (`premier_cerveau`).
 - Les tendances et la diachronie se calculent sur le graphe du cerveau, sous ses noms ; sans cerveau, les
   tendances gardées restent.
 - `interroger_graphe` lit le graphe dans son cerveau, par le nom du graphe (`--graphe <nom>`, le principal par

@@ -121,9 +121,9 @@ def mesurer(graphe: str, jeu: str, sans_cartes: bool = False) -> dict:
         verdicts = {int(d["i"]): d.get("verdict") for d in derniere.get("details", [])}
     G = sy.charger_graphe(graphe)
     urls = {
-        str(d.get("url") or "").rstrip("/"): str(d.get("source_file"))
+        str(d.get("url") or "").rstrip("/"): str(d.get("_source"))
         for _, d in G.nodes(data=True)
-        if d.get("url") and d.get("source_file")
+        if d.get("url") and d.get("_source")
     }
     # Les porteurs d'un fait (porteur, 10.10.2026 : « des faits populaires se trouvent plus facilement parce qu'il y en a
     # simplement plus ; un fait peu documenté implique autre chose ») : combien de fiches du graphe ont un paragraphe qui

@@ -80,9 +80,9 @@ def unites(graphe: str, G=None) -> list[dict]:
     G = G if G is not None else sy.charger_graphe(graphe)
     for f in sorted(
         {
-            str(d["source_file"])
+            str(d["_source"])
             for _, d in G.nodes(data=True)
-            if d.get("kind") in ("article", "papier") and d.get("source_file")
+            if d.get("node_type") in ("article", "papier") and d.get("_source")
         }
     ):
         for ligne, texte in ig._paragraphes(RACINE / f):

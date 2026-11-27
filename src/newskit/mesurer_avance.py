@@ -117,12 +117,12 @@ def notions_posterieures(G, horizon: str, noms: dict[str, str] | None = None) ->
     for n in G:
         if dg._type(G, n) not in dg.TYPES_CONCEPT:
             continue
-        fiches = {str(d.get("source_file") or "") for _, _, d in G.edges(n, data=True)}
-        fiches |= {str(G.nodes[n].get("source_file") or "")}
+        fiches = {str(d.get("_source") or "") for _, _, d in G.edges(n, data=True)}
+        fiches |= {str(G.nodes[n].get("_source") or "")}
         # Une fiche du canon porte la date de sa page de référence, pas celle de la notion : hors compte.
         datees = sorted((date_de(f), f) for f in fiches if date_de(f) and "sources/canon/" not in f)
         if datees and datees[0][0] > horizon:
-            out.append((str(G.nodes[n].get("label") or n), source_de(datees[0][1], noms or {})))
+            out.append((str(G.nodes[n].get("name") or n), source_de(datees[0][1], noms or {})))
     return out
 
 
@@ -171,7 +171,7 @@ def mesurer(graphe: str, horizon: str) -> dict | None:
     if G is None or not sujets:
         print(f"  {graphe} : graphe ou sujets absents", file=sys.stderr)
         return None
-    etiquettes = [str(G.nodes[n].get("label") or n) for n in G if dg._type(G, n) != "auteur"]
+    etiquettes = [str(G.nodes[n].get("name") or n) for n in G if dg._type(G, n) != "auteur"]
     racines = [te.mots(e, 2) for e in etiquettes]
     textes = [re.sub(r"[^a-z0-9]+", " ", e.lower()) for e in etiquettes]
     decl = cfg.graphe_declare(graphe)

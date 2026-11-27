@@ -67,6 +67,7 @@ from newskit import commun  # noqa: E402
 from newskit import config_sources as cfg  # noqa: E402
 from newskit import media  # noqa: E402 — le registre des graphes du média
 from newskit import couts  # noqa: E402
+from newskit import interroger_graphe as ig  # noqa: E402
 from newskit import reglages  # noqa: E402 — les réglages du média
 
 DOSSIERS_DENSES = cfg.dossiers_denses()
@@ -415,78 +416,55 @@ def lire_veille(sortie: str) -> tuple[int, int, int]:
     return notices, ecrites, vues
 
 
-def ids_du_graphe(graphe: str | None) -> set[str]:
-    """Identifiants des nœuds d'un graphe composé, ou l'ensemble vide s'il n'existe pas."""
-    return etat_du_graphe(graphe)[0]
+def taille_du_graphe(graphe: str) -> tuple[int, int] | None:
+    """(entités, relations) du cerveau du graphe ; None sans cerveau."""
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    try:
+        G = gc.charger(graphe)
+    except gc.CerveauAbsent:
+        return None
+    return G.number_of_nodes(), G.number_of_edges()
 
 
-def normaliser_libelle(s: str) -> str:
-    """Un libellé comparable d'un passage à l'autre : minuscules, sans accents ni ponctuation (B16, 03.11.2026)."""
-    import unicodedata  # noqa: PLC0415
-
-    t = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode().lower()
-    return re.sub(r"[^a-z0-9]+", " ", t).strip()
+def fiches_de(G, n: str) -> set[str]:
+    """Les fiches qui attestent l'entité : la `_source` de l'entité et celles de ses relations, relatives au dépôt."""
+    fiches = {str(e.get("_source") or "") for _, _, e in G.edges(n, data=True)} | {str(G.nodes[n].get("_source") or "")}
+    return {f.replace(str(RACINE) + "/", "") for f in fiches if f}
 
 
-def etat_du_graphe(graphe: str | None) -> tuple[set[str], set[str]]:
-    """(identifiants, libellés normalisés avec les alias `aussi`) des nœuds d'un graphe composé, lus en une fois.
-
-    Les libellés disent si une notion est neuve : une recomposition (table d'alias, fusion des homonymes) renomme des
-    identifiants par centaines sans rien ajouter au graphe (2 novembre 2026 : 1 146 identifiants neufs, 474 notions)."""
-    if not graphe:
-        return set(), set()
-    p = cfg.chemins_du_graphe(graphe)["graphe"]
-    if not p.exists():
-        return set(), set()
-    ids, libelles = set(), set()
-    for n in json.loads(p.read_text(encoding="utf-8")).get("nodes", []):
-        ids.add(n["id"])
-        for lab in [n.get("label") or "", *(n.get("aussi") or [])]:
-            if normaliser_libelle(lab):
-                libelles.add(normaliser_libelle(lab))
-    return ids, libelles
+def entites_neuves(G, versees: set[str]) -> list[str]:
+    """Les entités neuves du passage (Lauro, 27.11.2026 : « date de collecte ») : toutes les fiches qui les attestent
+    ont été collectées depuis le passage précédent (`versees`, par git), et il y en a au moins une. Une entité qu'une
+    fiche plus ancienne atteste existait déjà, renommée ou fondue par une table d'alias ; elle n'est pas neuve. Le
+    calcul ne lit que le cerveau et les fiches : une reconstruction du cerveau n'y change rien."""
+    return [n for n in G if (f := fiches_de(G, n)) and f <= versees]
 
 
-def notions_neuves(
-    g: dict, concepts: list[dict], libelles_avant: set[str] | None, versees: set[str] | None
-) -> list[dict]:
-    """Les concepts neufs qui sont des notions neuves (note B16, section 3), chacun complété de `fiches` (ses fiches
-    versées, triées) et de `aussi` :
-    - son libellé normalisé et ses alias étaient absents du graphe d'avant ;
-    - au moins une fiche versée à ce passage l'atteste (le `source_file` d'une de ses arêtes, ou du nœud) ;
-    - la moitié au moins des fiches qui l'attestent sont versées à ce passage.
-    `libelles_avant` ou `versees` à None : la condition n'est pas vérifiée (premier passage, appel ancien)."""
-    noeuds = {n["id"]: n for n in g.get("nodes", [])}
-    ids = {x["id"] for x in concepts}
-    attestee: dict[str, set[str]] = {i: set() for i in ids}
-    for l in g.get("links", []):
-        f = str(l.get("source_file") or "").replace(str(RACINE) + "/", "")
-        if not f:
-            continue
-        for e in (l.get("source"), l.get("target")):
-            if e in attestee:
-                attestee[e].add(f)
-    out = []
-    for x in concepts:
-        n = noeuds.get(x["id"], {})
-        aussi = [str(a) for a in (n.get("aussi") or [])]
-        fiches = set(attestee.get(x["id"], set()))
-        if n.get("source_file"):
-            fiches.add(str(n["source_file"]).replace(str(RACINE) + "/", ""))
-        if libelles_avant is not None and any(
-            normaliser_libelle(l_) in libelles_avant for l_ in [x.get("label") or "", *aussi] if normaliser_libelle(l_)
-        ):
-            continue
-        neuves = sorted(fiches & versees) if versees is not None else sorted(fiches)
-        if versees is not None and (not neuves or 2 * len(neuves) < len(fiches)):
-            continue
-        out.append({**x, "fiches": neuves, "aussi": aussi})
+def heriter_themes(G, themes: dict[str, str]) -> dict[str, str]:
+    """Une notion hors des communautés hérite du thème le plus fréquent chez ses voisines (deux pas au plus)."""
+    from collections import Counter  # noqa: PLC0415
+
+    from newskit import digerer_graphe as dg  # noqa: PLC0415
+
+    out = dict(themes)
+    for _ in range(2):
+        herites = {}
+        for n in G.nodes:
+            if n in out or dg._type(G, n) not in dg.TYPES_CONCEPT:
+                continue
+            c = Counter(out[v] for v in G.neighbors(n) if v in out)
+            if c:
+                herites[n] = c.most_common(1)[0][0]
+        if not herites:
+            break
+        out.update(herites)
     return out
 
 
 def themes_des_noeuds(graphe: str, G) -> dict[str, str]:
     """{id de nœud: thème} — le titre du thème de la pyramide quand sa communauté en a un, sinon l'étiquette de la
-    communauté (son nœud le plus central), sur les 40 premières communautés du graphe composé."""
+    communauté (son nœud le plus central), sur les 40 premières communautés du graphe."""
     from newskit import digerer_graphe as dg  # noqa: PLC0415
 
     p_t = cfg.chemins_du_graphe(graphe)["base"] / "synthese" / "themes.json"
@@ -506,21 +484,7 @@ def themes_des_noeuds(graphe: str, G) -> dict[str, str]:
     except Exception as e:  # noqa: BLE001 — sans communautés, les notions vont « hors thème »
         print(f"  (thèmes des nouveautés non calculés : {type(e).__name__} {str(e)[:80]})", file=sys.stderr)
         return out
-    # Une notion hors des quarante communautés hérite du thème le plus fréquent chez ses voisines (deux pas au plus).
-    from collections import Counter  # noqa: PLC0415
-
-    for _ in range(2):
-        herites = {}
-        for n in G.nodes:
-            if n in out or not str(n).startswith("concept_"):
-                continue
-            c = Counter(out[v] for v in G.neighbors(n) if v in out)
-            if c:
-                herites[n] = c.most_common(1)[0][0]
-        if not herites:
-            break
-        out.update(herites)
-    return out
+    return heriter_themes(G, out)
 
 
 def ranger_par_rubrique(notions: list[dict], rubs: list[dict]) -> None:
@@ -537,67 +501,55 @@ def ranger_par_rubrique(notions: list[dict], rubs: list[dict]) -> None:
         x["rubrique"] = lettre.rubrique_majoritaire([cache[f] for f in x.get("fiches") or [] if f in cache], rubs) or ""
 
 
-def entree_nouveaute(n: dict, deg: dict[str, int]) -> dict:
-    """L'entrée d'un nœud neuf dans nouveautes.json ; avec son libellé français quand la composition l'a posé
-    (francais.py, 03.11.2026), que la lettre affiche."""
+def entree_nouveaute(G, n: str) -> dict:
+    """L'entrée d'une entité neuve dans nouveautes.json, sous les noms du cerveau ; avec son nom français quand la
+    table française l'a posé, que la lettre affiche."""
+    d = G.nodes[n]
     e = {
-        "id": n["id"],
-        "label": str(n.get("label", n["id"]))[:120],
-        "kind": n.get("kind") or n.get("file_type") or "",
-        "degre": deg.get(n["id"], 0),
-        "source": str(n.get("source_file") or "").replace(str(RACINE) + "/", ""),
+        "id": n,
+        "label": str(d.get("name") or n)[:120],
+        "kind": str(d.get("node_type") or ""),
+        "degre": G.degree(n),
+        "source": str(d.get("_source") or "").replace(str(RACINE) + "/", ""),
     }
-    if n.get("label_fr"):
-        e["label_fr"] = str(n["label_fr"])[:120]
+    if d.get("name_fr"):
+        e["label_fr"] = str(d["name_fr"])[:120]
     return e
 
 
-def nouveautes_du_graphe(
-    j: Journal,
-    graphe: str,
-    ids_avant: set[str],
-    libelles_avant: set[str] | None = None,
-    versees: set[str] | None = None,
-) -> dict | None:
-    """Nœuds du graphe absents du passage précédent, écrits dans graphe/<nom>/nouveautes.json.
+def nouveautes_du_graphe(j: Journal, graphe: str, versees: set[str]) -> dict | None:
+    """Entités neuves du cerveau (`entites_neuves`), écrites dans graphe/<nom>/nouveautes.json.
 
     C'est la liste que le rapport hebdomadaire de dollar_fountain reprend :
     fiches et concepts entrés depuis le dernier passage, avec source et degré.
     Rend {"notions": [{label, degre, theme}…], "sujets": [sujets entrés ce jour]} pour le haut du rapport et du
     courriel (porteur, 09.10.2026 : les nouvelles notions acceptées au graphe, avec leurs thèmes, en tête).
-    Les notions rendues sont les notions neuves (`notions_neuves`) : un identifiant renommé ou une notion qu'aucune
-    fiche versée n'atteste n'en est pas une ; `identifiants` garde le compte des concepts aux identifiants neufs (B16).
+    `identifiants` compte les notions qu'une fiche du passage atteste, neuves ou non (B16).
     """
-    p = cfg.chemins_du_graphe(graphe)["graphe"]
-    if not p.exists():
+    from newskit import graphe_cerveau as gc  # noqa: PLC0415
+
+    try:
+        G = gc.sous_anciennes_cles(gc.charger(graphe))
+    except gc.CerveauAbsent as e:
+        j.alerte(f"nouveautés ({graphe}) : {e}")
         return None
-    g = json.loads(p.read_text(encoding="utf-8"))
-    deg: dict[str, int] = {}
-    for l in g.get("links", []):
-        deg[l["source"]] = deg.get(l["source"], 0) + 1
-        deg[l["target"]] = deg.get(l["target"], 0) + 1
     horo = time.strftime("%Y-%m-%d %H:%M")
     neufs = sorted(
-        (entree_nouveaute(n, deg) for n in g.get("nodes", []) if ids_avant and n["id"] not in ids_avant),
-        key=lambda x: (-x["degre"], x["label"]),
+        (entree_nouveaute(G, n) for n in entites_neuves(G, versees)), key=lambda x: (-x["degre"], x["label"])
     )
     concepts = [x for x in neufs if x["kind"] in ("concept", "rationale")]
-    neuves = notions_neuves(g, concepts, libelles_avant, versees)
-    par_id = {x["id"]: x for x in neuves}
-    rationales = {n["id"]: str(n.get("rationale") or "")[:300] for n in g.get("nodes", []) if n["id"] in par_id}
     for x in concepts:
-        x["neuve"] = x["id"] in par_id
-        if x["neuve"]:
-            x.update(
-                fiches=par_id[x["id"]]["fiches"], aussi=par_id[x["id"]]["aussi"], rationale=rationales.get(x["id"], "")
-            )
-    del g
+        x.update(
+            neuve=True,
+            fiches=sorted(fiches_de(G, x["id"])),
+            aussi=ig.autres_noms(G, x["id"]),
+            rationale=str(G.nodes[x["id"]].get("description") or "")[:300],
+        )
+    attestees = sum(
+        1 for n in G if G.nodes[n].get("node_type") in ("concept", "rationale") and fiches_de(G, n) & versees
+    )
     if concepts:
-        pass
-        from newskit import themes_emergents as te  # noqa: PLC0415
-
-        G = te.charger(graphe)
-        themes = themes_des_noeuds(graphe, G) if G is not None else {}
+        themes = themes_des_noeuds(graphe, G)
         for x in concepts:
             x["theme"] = themes.get(x["id"], "")
     sortie = cfg.chemins_du_graphe(graphe)["nouveautes"]
@@ -611,7 +563,7 @@ def nouveautes_du_graphe(
         [
             {
                 "date": horo,
-                "identifiants_neufs": len(concepts),
+                "identifiants_neufs": attestees,
                 "notions_neuves": len(notions),
                 "fiches_versees": sorted(versees or ()),
                 "nouveaux": neufs,
@@ -620,12 +572,9 @@ def nouveautes_du_graphe(
         + hist["passages"]
     )[:60]
     sortie.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
-    if not ids_avant:
-        j.dire("  ok      nouveautés : premier passage, état de référence pris")
-        return None
     j.dire(
         f"  ok      nouveautés : {len(neufs)} nœud(s) nouveau(x), dont {len(concepts)} concept(s) "
-        f"et {len(notions)} notion(s) neuve(s) (libellé inconnu, fiche versée)"
+        f"et {len(notions)} notion(s) neuve(s) (attestées par les seules fiches du passage)"
     )
     for x in notions[:12]:
         j.dire(f"            {x['degre']:3d}  {x['label'][:80]}" + (f"  — {x['theme'][:50]}" if x.get("theme") else ""))
@@ -642,7 +591,7 @@ def nouveautes_du_graphe(
             ]
         except json.JSONDecodeError:
             pass
-    return {"notions": notions, "sujets": sujets, "identifiants": len(concepts)}
+    return {"notions": notions, "sujets": sujets, "identifiants": attestees}
 
 
 def empreintes_denses(graphe: str | None = None) -> dict[str, str]:
@@ -1513,7 +1462,6 @@ def main() -> int:
     for g_ in graphes:  # un graphe neuf n'a pas encore de dossier (témoin, N4, 06.11.2026)
         cfg.chemins_du_graphe(g_)["base"].mkdir(parents=True, exist_ok=True)
     j.dire()
-    ids_avant, libelles_avant = etat_du_graphe(seul)
     nouveautes: dict | None = None
 
     # Les fiches comptées sont celles du graphe traité (avec ceux qu'il inclut), pas tout le corpus.
@@ -1788,8 +1736,6 @@ def main() -> int:
                 delai=2 * 3600,
             )
 
-    versees_du_passage = versees_du_graphe(seul or cfg.GRAPHE_PRINCIPAL)
-    nouveautes = nouveautes_du_graphe(j, seul or cfg.GRAPHE_PRINCIPAL, ids_avant, libelles_avant, versees_du_passage)
     # Thèmes émergents : les communautés de la carte qu'aucun sujet déclaré ne couvre, soumises au
     # porteur après deux passages (themes_emergents.py). Un candidat retenu est un « à faire » :
     # il paraît dans le courriel, et n'entre au skill que par `accepter`.
@@ -1918,6 +1864,9 @@ def main() -> int:
     # avant la pyramide jusqu'au 02.11.2026, il publiait chaque nuit les synthèses de la veille.
     for g in graphes:
         cerveau_cortexdb(j, g, "" if g == cfg.GRAPHE_PRINCIPAL else f" ({g})")
+    # Les nouveautés : les entités du cerveau que seules des fiches collectées depuis le passage précédent attestent.
+    versees_du_passage = versees_du_graphe(seul or cfg.GRAPHE_PRINCIPAL)
+    nouveautes = nouveautes_du_graphe(j, seul or cfg.GRAPHE_PRINCIPAL, versees_du_passage)
 
     # Les points peu couverts (peu_couverts.py, porteur 10.10.2026) : par sujet, ce que le canon, le banc par thème, les
     # lacunes et les cartes disent mal couvert, remonté à la carte, à l'éclaireur et à la page ; sans appel.
@@ -2013,19 +1962,17 @@ def main() -> int:
     apres_fiches = fiches_du_graphe()
     nouvelles, modifiees = fiches_nouvelles(cfg.dossiers_du_graphe(seul or cfg.GRAPHE_PRINCIPAL))
     versees = compte_des_versees(nouvelles)
-    gr = json.loads(cfg.chemins_du_graphe(seul or cfg.GRAPHE_PRINCIPAL)["graphe"].read_text(encoding="utf-8"))
+    taille = taille_du_graphe(seul or cfg.GRAPHE_PRINCIPAL) or (0, 0)
     chiffres = {
         "fiches": str(apres_fiches),
-        "noeuds": str(len(gr.get("nodes", []))),
-        "aretes": str(len(gr.get("links", []))),
+        "noeuds": str(taille[0]),
+        "aretes": str(taille[1]),
         "neuf": versees,
     }
     # Les graphes inclus, traités dans ce passage : volume chacun, pour le rapport et le courriel.
     autres: dict[str, dict[str, int]] = {}
     for g in graphes[:-1]:
-        ch = cfg.chemins_du_graphe(g)
-        if ch["graphe"].exists():
-            d = json.loads(ch["graphe"].read_text(encoding="utf-8"))
+        if (t := taille_du_graphe(g)) is not None:
             autres[g] = {
                 "fiches": sum(
                     1
@@ -2033,8 +1980,8 @@ def main() -> int:
                     for f in (RACINE / dossier).rglob("*.md")
                     if not f.name.startswith("_")
                 ),
-                "noeuds": len(d.get("nodes", [])),
-                "aretes": len(d.get("links", [])),
+                "noeuds": t[0],
+                "aretes": t[1],
             }
     j.dire("Bilan")
     j.dire(f"  {apres_fiches} fiches ({versees} depuis le dernier commit)")

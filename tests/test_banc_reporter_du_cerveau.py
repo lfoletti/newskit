@@ -41,3 +41,20 @@ def test_le_reporter_part_de_la_fiche_du_sujet(monkeypatch):
     monkeypatch.setattr(ig, "cmd_passages", lambda G, a: None)
     rp.graphe_d_abord(_graphe(), {"titre": "Un billet", "chemin": "x/2026-11-01_billet.md"}, "g")
     assert vus == [["entity:fiche"]]
+
+
+def test_le_banc_suit_le_cerveau_la_pyramide_et_les_cartes(tmp_path, monkeypatch):
+    import os
+
+    cerveau = tmp_path / "g.db"
+    (tmp_path / "synthese").mkdir()
+    monkeypatch.setattr(banc.cfg, "chemins_du_graphe", lambda g: {"base": tmp_path, "graphe": tmp_path / "graphe.json"})
+    monkeypatch.setattr("newskit.cerveau_cortexdb.chemin_cerveau", lambda g: cerveau)
+    assert banc.etat_du_graphe("g") == ""
+    cerveau.write_text("", encoding="utf-8")
+    os.utime(cerveau, (1795000000, 1795000000))
+    (tmp_path / "graphe.json").write_text("{}", encoding="utf-8")
+    os.utime(tmp_path / "graphe.json", (1796000000, 1796000000))  # graphe.json ne compte plus
+    import time
+
+    assert banc.etat_du_graphe("g") == time.strftime("%Y-%m-%d %H:%M", time.localtime(1795000000))

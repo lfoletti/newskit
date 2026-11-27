@@ -16,9 +16,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 - Les restes de la composition (K3, tri des tests) : `lecture_web.termes_du_graphe`, jamais appelée, qui lisait
   `graphe.json` ; `partage_graphe.retirer_fiches`, `exclues`, `lot_retenu`, `retirer_restes_de_page` ; le chemin
   `graphe` de `chemins_du_graphe` ; `graphe.json` des fichiers que `purger_fiches` purge.
-- Du code que rien n'appelait : `retouche_lettre.attribuer_lieux`, `config_sources.annonce_a_l_accueil` et
-  `mesures_a_l_accueil`, `lettre.page_de_la_lettre`, `choisir_jalons.jalons_du_graphe`, `commun.normaliser_cle`,
-  `refus.oublier`.
+- Du code que rien n'appelait : `retouche_lettre.attribuer_lieux`, `config_sources.annonce_a_l_accueil`,
+  `config_sources.mesures_a_l_accueil`, `lettre.page_de_la_lettre`, `choisir_jalons.jalons_du_graphe`,
+  `commun.normaliser_cle`.
 
 ## [0.1.88] - 2026-11-27
 

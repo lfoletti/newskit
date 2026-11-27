@@ -285,6 +285,24 @@ def test_un_auteur_ou_une_publication_que_le_modele_relie_a_un_jumeau_notion(tmp
     )
 
 
+def test_un_reste_de_page_n_est_pas_une_notion(tmp_path):
+    """La composition retirait les notions qui sont des restes de navigation (« Share », « Read next »…) ; la règle
+    passe à la lecture (K3, 27.11.2026 : « Authors » au cerveau d'ai-governance). Une fiche garde son titre."""
+    p = cerveau(
+        tmp_path / "g.db",
+        [
+            ("entity:share", "concept", {"name": "Share"}),
+            ("entity:read_next", "rationale", {"name": "  Read   next "}),
+            ("entity:topics", "document", {"name": "Topics"}),
+            ("entity:billet", "article", {"name": "Share"}),
+            ("entity:ia", "concept", {"name": "IA"}),
+        ],
+        [("entity:share", "entity:ia", "references", 1.0, {}), ("entity:billet", "entity:ia", "mentions_x", 1.0, {})],
+    )
+    G = gc.lire(p)
+    assert sorted(G) == ["entity:billet", "entity:ia"] and list(G["entity:ia"]) == ["entity:billet"]
+
+
 def test_la_lecture_n_ecrit_pas_dans_le_cerveau(plein):
     with gc._ouvrir(plein) as c, pytest.raises(sqlite3.OperationalError, match="readonly"):
         c.execute("create table essai (a)")

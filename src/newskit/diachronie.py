@@ -16,8 +16,8 @@ Trois pièces, aucune n'appelle le modèle :
    `remplacee_par`, `partie`) — l'en-tête seulement : l'empreinte d'extraction porte sur le corps, rien n'est
    réextrait. Le squelette les porte sur le nœud de la fiche.
 
-2. **L'actualité d'une notion se calcule du graphe**, à la composition (`annoter_graphe`, appelé par
-   `fusionner_graphe.py`) : première et dernière attestation, versions des textes de référence qui la nomment, et
+2. **L'actualité d'une notion se calcule du graphe**, à la lecture du cerveau (`annoter_graphe`, appelé par
+   `graphe_cerveau.annoter`) : première et dernière attestation, versions des textes de référence qui la nomment, et
    trois verdicts — `en_vigueur` (un texte en vigueur l'atteste), `remplacee_seulement` (seules des versions
    remplacées l'attestent : la notion est à lire comme périmée), `evolue` (deux versions du même texte l'attestent :
    sa synthèse doit décrire le changement). Les synthèses (`synthese.py`) lisent ces verdicts pour dater leurs

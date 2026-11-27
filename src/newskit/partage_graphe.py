@@ -208,34 +208,6 @@ def cles_presentes(graphe: str) -> set[str]:
     return set(gc.sous_anciennes_cles(gc.charger(graphe)))
 
 
-def retirer_fiches(G, exclues: set[str], racine) -> tuple[int, int]:
-    """Retire du graphe composé ce qui vient des fiches exclues : les arêtes qu'elles attestent, leurs nœuds, puis les
-    notions que ce retrait laisse sans arête (une notion isolée avant le retrait reste). Rend (nœuds, arêtes) retirés."""
-    if not exclues:
-        return 0, 0
-    aretes = [(u, v) for u, v, d in G.edges(data=True) if _relatif(d.get("source_file"), racine) in exclues]
-    touches = {x for e in aretes for x in e}
-    G.remove_edges_from(aretes)
-    noeuds = [n for n, d in G.nodes(data=True) if _relatif(d.get("source_file"), racine) in exclues]
-    touches |= {v for n in noeuds for v in G.neighbors(n)}
-    G.remove_nodes_from(noeuds)
-    orphelins = [n for n in touches if n in G and G.degree(n) == 0]
-    G.remove_nodes_from(orphelins)
-    return len(noeuds) + len(orphelins), len(aretes)
-
-
-def lot_retenu(lot: dict, retenues: set[str], racine) -> bool:
-    """Un lot d'extraction par fiche se lit si sa fiche est retenue (ses nœuds portent son chemin)."""
-    return any(_relatif(n.get("source_file"), racine) in retenues for n in lot.get("nodes") or [])
-
-
-def exclues(G, retenues: set[str], racine) -> set[str]:
-    """Les fiches que le graphe composé porte, par ses nœuds ou ses arêtes, et qui ne sont pas retenues."""
-    vues = {_relatif(d.get("source_file"), racine) for _, d in G.nodes(data=True)}
-    vues |= {_relatif(d.get("source_file"), racine) for _, _, d in G.edges(data=True)}
-    return {v for v in vues if v.endswith(".md") and v not in retenues}
-
-
 def fondre_tables(tables: list[dict[str, str]]) -> tuple[dict[str, str], list[list[str]]]:
     """Une table d'alias à partir de plusieurs : chaque groupe relié par des alias n'a qu'un canonique. Le canonique est
     le seul nœud du groupe qui n'est l'alias de rien ; s'il y en a plusieurs, les tables divergent : le plus désigné
@@ -315,13 +287,6 @@ def elaguer_pyramide(etat: dict, present: set[str]) -> dict:
 
 def reste_de_page(label: str) -> bool:
     return " ".join((label or "").split()).lower() in NAVIGATION
-
-
-def retirer_restes_de_page(G) -> int:
-    """Retire les notions (nœuds sans `kind`) dont le libellé est un reste de page ; une fiche garde son titre."""
-    noeuds = [n for n, d in G.nodes(data=True) if not d.get("kind") and reste_de_page(d.get("label") or "")]
-    G.remove_nodes_from(noeuds)
-    return len(noeuds)
 
 
 def bilan(partage: dict[str, str], fiches: list[str]) -> dict:

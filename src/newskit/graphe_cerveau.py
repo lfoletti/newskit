@@ -39,6 +39,7 @@ SCHEMA_CONNU = {
 }
 TEXTE = ("doc:", "chunk:")  # les documents des fiches et leurs morceaux
 LIENS_DE_TEXTE = ("has_chunk", "mentions", "next")
+TITRES = ("article", "externe", "auteur", "papier", "publication", "depot")  # un reste de page y reste : c'est un titre
 FICHES = ("article", "papier")  # les entités d'une fiche, qui reçoivent l'en-tête de son document
 
 
@@ -134,7 +135,8 @@ def separer_homonymes(G: nx.Graph, cedees: list[tuple[str, str, dict]] = ()) -> 
 def lire(chemin: Path) -> nx.Graph:
     """Le graphe du cerveau `chemin`, sous ses noms. Une fiche reçoit l'en-tête de son document (`date`,
     `plateforme`, `statut`, `version`…, `puits_cortexdb.ENTETE_VERSEE`), que le versement range dans le document ;
-    ce que l'entité porte déjà l'emporte."""
+    ce que l'entité porte déjà l'emporte. Une notion dont le nom est un reste de navigation (« Share »…) reste dehors."""
+    from newskit.partage_graphe import reste_de_page  # noqa: PLC0415 — la composition le retirait (K3)
     from newskit.puits_cortexdb import ENTETE_VERSEE  # noqa: PLC0415
 
     G = nx.Graph()
@@ -149,7 +151,7 @@ def lire(chemin: Path) -> nx.Graph:
             d = json.loads(props or "{}")
             if i.startswith("doc:"):
                 en_tetes[str(d.get("_source") or "")] = {k: d[k] for k in ENTETE_VERSEE if k in d}
-            elif not i.startswith(TEXTE):
+            elif not i.startswith(TEXTE) and not (ty not in TITRES and reste_de_page(str(d.get("name") or ""))):
                 G.add_node(i, **{**d, "node_type": ty})  # la colonne l'emporte
         aretes = c.execute(
             "select from_node_id, to_node_id, edge_type, weight, properties from graph_edges where edge_type not in "

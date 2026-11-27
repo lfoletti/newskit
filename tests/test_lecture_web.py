@@ -567,41 +567,6 @@ def test_un_pdf_se_lit_localement(serveur):
 # ── 6. Tri bilingue : les libellés anglais des notions du graphe qui touchent les questions (03.11.2026) ──────────
 
 
-def _graphe(tmp_path):
-    import json
-
-    noeuds = [
-        {"id": "c_ai_act", "label": "AI Act"},
-        {"id": "c_msa", "label": "Market Surveillance Authority"},
-        {"id": "c_notif", "label": "Notifying Authority"},
-        {"id": "c_bnetza", "label": "Bundesnetzagentur"},
-        {"id": "c_quantum", "label": "Quantum Computing"},
-        {"id": "a_doe", "label": "Jane Doe", "kind": "auteur"},
-        {"id": "f_fiche", "label": "AI Act enforcement in Germany", "kind": "article"},
-    ]
-    liens = [{"source": "c_ai_act", "target": t} for t in ("c_msa", "c_notif", "a_doe", "f_fiche")]
-    liens += [{"source": "c_bnetza", "target": "c_msa"}, {"source": "c_quantum", "target": "a_doe"}]
-    p = tmp_path / "graphe.json"
-    p.write_text(json.dumps({"directed": False, "multigraph": False, "graph": {}, "nodes": noeuds, "links": liens}))
-    return p
-
-
-def test_les_termes_du_graphe_sont_les_notions_nommees_et_leurs_voisines(tmp_path):
-    termes = lw.termes_du_graphe(
-        ["Qui contrôle l'AI Act en Allemagne ?", "La Bundesnetzagentur a-t-elle des moyens ?"], _graphe(tmp_path)
-    )
-    assert "AI Act" in termes and "Bundesnetzagentur" in termes
-    assert "Market Surveillance Authority" in termes and "Notifying Authority" in termes  # voisines
-    assert "Jane Doe" not in termes  # un auteur n'est pas une notion
-    assert "AI Act enforcement in Germany" not in termes  # une fiche non plus
-    assert "Quantum Computing" not in termes  # ne touche pas les questions
-
-
-def test_sans_nom_propre_ni_graphe_pas_de_terme(tmp_path):
-    assert lw.termes_du_graphe(["Est-ce nouveau ?"], _graphe(tmp_path)) == []
-    assert lw.termes_du_graphe(["Qui contrôle l'AI Act ?"], tmp_path / "absent.json") == []
-
-
 def test_les_termes_font_entrer_un_paragraphe_anglais_pour_une_question_francaise():
     anglais = (
         "Each Member State shall designate at least one market surveillance authority and one notifying "
@@ -612,28 +577,3 @@ def test_les_termes_font_entrer_un_paragraphe_anglais_pour_une_question_francais
     budget = len(_texte(TITRE, CHAPO, anglais).split()) + 3
     assert anglais not in lw.extrait_utile(t, questions, budget)
     assert anglais in lw.extrait_utile(t, questions, budget, termes=["Market Surveillance Authority"])
-
-
-def test_les_pieges_du_graphe_restent_dehors(tmp_path):
-    import json
-
-    noeuds = [
-        {"id": "x1", "label": "Axel Springer c. Allemagne"},  # « Allemagne », mot ordinaire : à l'identique
-        {"id": "x2", "label": "Univac 90/30"},  # « 30 » seul : pas un nom
-        {"id": "x3", "label": "KI-MIG Begründung des Bundesrates vom Juni 2026"},  # plus de cinq mots
-        {"id": "x4", "label": "KI-MIG Entwurf"},
-        {"id": "e1", "label": "EuroHPC"},
-        {"id": "e2", "label": "EuroHPC JU Governing Board"},
-        {"id": "e3", "label": "EuroHPC Call 2026"},
-        {"id": "e4", "label": "EuroHPC Summit Week"},
-        {"id": "e5", "label": "EuroHPC Mission Statement"},
-        {"id": "h", "label": "Hub"},
-    ]
-    liens = [{"source": "h", "target": t} for t in ("e2", "e3", "e4", "e5", "x1", "x2")]
-    p = tmp_path / "pieges.json"
-    p.write_text(json.dumps({"directed": False, "multigraph": False, "graph": {}, "nodes": noeuds, "links": liens}))
-    termes = lw.termes_du_graphe(["Le 30 juillet, en Allemagne, le KI-MIG et EuroHPC ont-ils avancé ?"], p)
-    assert "Axel Springer c. Allemagne" not in termes and "Univac 90/30" not in termes
-    assert "KI-MIG Entwurf" in termes and "KI-MIG Begründung des Bundesrates vom Juni 2026" not in termes
-    assert "EuroHPC" in termes  # le nom exact passe avant les libellés plus reliés qui le contiennent
-    assert "EuroHPC JU Governing Board" not in termes

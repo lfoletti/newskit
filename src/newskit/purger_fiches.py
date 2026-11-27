@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Retire du graphe les fiches qu'on a ôtées du corpus (publicités, mainteneur, 03.11.2026) : leurs nœuds de structure, les
 relations qu'elles attestent, et les notions qui ne tiennent plus que par elles. Une notion attestée ailleurs reste et
-prend pour source une fiche qui l'atteste encore. Fichiers touchés, dans chaque graphe : graphe.json (et son .gz),
-squelette.json (et son .gz), structure.json, partage.json.
+prend pour source une fiche qui l'atteste encore. Fichiers touchés, dans chaque graphe :
+squelette.json (et son .gz), structure.json, partage.json ; le cerveau se purge à son versement.
 
 Usage :
     python3 -m newskit.purger_fiches <chemin de fiche> [...]
@@ -59,8 +59,8 @@ def purger_graphe(d: dict, fiches: set[str]) -> tuple[int, int]:
 
 
 def purger_couche2(fiches: set[str]) -> None:
-    """Le lot d'extraction de chaque fiche (couche2/fiches/<id>.json) et son empreinte : sans cela, la fusion suivante
-    remet les notions de la fiche dans le graphe (fusionner_graphe lit tous les lots, fiche présente ou non)."""
+    """Le lot d'extraction de chaque fiche (couche2/fiches/<id>.json) et son empreinte : sans cela, le versement suivant
+    remet les notions de la fiche dans le cerveau."""
     ids = {_prefixe(f) for f in fiches}
     for c2 in sorted((RACINE / "graphe").glob("*/couche2")):
         n = 0
@@ -83,7 +83,7 @@ def purger_couche2(fiches: set[str]) -> None:
 def purger(fiches: set[str]) -> None:
     purger_couche2(fiches)
     for p in sorted((RACINE / "graphe").glob("*/*.json")):
-        if p.name not in ("graphe.json", "squelette.json", "structure.json", "partage.json"):
+        if p.name not in ("squelette.json", "structure.json", "partage.json"):
             continue
         texte = p.read_text(encoding="utf-8")
         if not any(f in texte for f in fiches):

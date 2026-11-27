@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
+import os
 import re
 import sys
 import time
@@ -228,14 +229,17 @@ def heures_de(a: argparse.Namespace) -> list[tuple[int, int]]:
 
 
 def ecrire_skill(nom: str, libelle: str, resume: str, sujets: list[str]) -> None:
+    from newskit import cerveau_cortexdb as cc  # noqa: PLC0415
+
     skill = json.loads(SKILL.read_text(encoding="utf-8")) if SKILL.exists() else {}
     e = skill.get(nom) or {}
+    e.pop("graphe", None)  # graphe.json est retiré (K3) : le cerveau est le graphe
     e.update(
         {
             "libelle": e.get("libelle") or f"{libelle} (dépôt {cfg.edition()['nom']}, graphe à part)",
             "racine": str(RACINE),
             "carte": f"graphe/{nom}/carte.md",
-            "graphe": f"graphe/{nom}/graphe.json",
+            "cerveau": Path(os.path.relpath(cc.chemin_cerveau(nom), RACINE)).as_posix(),
             "outil": f"-m newskit.interroger_graphe --graphe {nom}",
             "python": sys.executable,
             "architecture": "ARCHITECTURE.md",

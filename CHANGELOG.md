@@ -4,6 +4,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.88] - 2026-11-27
+
 ### Ajouté
 
 - `graphe_cerveau.charger` rend le graphe annoté, comme la composition le posait : une fiche (article, papier) reçoit

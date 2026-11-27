@@ -338,6 +338,7 @@ def test_le_bilan_de_la_construction_porte_les_comptes_du_versement():
     versement = {"inchanges": 5, "remplaces": 4, "ajoutes": 3, "retires": 2, "alias_fondus": 1, "verses": 9}
     assert cc.comptes_du_versement(versement) == {
         "inchanges": 5,
+        "migres": 0,
         "remplaces": 4,
         "ajoutes": 3,
         "retires": 2,

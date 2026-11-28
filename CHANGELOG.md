@@ -10,6 +10,9 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
   la composition la retirait, la règle s'était perdue avec elle (`graphe_cerveau.lire` ; « Authors » au cerveau
   d'ai-governance). Une fiche, un auteur, une publication ou un dépôt garde son titre.
 - Le registre du skill nomme le cerveau du graphe (`cerveau`) et plus `graphe.json`.
+- Le témoin passe sur une machine où fastembed est installé : la sonde du faux encodeur n'encode plus avec le vrai
+  fastembed, qui refusait son modèle fictif (« Model m is not supported »). Le témoin était rouge au serveur depuis la
+  0.1.88 et la routine du 28.11 s'est arrêtée.
 
 ### Retiré
 

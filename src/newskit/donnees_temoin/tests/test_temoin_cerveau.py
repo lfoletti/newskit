@@ -22,8 +22,11 @@ try:
 except ImportError:
     print(json.dumps({"faux": False}))
 else:
-    vecteurs = [list(v) for v in fastembed.TextEmbedding("m").embed(["essaim", "essaim", "cire"])]
-    print(json.dumps({"faux": getattr(fastembed, "TEMOIN", False), "vecteurs": vecteurs}))
+    if not getattr(fastembed, "TEMOIN", False):
+        print(json.dumps({"faux": False}))  # le vrai fastembed n'a pas de modèle « m » : on le constate, sans encoder
+    else:
+        vecteurs = [list(v) for v in fastembed.TextEmbedding("m").embed(["essaim", "essaim", "cire"])]
+        print(json.dumps({"faux": True, "vecteurs": vecteurs}))
 """
 
 

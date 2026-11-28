@@ -4,6 +4,12 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; les v
 
 ## [Non publié]
 
+## [0.1.89] - 2026-11-28
+
+### Modifié
+
+- `cortexdb-client` admis jusqu’à la 0.4 (`>=0.2,<0.5`).
+
 ### Corrigé
 
 - Une notion dont le nom est un reste de navigation (« Share », « Read next »…) reste hors du graphe lu du cerveau :
